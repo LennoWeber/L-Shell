@@ -7,7 +7,7 @@
 
 namespace shell::surface_shadow {
 
-  constexpr std::int32_t kBlurRadius = 12;
+  constexpr std::int32_t kBlurRadius = 20;
 
   struct Bleed {
     std::int32_t left = 0;

@@ -11,7 +11,7 @@ struct wl_output;
 class ClockWidget : public Widget {
 public:
   struct Options {
-    std::string format = "{:%H:%M}";
+    std::string format = "%a %-d %b %H:%M";
     std::string verticalFormat;
     std::string tooltipFormat;
     std::string timezone;

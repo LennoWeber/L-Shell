@@ -52,7 +52,7 @@ void ActiveWindowWidget::create() {
       ui::label({
           .out = &m_title,
           .fontSize = Style::fontSizeBody * fontScale(),
-          .fontWeight = labelFontWeight(),
+          .fontWeight = m_displayMode == ActiveWindowDisplayMode::AppName ? FontWeight::Bold : labelFontWeight(),
           .fontFamily = labelFontFamily(),
           .color = widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)),
           .maxWidth = m_maxWidth * m_contentScale,
@@ -96,7 +96,8 @@ void ActiveWindowWidget::doLayout(Renderer& renderer, float containerWidth, floa
     m_icon->setPosition(0.0F, 0.0F);
     rootNode->setSize(m_icon->width(), m_icon->height());
   } else {
-    const bool showIcon = !showingEmptyPlaceholder && m_displayMode != ActiveWindowDisplayMode::TextOnly;
+    const bool showIcon = !showingEmptyPlaceholder && m_displayMode != ActiveWindowDisplayMode::TextOnly
+        && m_displayMode != ActiveWindowDisplayMode::AppName;
     const bool showTitle =
         showingEmptyPlaceholder || (m_displayMode != ActiveWindowDisplayMode::IconOnly && !m_lastTitle.empty());
     m_icon->setVisible(showIcon);
@@ -176,8 +177,12 @@ void ActiveWindowWidget::syncState(Renderer& renderer) {
     emptyState = true;
   } else {
     identifier = current->identifier;
-    title = StringUtils::windowTitleSingleLine(current->title);
     appId = current->appId;
+    if (m_displayMode == ActiveWindowDisplayMode::AppName) {
+      title = app_identity::resolveRunningDesktopEntry(appId, desktopEntries()).name;
+    } else {
+      title = StringUtils::windowTitleSingleLine(current->title);
+    }
     if (title.empty()) {
       title = appId;
     }

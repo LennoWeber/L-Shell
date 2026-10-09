@@ -65,6 +65,11 @@ const noctalia::bar::WidgetDefinition<ActiveWindowWidget::Options>& activeWindow
                           .configValue = "text_only",
                           .labelKey = "settings.widgets.options.text-only",
                       },
+                      {
+                          .value = ActiveWindowDisplayMode::AppName,
+                          .configValue = "app_name",
+                          .labelKey = "settings.widgets.options.app-name",
+                      },
                   },
               .presentation =
                   settings::WidgetSettingPresentation{

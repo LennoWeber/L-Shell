@@ -143,24 +143,24 @@ struct BarConfig {
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
   bool reserveSpace = true;  // reserve compositor exclusive zone; applies with or without auto_hide
   std::string layer = "top"; // top | overlay; attached panels use the same layer
-  std::int32_t thickness = Style::barThicknessDefault;
-  float backgroundOpacity = 1.0F;
+  std::int32_t thickness = 28; // slim macOS-style menu bar
+  float backgroundOpacity = 0.65F;
   bool compositorBlur = true;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = 0.0F;
-  std::int32_t radius = static_cast<std::int32_t>(Style::radiusXl);
-  std::int32_t radiusTopLeft = static_cast<std::int32_t>(Style::radiusXl);
-  std::int32_t radiusTopRight = static_cast<std::int32_t>(Style::radiusXl);
-  std::int32_t radiusBottomLeft = static_cast<std::int32_t>(Style::radiusXl);
-  std::int32_t radiusBottomRight = static_cast<std::int32_t>(Style::radiusXl);
-  bool concaveEdgeCorners = true;
-  std::int32_t marginEnds = 100;       // inset from each end of the bar along its main axis
+  std::int32_t radius = 0;
+  std::int32_t radiusTopLeft = 0;
+  std::int32_t radiusTopRight = 0;
+  std::int32_t radiusBottomLeft = 0;
+  std::int32_t radiusBottomRight = 0;
+  bool concaveEdgeCorners = false;
+  std::int32_t marginEnds = 0;         // inset from each end of the bar along its main axis
   std::int32_t marginEdge = 0;         // distance from the nearest screen edge (floats the bar when > 0)
   std::int32_t marginOppositeEdge = 0; // extra reserved space on the inward side of the bar
   std::int32_t padding = 14;           // main-axis padding from bar edges to start/end sections
-  std::int32_t widgetSpacing = 6;      // gap between widgets within a section
-  bool shadow = true;                  // use the global shell shadow
+  std::int32_t widgetSpacing = 10;     // gap between widgets within a section
+  bool shadow = false;                 // use the global shell shadow
   bool contactShadow = false;          // dark gradient between attached panel and bar
   // Logical px the attached panel overlaps the bar edge so their seam is hidden. The ideal value depends on the
   // compositor and the output's fractional scale (physical-pixel rounding), so it is exposed for per-bar/per-monitor
@@ -172,11 +172,11 @@ struct BarConfig {
   int fontWeight = 500;           // primary label weight for bar widgets
   // Typeface for this bar's widgets; unset inherits shell.font_family. Per-widget `font_family` overrides.
   std::optional<std::string> fontFamily;
-  std::vector<std::string> startWidgets = {"launcher", "wallpaper", "workspaces"};
-  std::vector<std::string> centerWidgets = {"clock"};
-  std::vector<std::string> endWidgets = {"media",   "tray",           "notifications", "clipboard",
-                                         "network", "bluetooth",      "volume",        "brightness",
-                                         "battery", "control-center", "session"};
+  // macOS-style menu bar: logo (session menu) and focused app name left, status icons and clock right.
+  std::vector<std::string> startWidgets = {"logo", "app_name"};
+  std::vector<std::string> centerWidgets = {};
+  std::vector<std::string> endWidgets = {"tray",    "network",  "bluetooth",      "volume",
+                                         "battery", "launcher", "control-center", "clock"};
   // When true, widgets on this bar use a capsule unless `[widget.*] capsule = false`.
   bool widgetCapsuleDefault = false;
   ColorSpec widgetCapsuleFill = colorSpecFromRole(ColorRole::SurfaceVariant);
@@ -692,25 +692,25 @@ struct DockMonitorOverride {
 };
 
 struct DockConfig {
-  bool enabled = false; // opt-in; dock is hidden by default
+  bool enabled = true;
   DockEdge position = DockEdge::Bottom;
   bool activeMonitorOnly = false;    // render only on preferred active output
   std::int32_t iconSize = 48;        // icon size in pixels (before ui_scale)
   std::int32_t mainAxisPadding = 16; // inner padding along the icon row (main axis)
   std::int32_t crossAxisPadding = 8; // inner padding perpendicular to the icon row
   std::int32_t itemSpacing = 6;      // gap between items
-  float backgroundOpacity = 0.88F;
+  float backgroundOpacity = 0.55F;
   // Inside outline for the dock background.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = 0.0F;
-  std::int32_t radius = 16;            // dock background corner radius
-  std::int32_t radiusTopLeft = 16;     // dock background top-left corner radius
-  std::int32_t radiusTopRight = 16;    // dock background top-right corner radius
-  std::int32_t radiusBottomLeft = 16;  // dock background bottom-left corner radius
-  std::int32_t radiusBottomRight = 16; // dock background bottom-right corner radius
-  bool concaveEdgeCorners = true;      // carve concave corners on the side that touches the screen edge
+  std::int32_t radius = 20;            // dock background corner radius
+  std::int32_t radiusTopLeft = 20;     // dock background top-left corner radius
+  std::int32_t radiusTopRight = 20;    // dock background top-right corner radius
+  std::int32_t radiusBottomLeft = 20;  // dock background bottom-left corner radius
+  std::int32_t radiusBottomRight = 20; // dock background bottom-right corner radius
+  bool concaveEdgeCorners = false;     // carve concave corners on the side that touches the screen edge
   std::int32_t marginEnds = 0;         // inset from each end of the dock along its main axis
-  std::int32_t marginEdge = 0;         // distance from the nearest screen edge (floats the dock when > 0)
+  std::int32_t marginEdge = 8;         // distance from the nearest screen edge (floats the dock when > 0)
   bool shadow = true;                  // use the global shell shadow
   bool showRunning = true;             // also show running apps not in pinned list
   bool autoHide = false;               // slide out when not hovered (overlay mode)
@@ -720,14 +720,14 @@ struct DockConfig {
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
   bool reserveSpace = true;         // reserve compositor exclusive zone; applies with or without auto_hide
   float activeScale = 1.0F;         // focused app icon scale
-  float inactiveScale = 0.85F;      // non-focused app icon scale
+  float inactiveScale = 1.0F;       // non-focused app icon scale
   bool magnification = true;        // magnify icons near the pointer (macOS-style)
   float magnificationScale = 1.45F; // max icon scale multiplier at the pointer center
   float activeOpacity = 1.0F;       // focused app icon opacity
-  float inactiveOpacity = 0.85F;    // non-focused app icon opacity
-  bool showDots = false;            // show optional running window dots below app icons
-  bool showInstanceCount = true;    // show a badge with count when app has >1 window
-  DockLauncherPosition launcherPosition = DockLauncherPosition::None;
+  float inactiveOpacity = 1.0F;     // non-focused app icon opacity
+  bool showDots = true;             // show optional running window dots below app icons
+  bool showInstanceCount = false;   // show a badge with count when app has >1 window
+  DockLauncherPosition launcherPosition = DockLauncherPosition::Start;
   std::string launcherIcon = "grid-dots";   // Tabler glyph name
   std::string launcherCustomImage = "";     // image path; overrides launcherIcon glyph when set
   bool launcherCustomImageColorize = false; // tint the custom image with the icon color role
@@ -813,7 +813,7 @@ struct OsdConfig {
   std::string orientation = "horizontal";
   std::int32_t hideDelayMs = 1400;
   float scale = 1.0F;
-  float backgroundOpacity = 0.97F;
+  float backgroundOpacity = 0.8F;
   bool border = true; // outline around OSD popup cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = Style::borderWidth;
@@ -836,7 +836,7 @@ struct NotificationConfig {
   std::string layer = "top"; // top | overlay
   float scale = 1.0F;
   std::int32_t width = kDefaultWidth;
-  float backgroundOpacity = 0.97F; // toast card background alpha (0.0–1.0)
+  float backgroundOpacity = 0.8F;  // toast card background alpha (0.0–1.0)
   bool border = true;              // outline around toast cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = Style::borderWidth;
@@ -1056,13 +1056,13 @@ struct ShellConfig {
 
   struct ShadowConfig {
     ShadowDirection direction = ShadowDirection::Down;
-    float alpha = 0.55F;
+    float alpha = 0.45F;
 
     bool operator==(const ShadowConfig&) const = default;
   };
 
   struct PanelConfig {
-    PanelTransparencyMode transparencyMode = PanelTransparencyMode::Solid;
+    PanelTransparencyMode transparencyMode = PanelTransparencyMode::Glass;
     bool borders = true; // outline on floating panel surfaces
     ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
     float borderWidth = Style::borderWidth;
@@ -1200,13 +1200,13 @@ struct ShellConfig {
     bool operator==(const WindowSwitcherConfig&) const = default;
   };
 
-  float cornerRadiusScale = 1.0F;
-  bool buttonBorders = true;
+  float cornerRadiusScale = 1.15F;
+  bool buttonBorders = false;
   bool inputBorders = true;
   bool popupBorders = true;
   bool popupShadows = true;
-  bool cardBorders = true;
-  std::string fontFamily = "sans-serif";
+  bool cardBorders = false;
+  std::string fontFamily = "Inter Variable";
   std::string lang; // empty = auto-detect from $LC_ALL/$LC_MESSAGES/$LANG
   std::string timeFormat = "{:%H:%M}";
   std::string dateFormat = "%A, %x";
@@ -1695,7 +1695,7 @@ struct ThemeConfig {
   };
 
   PaletteSource source = PaletteSource::Builtin;
-  std::string builtinPalette = "Noctalia";
+  std::string builtinPalette = "L-Shell";
   std::string communityPalette = "Oxocarbon";
   std::string customPalette;
   std::string wallpaperScheme = "m3-content";

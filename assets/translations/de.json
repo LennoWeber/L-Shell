@@ -3264,6 +3264,7 @@
       "options": {
         "after": "Danach",
         "always": "Immer",
+        "app-name": "App-Name",
         "auto": "Auto",
         "before": "Davor",
         "both": "Beide",

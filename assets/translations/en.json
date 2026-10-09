@@ -4075,6 +4075,7 @@
       "options": {
         "after": "After",
         "always": "Always",
+        "app-name": "App Name",
         "auto": "Auto",
         "before": "Before",
         "both": "Both",

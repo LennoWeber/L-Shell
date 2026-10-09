@@ -24,6 +24,7 @@
 #include "render/scene/spinner_node.h"
 #include "render/scene/text_node.h"
 #include "render/scene/wallpaper_node.h"
+#include "render/text/font_registry.h"
 
 #include <algorithm>
 #include <chrono>
@@ -122,6 +123,8 @@ void RenderContext::initialize(GlSharedContext& shared) {
   m_backend->initialize(shared);
 
   // Pango handles font fallback via Fontconfig automatically — no explicit chain.
+  // The bundled UI font must be known to Fontconfig before the first layout.
+  text::registerFontFile(paths::assetPath("fonts/InterVariable.ttf"));
   m_backend->textureManager().probeExtensions();
   m_textRenderer.initialize(m_backend.get(), &m_backend->textureManager());
   m_glyphRenderer.initialize(

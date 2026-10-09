@@ -25,6 +25,7 @@ enum class ActiveWindowDisplayMode : std::uint8_t {
   IconAndText,
   IconOnly,
   TextOnly,
+  AppName, // application name only, like the macOS menu bar
 };
 
 class ConfigService;

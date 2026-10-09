@@ -104,6 +104,19 @@ namespace noctalia::config {
     activeWindow.settings["title_scroll"] = std::string("none");
     seed("active_window", std::move(activeWindow));
 
+    // Menu-bar defaults: the logo opens the session menu, like the Apple menu.
+    WidgetConfig logo;
+    logo.type = "session";
+    logo.settings["glyph"] = std::string("spiral");
+    seed("logo", std::move(logo));
+
+    WidgetConfig appName;
+    appName.type = "active_window";
+    appName.settings["display"] = std::string("app_name");
+    appName.settings["max_length"] = 260.0;
+    appName.settings["min_length"] = 0.0;
+    seed("app_name", std::move(appName));
+
     WidgetConfig media;
     media.type = "media";
     media.settings["max_length"] = 220.0;

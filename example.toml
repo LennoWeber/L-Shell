@@ -9,8 +9,8 @@ ui_scale              = 1.0
 high_contrast         = false
 
 [shell]
-corner_radius_scale   = 1.0          # 0 = square, 1 = default, 2 = extra rounded
-font_family           = "sans-serif"
+corner_radius_scale   = 1.15         # 0 = square, 1.15 = default, 2 = extra rounded
+font_family           = "Inter Variable" # bundled with L-Shell
 time_format           = "{:%H:%M}"  # default shell UI time format
 date_format           = "%A, %x"    # default shell UI date format
 offline_mode          = false        # block all outgoing HTTP when true
@@ -58,10 +58,10 @@ speed   = 1.0                       # 0.5 = 2× slower, 2.0 = 2× faster
 
 [shell.shadow]
 direction = "down"                  # center, up, down, left, right, up_left, up_right, down_left, down_right
-alpha     = 0.55                    # multiplied by each component's background opacity
+alpha     = 0.45                    # multiplied by each component's background opacity
 
 [shell.panel]
-transparency_mode     = "solid"     # solid | soft | glass; controls floating-panel opacity and card translucency
+transparency_mode     = "glass"     # solid | soft | glass; controls floating-panel opacity and card translucency
 borders               = true        # panel shell outline and in-panel section cards
 border_color          = "outline"   # floating panel outline color: theme role token or #RRGGBB
 border_width          = 1.0         # floating panel outline width in px, 0 hides the stroke
@@ -148,8 +148,8 @@ recursive                  = true    # include subdirectories when picking rando
 [theme]
 mode   = "dark"                     # dark | light | auto
 source = "builtin"                  # builtin | wallpaper | community
-builtin = "Noctalia"                # Ayu | Catppuccin | Dracula | Eldritch | Gruvbox |
-                                    # Kanagawa | Noctalia | Nord | Rosé Pine | Tokyo-Night
+builtin = "L-Shell"                 # Ayu | Catppuccin | Dracula | Eldritch | Gruvbox |
+                                    # Kanagawa | L-Shell | Noctalia | Nord | Rosé Pine | Tokyo-Night
 # community_palette = "Noctalia"    # fetched from api.noctalia.dev, cached locally
 # wallpaper_scheme  = "m3-content"  # m3-tonal-spot | m3-content | m3-fruit-salad |
                                     # m3-rainbow | m3-monochrome | vibrant | faithful |
@@ -185,7 +185,7 @@ show_actions       = true           # show action buttons; when false, clicking 
 keep_dismissed_in_history = true    # set false to remove history entries when their toasts are dismissed
 layer              = "top"          # top | overlay
 scale              = 1.0            # notification size multiplier applied on top of accessibility.ui_scale
-background_opacity = 0.97
+background_opacity = 0.8
 border             = true           # outline around toast cards; set false for a borderless look
 border_color       = "outline"      # outline color: theme color role (e.g. "primary") or hex (e.g. "#a8b185")
 border_width       = 1              # outline stroke width in px; raise for a thicker outline
@@ -214,7 +214,7 @@ position_vertical = "top_center"    # same options; used when orientation = "ver
 orientation = "horizontal"          # horizontal | vertical (volume/brightness sliders only; text popups stay horizontal)
 hide_delay_ms = 1400                # time before a popup starts hiding; range 250 to 10000 ms
 scale = 1.0                         # OSD size multiplier applied on top of accessibility.ui_scale
-background_opacity = 0.97           # background opacity of OSD popups
+background_opacity = 0.8            # background opacity of OSD popups
 border = true                       # outline around OSD popup cards; set false for a borderless look
 border_color = "outline"            # outline color: theme color role (e.g. "primary") or hex (e.g. "#a8b185")
 border_width = 1                    # outline stroke width in px; raise for a thicker outline
@@ -380,17 +380,18 @@ delete   = ["del"]
 
 [bar.main]
 position           = "top"          # top | bottom | left | right
-thickness          = 34
-background_opacity = 1.0
+thickness          = 28
+background_opacity = 0.65
 compositor_blur    = true          # false stops compositor blur for this bar
-radius             = 12
-margin_ends        = 180
-margin_edge        = 10
+radius             = 0
+concave_edge_corners = false
+margin_ends        = 0
+margin_edge        = 0
 padding            = 14
-widget_spacing     = 6
+widget_spacing     = 10
 scale              = 1.0
 font_scale         = 1.0            # text-only scale multiplier across widgets
-shadow             = true
+shadow             = false
 auto_hide          = false
 # smart_auto_hide    = false       # show when the active workspace is empty; hide when it has windows
 # show_on_workspace_switch = true   # with auto_hide: briefly reveal when the active workspace changes
@@ -402,9 +403,9 @@ capsule            = false
 # capsule_border   = "outline"      # uncomment for a border on all widgets
 # capsule_border_width = 1.0        # outline thickness in pixels (0-8); needs capsule_border
 
-start  = ["launcher", "wallpaper", "workspaces"]
-center = ["clock"]
-end    = ["media", "tray", "notifications", "clipboard", "network", "bluetooth", "volume", "brightness", "battery", "control-center", "session"]
+start  = ["logo", "app_name"]      # logo = session menu, app_name = focused app (built-in widget instances)
+center = []
+end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"]
 
 # Commands for the bar margin outside widget sections (dead zone):
 # [bar.main.dead_zone.actions]
@@ -425,18 +426,19 @@ end    = ["media", "tray", "notifications", "clipboard", "network", "bluetooth",
 # ── Dock ──────────────────────────────────────────────────────────────────────
 
 [dock]
-enabled             = false         # set true to activate
+enabled             = true
 position            = "bottom"      # top | bottom | left | right
 icon_size           = 48
 main_axis_padding   = 16
 cross_axis_padding  = 8
 item_spacing        = 6
-background_opacity  = 0.88
-radius              = 16
-radius_top_left     = 16
-radius_top_right    = 16
-radius_bottom_left  = 16
-radius_bottom_right = 16
+background_opacity  = 0.55
+radius              = 20
+radius_top_left     = 20
+radius_top_right    = 20
+radius_bottom_left  = 20
+radius_bottom_right = 20
+concave_edge_corners = false
 margin_ends         = 0
 margin_edge         = 8
 shadow              = true
@@ -446,14 +448,14 @@ auto_hide           = false
 reserve_space       = true
 layer               = "top"         # top | overlay
 active_scale        = 1.0
-inactive_scale      = 0.85
+inactive_scale      = 1.0
 magnification       = true
 magnification_scale = 1.45
 active_opacity      = 1.0
-inactive_opacity    = 0.85
-show_dots           = false
-show_instance_count = true
-launcher_position   = "none"       # none | start | end
+inactive_opacity    = 1.0
+show_dots           = true
+show_instance_count = false
+launcher_position   = "start"       # none | start | end
 launcher_icon       = "grid-dots"  # Tabler glyph name
 active_monitor_only = false
 pinned              = []            # e.g. ["firefox", "code", "kitty"]
