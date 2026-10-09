@@ -33,6 +33,22 @@ Classic mode.
 - The system-wide macOS restyle (all panels, neutral colors, wallpaper color only for accents) is done **in this
   session as a second feature after the layout modes** (see "Next feature"). The other session only does Spotlight.
 
+- The reference is **macOS Tahoe (Liquid Glass)**, as close as possible. Any code may change for it; a small
+  diff to upstream Noctalia is no longer a goal when it stands in the way.
+
+## Tahoe reference
+
+- **Menu bar**: about 24–28 px, transparent by default, logo + bold app name on the left, status icons, Control
+  Center and date/time on the right. The Minimal Bar preset, the Smart Bar and Flow's home bar follow this.
+- **Liquid Glass**: translucent tint over a blurred backdrop, a bright specular rim along the top edge fading
+  down, a faint darker rim at the bottom, adapts to light/dark. Approximated with compositor blur + a vertical
+  tint gradient + a hairline rim (`shell/surface/glass.*`); a dedicated shader can follow in the restyle feature.
+- **Concentric corners**: an inner element's radius = outer radius − padding.
+- **Control Center / widgets**: grids of glass modules with large radii, circular toggles that turn accent when on.
+  The status overlay follows this.
+- **Island**: glass capsule by default (`material = "black"` gives the iPhone look).
+- **Handle**: like the iPhone home indicator, 134 × 5 px.
+
 ## Design rules (macOS-like)
 
 Apply to everything this feature adds (island, handle, edge drawers, status overlay, mode bar presets):
@@ -115,10 +131,8 @@ Key choices:
 - **Status overlay** is a regular panel (`status-overlay`) that fills the screen, so it also works from IPC,
   edges and bar actions.
 - **Workspace occupancy.** Island and handle need "does the active workspace on this output have windows". The
-  bar and dock each keep a private copy of that check today. The new components share one new helper. The
-  existing copies stay untouched to keep merges from Noctalia painless.
-- **Merge-friendliness.** Changes to upstream files stay small and additive. Classic mode must behave exactly
-  as upstream.
+  bar and dock each keep a private copy of that check today (three copies). One shared helper replaces them.
+- **Classic mode** must behave exactly as upstream; everything else may change freely.
 
 ## Config (draft)
 
@@ -283,6 +297,9 @@ Own phased plan once the layout modes are done. Starting points found during pha
   to the design rules above.
 - Window title bars with close buttons are drawn by apps or the compositor, not by the shell. They only follow
   through the generated GTK/Qt themes.
+- Tahoe's transparent menu bar needs text that adapts to the wallpaper underneath (the shell renders the
+  wallpaper, so it can measure its luminance). Until then the mode bars default to `background = "glass"`.
+- A real Liquid Glass shader (refraction, specular highlight) for every glass surface.
 
 ## Open points
 
