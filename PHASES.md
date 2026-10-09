@@ -8,7 +8,7 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 | Phase | State |
 |---|---|
 | 1 Understand and plan | done |
-| 2 Structures | done, in review |
+| 2 Structures | done, reviewed |
 | 3 Signatures | – |
 | 4 TODO markers | – |
 | 5 Trial implementation (discarded) | – |
@@ -68,7 +68,7 @@ Apply to everything this feature adds (island, handle, edge drawers, status over
   state carriers: level fills (volume/brightness), active toggles, the selected item, the focus ring. Never as a
   large fill or background.
 - **Material.** Translucent surfaces with compositor blur ("vibrancy"), a 1px hairline inner border at low alpha,
-  a large soft shadow. No hard outlines, no gradients.
+  a large soft shadow. No hard outlines and no decorative gradients; the only gradient is the glass sheen.
 - **Shape.** The island is a full capsule; the handle is a rounded line like the iOS/Pixel home indicator, in
   `on_surface` at reduced alpha; cards and tiles use generous, consistent radii.
 - **Type.** System font, few sizes, weight for hierarchy (clock semibold), secondary text in `on_surface_variant`.
@@ -153,7 +153,7 @@ mode = "flow"   # classic | smart_bar | minimal_bar | island | edges | handle | 
 # ModeBarConfig — used by smart_bar, minimal_bar, handle.bar and flow.bar (each with its own preset)
 [layout.smart_bar]
 position = "top"              # top | bottom
-thickness = 30
+thickness = 28
 scale = 1.0
 font_scale = 1.0
 background = "glass"          # transparent | glass | solid
@@ -182,7 +182,7 @@ margin_top = 6
 reserve_space = true
 expand_on_hover = true
 click_action = "panel-toggle control-center"
-activity_seconds = 3.0
+activity_ms = 3000
 suppress_osd = true           # the island replaces the OSD for what it shows
 
 [layout.island.activities]
@@ -215,8 +215,8 @@ swipe_workspaces = true
 [layout.handle.bar]           # ModeBarConfig, bottom bar shown on reveal = "bar"
 
 [layout.flow]                 # FlowConfig: its own copy of every component
-[layout.flow.bar]             # home bar: 34 px, launcher + workspaces | … clock
-[layout.flow.island]          # height 28, margin_top 3, reserve_space = false (uses the bar's strip)
+[layout.flow.bar]             # home bar: 28 px, launcher + workspaces | … clock
+[layout.flow.island]          # height 24, margin_top 2, reserve_space = false (uses the bar's strip)
 [layout.flow.edges]           # top/bottom = "none", left = launcher, right = control-center
 [layout.flow.handle]
 ```
@@ -225,56 +225,76 @@ Per-mode tables reuse the same sub-schemas, so `[layout.flow.island]` takes exac
 
 ## Planned changes
 
-### New types (phase 2)
+### New types (phase 2, done)
 
 `src/config/config_types.h`
-- `enum class LayoutMode { Classic, SmartBar, MinimalBar, Island, Edges, Handle, Flow }`
-- `struct ModeBarConfig` (position, thickness, scale, font_scale, floating, background_opacity, reserve_space,
-  reveal_on_hover, show_on_workspace_switch, start/center/end)
-- `struct IslandConfig`, `enum class IslandActivity`
-- `struct EdgesConfig`
-- `struct HandleConfig`, `enum class HandleReveal { Bar, Overlay }`
-- `struct FlowConfig`
-- `struct LayoutConfig` (mode + one member per mode, each with its mode's preset defaults)
-- `Config::layout`, `ConfigChangeSet::layout`
+- `LayoutMode`, `ModeBarPosition`, `ModeBarBackground`, `IslandMaterial`, `HandleReveal` (+ `EnumOption` tables)
+- `ModeBarConfig`, `IslandActivitiesConfig`, `IslandConfig`, `EdgesConfig`, `HandleConfig`, `FlowConfig`,
+  `LayoutConfig`; `Config::layout`; `ConfigChangeSet::layout`
+- `BarConfig::glass` (Liquid Glass chrome) and `BarConfig::autoHideEdgeReveal`, both defaulting to the current
+  behavior so `[bar.*]` bars are unchanged
 
-`src/config/layout_resolver.h`
-- `enum class IslandVisibility { Always, WhileWindowsOpen }`
-- `struct ResolvedLayout`
+`src/config/layout_resolver.h` (`noctalia::config`): `IslandVisibility`, `ResolvedLayout`
+`src/shell/island/island_activity.h` (`shell::island`): `ActivityKind`, `Activity`, `Presentation`,
+`ActivityState`, `ActivityTracker` (state only)
+`src/shell/gesture_handle/handle_gesture.h` (`shell::gesture_handle`): `Outcome`, `GestureSettings`, `Phase`,
+`GestureRecognizer` (state only; the hover dwell is a timer owned by the handle)
+`src/shell/surface/glass.h` (`shell::glass`): `Material`, `GlassStyle`, `GlassNodes`
+`src/shell/island/island.h`, `screen_edges/screen_edges.h`, `gesture_handle/gesture_handle.h`,
+`status_overlay/status_overlay_panel.h`: classes with their state (no methods yet); `IslandServices`,
+`StatusOverlayServices`
+`src/shell/panel/panel_manager.h`: `PanelOpenRequest::screenPosition`, `::dismissOnPointerLeave`, matching state
+`src/shell/osd/osd_overlay.h`: `m_redirect` (the island takes OSD content)
+`src/config/config_service.h`: `m_resolvedLayout`
+`src/shell/settings/settings_registry.h`: `SettingsSection::Layout`
+`src/app/application.h`: owns `Island`, `ScreenEdges`, `GestureHandle` (ownership is structure; wiring is phase 4/7)
 
-`src/shell/island/island_activity.h`: activity state machine types (pure).
-`src/shell/gesture_handle/handle_gesture.h`: drag recognizer types (pure).
-`src/shell/panel/panel_manager.h`: `PanelOpenRequest::dismissOnPointerLeave`.
-
-### New functions / classes (phase 3)
+### New functions, constants and data (phase 3)
 
 - `config/schema/config_schema.{h,cpp}`: `layoutSchema()` (+ registration in `config_sections.cpp`)
-- `config/layout_resolver.{h,cpp}`: `resolveLayout(const Config&)`, `synthesizeBar(const ModeBarConfig&, name, preset flags)`
+- `config/schema/ranges.h`: ranges for every new numeric field
+- `config/layout_resolver.{h,cpp}`: `resolveLayout(const Config&)`, `synthesizeBar(const ModeBarConfig&, …)`,
+  constants for the synthesized bar names (`smart`, `minimal`, `handle`, `flow`)
 - `ConfigService::activeBars()`, `ConfigService::resolvedLayout()`
 - `shell/workspace_occupancy.{h,cpp}`: `activeWorkspaceHasWindows(const CompositorPlatform&, wl_output*)`
-- `shell/island/island.{h,cpp}`: `Island` (initialize, reload, onOutputChange, onWorkspaceChanged, onPointerEvent, activity feed hooks)
-- `shell/island/island_activity.{h,cpp}`: `IslandActivityTracker` (post, tick, current)
-- `shell/screen_edges/screen_edges.{h,cpp}`: `ScreenEdges` (initialize, reload, onOutputChange, onPointerEvent)
-- `shell/gesture_handle/gesture_handle.{h,cpp}`: `GestureHandle`
-- `shell/gesture_handle/handle_gesture.{h,cpp}`: `HandleGestureRecognizer` (press, motion, release, tick → outcome)
-- `shell/status_overlay/status_overlay_panel.{h,cpp}`: `StatusOverlayPanel : Panel`
+- `shell/island/island_activity.cpp`: `ActivityTracker` (configure, post, advance, setHovered, setAmbient,
+  presentation, current)
+- `shell/island/island.cpp`: `Island` (initialize, reload, onOutputChange, onWorkspaceChanged, onSecondTick,
+  onPointerEvent, takeOsdContent, onNotification, onBatteryChange)
+- `shell/screen_edges/screen_edges.cpp`: `ScreenEdges` (initialize, reload, onOutputChange, onPointerEvent)
+- `shell/gesture_handle/handle_gesture.cpp`: `GestureRecognizer` (enter, leave, dwellElapsed, press, motion,
+  release → `Outcome`)
+- `shell/gesture_handle/gesture_handle.cpp`: `GestureHandle` (initialize, reload, onOutputChange,
+  onWorkspaceChanged, onPointerEvent)
+- `shell/status_overlay/status_overlay_panel.cpp`: `StatusOverlayPanel : Panel`, panel id constant `status-overlay`
+- `shell/surface/glass.cpp`: build/apply helpers for `GlassNodes`
 - `Bar::peekBar(wl_output*, std::string_view barName)`: reveal an auto-hide bar on request (handle hover)
-- `Application`: ownership + wiring of the three components, IPC `layout-mode-set <mode>`
-- Settings: `SettingsSection::Layout` and entry builders for each component, reusable with a path prefix
+- `OsdOverlay::setRedirect(...)`
+- `Application`: IPC `layout-mode-set <mode>`
+- Settings: `kSettingsSections` entry for `Layout` (24 → 25), entry builders for each component, reusable with a
+  path prefix
 
 ### Places to change (phase 4)
 
 - `src/shell/bar/bar.cpp`, `dock/dock.cpp`, `panel/panel_manager.cpp`, `tray/tray_drawer_panel.cpp`,
   `tray/tray_menu.cpp`, `bar/widgets/taskbar_widget.cpp`, `app/application_internal.h`: `config().bars` →
   `activeBars()`; reload triggers also on `changed.layout`
-- `src/config/config_service.cpp`: parse `[layout]`, compute the resolved layout after every parse, change set
-- `src/app/application*.cpp`: construct/initialize/reload the components, route pointer, output, workspace and
-  overview events, register the status overlay panel and IPC
-- `src/shell/panel/panel_manager.cpp`: honor `dismissOnPointerLeave`
-- `src/shell/settings/settings_registry.{h,cpp}`, sidebar: Layout section, Bar section only in Classic
+- `src/shell/bar/bar.cpp`: honor `BarConfig::glass` and `autoHideEdgeReveal`; private
+  `activeWorkspaceHasWindows` copies in bar/dock → shared helper
+- `src/config/config_service.cpp`: parse `[layout]`, compute the resolved layout after every parse
+- `src/config/config_overrides.cpp`: `configEqual`, `computeConfigChangeSet` (designated initializer must set
+  `.layout`), override handling; `ConfigChangeSet::any()` in `config_types.h`
+- `src/app/application*.cpp`: construct/initialize/reload the components, route pointer, output, workspace,
+  overview and second-tick events, register the status overlay panel and IPC, OSD redirect
+- `src/shell/panel/panel_manager.cpp`: honor `screenPosition` and `dismissOnPointerLeave` (never while a text
+  input in the panel has focus, so the launcher does not close while typing)
+- `src/shell/osd/osd_overlay.cpp`: consult the redirect before showing
+- `src/shell/settings/settings_registry.{h,cpp}`, `settings_content_common.cpp` (exhaustive section switches),
+  sidebar: Layout section, Bar section only in Classic
 - `meson.build`: new sources and tests
 - `assets/translations/en.json` (+ `de.json`): labels
-- `docs/user/layout/index.mdx` (new), `docs/user/bar/index.mdx` (note: bars apply in Classic mode)
+- `docs/user/layout/index.mdx` (new), `docs/user/bar/index.mdx` (note: bars apply in Classic mode),
+  `docs/user/compositor-settings/hyprland.mdx` (blur rule covers the new namespaces)
 - `example.toml`: `[layout]` example
 
 ### Tests
@@ -334,4 +354,33 @@ Own phased plan once the layout modes are done. Starting points found during pha
 
 ## Review log
 
-(filled in after phases 2, 3, 4, 6 and 7)
+### Phase 2 (structures)
+
+Fresh reviewer, diff `6348447..b3bc273`. 15 findings.
+
+Fixed:
+1. Mode bars need settings the bar engine lacks → added `BarConfig::glass` and `BarConfig::autoHideEdgeReveal`
+   (defaults keep `[bar.*]` unchanged).
+2. Components could not open anchored panels → `PanelManager*` plus pre-parsed `WidgetAction`s per edge strip
+   and for the island click.
+3. No way to anchor a panel at a screen edge → `PanelOpenRequest::screenPosition`.
+4. `Layout` has no `kSettingsSections` descriptor → phase 3 (module data); exhaustive switches → phase 4 list.
+5. Change-set plumbing → `configEqual`, `computeConfigChangeSet`, `any()` added to the phase 4 list.
+6. Bars too tall for Tahoe → smart and flow bar 28 px, flow island 24 px with a 2 px margin.
+7. Missing animation ids, input areas and the dwell timer → added.
+8. Island clock timer duplicated the shared second tick → removed (`onSecondTick` in phase 3).
+10. Names in this file did not match the code → updated.
+14. `activitySeconds` (float) → `activityMs` (int), like `[osd]`.
+15. `Activity::overLimit` added; `StatusOverlayPanel::m_reveal` removed (the panel manager already reveals);
+    the design rule now allows the glass sheen gradient; name constants and ranges → phase 3.
+12. `noctalia::layout` → `noctalia::config`, next to the other config helpers.
+
+Declined:
+- 8 (part): `m_activityTimer` stays as the wake-up; the remaining time lives only in the tracker.
+- 9: owning the components in `Application` is structure; only the wiring is later.
+- 11: `IslandMaterial` (config) and `shell::glass::Material` (rendering) live in different layers on purpose;
+  `ModeBarPosition` deliberately allows only top/bottom; `ScreenEdges::Edge` is private.
+- 13: the defaults stay (they follow Caelestia). Leaving a full-screen panel cannot happen, and the launcher
+  case is handled by the focused-text-input rule in the phase 4 list.
+- 15 (part): `ResolvedLayout` defaults to Classic on purpose (empty until the first parse, now commented);
+  `ConfigService&` vs `ConfigService*` follow each neighbor's convention (bar services vs panels).

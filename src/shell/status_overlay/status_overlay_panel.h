@@ -1,6 +1,5 @@
 #pragma once
 
-#include "config/config_types.h"
 #include "shell/panel/panel.h"
 #include "shell/surface/glass.h"
 
@@ -54,6 +53,4 @@ private:
   Label* m_date = nullptr;
   Flex* m_tileGrid = nullptr;
   std::vector<Tile> m_tiles;
-  // 0 = closed, 1 = open; drives the scrim fade and the tiles' rise-in.
-  float m_reveal = 0.0F;
 };

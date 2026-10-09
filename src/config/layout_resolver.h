@@ -8,7 +8,7 @@
 
 // Turns the active [layout] mode into the shell components that carry it out. The bar engine receives
 // synthesized BarConfigs; the island, screen edges and bottom handle receive their mode's settings.
-namespace noctalia::layout {
+namespace noctalia::config {
 
   enum class IslandVisibility : std::uint8_t {
     Always = 0,
@@ -17,6 +17,7 @@ namespace noctalia::layout {
   };
 
   struct ResolvedLayout {
+    // Classic with no bars until ConfigService resolves the first parsed config.
     LayoutMode mode = LayoutMode::Classic;
     // Bars the bar engine runs: the [bar.*] list in classic mode, otherwise the mode's synthesized bars.
     std::vector<BarConfig> bars;
@@ -30,4 +31,4 @@ namespace noctalia::layout {
     bool operator==(const ResolvedLayout&) const = default;
   };
 
-} // namespace noctalia::layout
+} // namespace noctalia::config

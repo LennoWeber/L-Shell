@@ -46,6 +46,9 @@ struct PanelOpenRequest {
   bool hasAnchorPosition = false;
   std::string_view context;
   std::string_view sourceBarName;
+  // Screen-edge drawers: open floating at this kPanelPositions value (e.g. "center_left") instead of the panel's
+  // configured placement and position. Empty keeps the configured ones.
+  std::string_view screenPosition;
   // Screen-edge drawers: close the panel once the pointer leaves it (after it has entered once).
   bool dismissOnPointerLeave = false;
 };

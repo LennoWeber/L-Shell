@@ -242,7 +242,7 @@ private:
   Config m_config;
   ConfigChangeSet m_lastChange;
   // What the active [layout] mode puts on screen; recomputed after every parse of m_config.
-  noctalia::layout::ResolvedLayout m_resolvedLayout;
+  noctalia::config::ResolvedLayout m_resolvedLayout;
 
   // Hand-authored config directory: all *.toml merged alphabetically.
   std::string m_configDir;

@@ -14,7 +14,6 @@ namespace shell::gesture_handle {
   };
 
   struct GestureSettings {
-    float hoverDelayMs = 250.0F;
     float pullUpDistance = 28.0F; // logical px upwards before a drag reveals
     float swipeDistance = 56.0F;  // logical px sideways before a drag switches workspace
     // A drag commits to an axis once one component exceeds the other by this factor.
@@ -35,7 +34,6 @@ namespace shell::gesture_handle {
   private:
     GestureSettings m_settings;
     Phase m_phase = Phase::Idle;
-    float m_hoverElapsedMs = 0.0F;
     float m_pressX = 0.0F;
     float m_pressY = 0.0F;
     // A gesture fires at most once per hover or press; the next one needs a leave or release first.

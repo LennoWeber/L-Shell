@@ -139,6 +139,8 @@ struct BarConfig {
   bool autoHide = false;             // slide out when the pointer leaves; reveal on edge approach
   bool smartAutoHide = false;        // hide while the active workspace has windows; show when it is empty
   bool showOnWorkspaceSwitch = true; // with auto_hide: briefly reveal when the active workspace changes
+  // With auto-hide: touching the bar's screen edge reveals it. Layout modes may turn this off; [bar.*] keeps it on.
+  bool autoHideEdgeReveal = true;
 
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
   bool reserveSpace = true;  // reserve compositor exclusive zone; applies with or without auto_hide
@@ -146,6 +148,8 @@ struct BarConfig {
   std::int32_t thickness = Style::barThicknessDefault;
   float backgroundOpacity = 1.0F;
   bool compositorBlur = true;
+  // Liquid Glass chrome (top sheen + hairline rim) over the background; set by layout modes, off for [bar.*].
+  bool glass = false;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = 0.0F;
@@ -1928,7 +1932,7 @@ struct IslandConfig {
   bool expandOnHover = true;
   std::string clickAction = "panel-toggle control-center"; // widget action grammar
   IslandActivitiesConfig activities;
-  float activitySeconds = 3.0F; // how long an event keeps the island expanded
+  std::int32_t activityMs = 3000; // how long an event keeps the island expanded
   bool suppressOsd = true;      // the island replaces the OSD for every activity it shows
 
   bool operator==(const IslandConfig&) const = default;
@@ -1983,13 +1987,13 @@ struct HandleConfig {
 // the bottom and the side edges open the launcher and Control Center.
 struct FlowConfig {
   ModeBarConfig bar{
-      .thickness = 34,
+      .thickness = 28,
       .startWidgets = {"launcher", "workspaces"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "control-center", "clock"},
   };
   IslandConfig island{
-      .height = 28,
-      .marginTop = 3,
+      .height = 24,
+      .marginTop = 2,
       .reserveSpace = false,
   };
   EdgesConfig edges{
@@ -2006,7 +2010,7 @@ struct FlowConfig {
 struct LayoutConfig {
   LayoutMode mode = LayoutMode::Flow;
   ModeBarConfig smartBar{
-      .thickness = 30,
+      .thickness = 28,
       .startWidgets = {"launcher", "workspaces", "active_window"},
       .centerWidgets = {"clock"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "control-center"},

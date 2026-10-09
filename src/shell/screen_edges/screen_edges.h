@@ -3,6 +3,7 @@
 #include "config/config_types.h"
 #include "core/timer_manager.h"
 #include "render/scene/input_dispatcher.h"
+#include "shell/bar/widget_action.h"
 #include "wayland/layer_surface.h"
 
 #include <cstdint>
@@ -14,6 +15,7 @@ class CompositorPlatform;
 class ConfigService;
 class IpcService;
 class Node;
+class PanelManager;
 class RenderContext;
 struct wl_output;
 
@@ -25,6 +27,7 @@ private:
 
   struct Strip {
     Edge edge = Edge::Top;
+    noctalia::bar::WidgetAction action; // parsed from the edge's EdgesConfig entry
     std::unique_ptr<LayerSurface> surface;
     std::unique_ptr<Node> sceneRoot;
     InputDispatcher inputDispatcher;
@@ -43,6 +46,7 @@ private:
   ConfigService* m_config = nullptr;
   RenderContext* m_renderContext = nullptr;
   IpcService* m_ipc = nullptr;
+  PanelManager* m_panels = nullptr;
   std::optional<EdgesConfig> m_edgesConfig; // nullopt when the active layout has no screen edges
   std::vector<std::unique_ptr<OutputInstance>> m_instances;
 };

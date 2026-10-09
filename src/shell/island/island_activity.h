@@ -28,6 +28,8 @@ namespace shell::island {
     std::optional<float> level;
     // Muted output, Wi-Fi off, …: the level fill and glyph render neutral instead of accent.
     bool inactive = false;
+    // Volume boosted past 100 %.
+    bool overLimit = false;
 
     bool operator==(const Activity&) const = default;
   };
