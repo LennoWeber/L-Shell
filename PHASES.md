@@ -15,6 +15,16 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 | 6 Invariants | – |
 | 7 Implementation | – |
 
+## Environment
+
+- **User's machine**: Fedora 44, Hyprland from the lionheart COPR. Hyprland is the primary compositor target.
+- **Cloud container**: Arch and Fedora mirrors are blocked by the network policy, so builds run in an
+  Ubuntu 26.04 Docker image (`lshell-builder`, same library generations, clang-format/clang-tidy 22).
+  Visual checks use a headless Hyprland 0.53 inside that image.
+- **Blur on Hyprland** comes from layer rules matched on the surface namespace
+  (`docs/user/compositor-settings/hyprland.mdx`). Every new surface needs a `noctalia-*` namespace that the
+  documented rule covers, or the glass reads as a flat tint.
+
 ## Goal
 
 Replace "configure a bar" with **switchable layout modes**. Exactly one mode is active at a time (all monitors).
