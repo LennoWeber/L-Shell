@@ -8,6 +8,7 @@ enum class WindowSwitcherTileDepth : std::uint8_t {
   Selected,
   Near,
   Far,
+  Neutral, // not selected and not dimmed (grid overview)
 };
 
 enum class WindowSwitcherHorizontalPlacement : std::uint8_t {
@@ -55,6 +56,7 @@ struct WindowSwitcherStyleLayout {
   float countWidth = 0.0F;
   float countHeight = 0.0F;
   bool boxed = false;
+  std::size_t columns = 0; // grid styles only; 0 = single row/carousel navigation
 
   [[nodiscard]] bool sameGeometryAs(const WindowSwitcherStyleLayout& other) const noexcept;
 };

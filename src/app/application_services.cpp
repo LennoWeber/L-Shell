@@ -1648,9 +1648,12 @@ void Application::triggerShellAction(const std::string& action, wl_output* outpu
   } else if (action == "control_center") {
     m_panelManager.togglePanel("control-center", PanelOpenRequest{.output = output});
   } else if (action == "overview") {
-    // There is no public toggle for overview in OverviewLauncherCapture.
-    // Try to execute a generic compositor action, or use niri directly if using niri.
-    runShellCommand("niri msg action toggle-overview");
+    // niri has its own overview; elsewhere the shell's Mission-Control-style overview opens.
+    if (compositors::isNiri()) {
+      runShellCommand("niri msg action toggle-overview");
+    } else {
+      m_windowSwitcher.toggleOverview(output);
+    }
   } else if (action == "window_switcher") {
     m_windowSwitcher.show(output);
   }

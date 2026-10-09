@@ -22,6 +22,7 @@
 #include "shell/surface/shadow.h"
 #include "shell/switcher/window_switcher_carousel_style.h"
 #include "shell/switcher/window_switcher_compact_style.h"
+#include "shell/switcher/window_switcher_grid_style.h"
 #include "shell/switcher/window_switcher_membership.h"
 #include "shell/switcher/window_switcher_tile.h"
 #include "system/app_identity.h"
@@ -71,6 +72,9 @@ namespace {
     };
     if (config.style == ShellConfig::WindowSwitcherStyle::Compact) {
       return computeWindowSwitcherCompactLayout(context);
+    }
+    if (config.style == ShellConfig::WindowSwitcherStyle::Grid) {
+      return computeWindowSwitcherGridLayout(context);
     }
     return computeWindowSwitcherCarouselLayout(context);
   }
@@ -597,6 +601,8 @@ struct WindowSwitcher::Instance {
   Label* counterLabel = nullptr;
   Box* countBackground = nullptr;
   Label* emptyLabel = nullptr;
+  Flex* workspaceBar = nullptr;
+  std::string workspaceSignature;
   InputDispatcher inputDispatcher;
   WindowSwitcherStyleLayout styleLayout;
   AnimationManager::Id carouselAnimId = 0;
@@ -622,6 +628,31 @@ void WindowSwitcher::initialize(
 }
 
 void WindowSwitcher::registerIpc(IpcService& ipc) {
+  ipc.bind(noctalia::cli::msg::overview, [this](const std::string& args) -> std::string {
+    const std::string token = StringUtils::trim(args);
+    if (token == "close") {
+      if (m_active && m_overviewMode) {
+        hide();
+      }
+      return "ok\n";
+    }
+    if (!token.empty() && token != "toggle") {
+      return "error: unknown overview action '" + token + "'\n";
+    }
+    if (m_platform == nullptr) {
+      return "error: compositor unavailable\n";
+    }
+    wl_output* output = m_platform->preferredInteractiveOutput();
+    if (output == nullptr && m_wayland != nullptr && !m_wayland->outputs().empty()) {
+      output = m_wayland->outputs().front().output;
+    }
+    if (output == nullptr) {
+      return "error: no output available\n";
+    }
+    toggleOverview(output);
+    return "ok\n";
+  });
+
   ipc.bind(noctalia::cli::msg::windowSwitcher, [this](const std::string& args) -> std::string {
     const std::string token = StringUtils::trim(args);
     if (token == "close" || token == "hide") {
@@ -681,6 +712,58 @@ void WindowSwitcher::onOutputChange() {
 
 bool WindowSwitcher::mruEnabled() const { return m_config != nullptr && m_config->config().shell.windowSwitcher.mru; }
 
+ShellConfig::WindowSwitcherConfig WindowSwitcher::effectiveConfig() const {
+  ShellConfig::WindowSwitcherConfig config =
+      m_config != nullptr ? m_config->config().shell.windowSwitcher : ShellConfig::WindowSwitcherConfig{};
+  if (m_overviewMode) {
+    config.style = ShellConfig::WindowSwitcherStyle::Grid;
+    config.currentWorkspaceOnly = true;
+    config.showAllOutputs = false;
+    config.showCount = false;
+    config.mru = false; // a stable arrangement reads better than recency order
+  }
+  return config;
+}
+
+std::string WindowSwitcher::workspaceSignature() const {
+  std::string signature;
+  if (m_platform == nullptr || m_output == nullptr) {
+    return signature;
+  }
+  for (const auto& workspace : m_platform->workspaces(m_output)) {
+    signature += workspace.id;
+    signature += workspace.active ? '*' : ' ';
+    signature += workspace.name;
+    signature += '\n';
+  }
+  return signature;
+}
+
+void WindowSwitcher::toggleOverview(wl_output* output) {
+  if (m_active && m_overviewMode) {
+    hide();
+    return;
+  }
+  if (m_active) {
+    hide(); // leave an alt-tab session for the overview
+  }
+  m_overviewMode = true;
+  showWithDirection(output, 1);
+  if (!m_active) {
+    m_overviewMode = false;
+    return;
+  }
+  // Mission Control highlights the focused window, not the next one like alt-tab.
+  const std::string focusedKey = m_platform != nullptr ? currentFocusedWindowKey(*m_platform) : std::string{};
+  for (std::size_t index = 0; index < m_windows.size(); ++index) {
+    if (!focusedKey.empty() && identityKeysEqual(identityKeyForEntry(m_windows[index]), focusedKey)) {
+      m_selectedIndex = index;
+      break;
+    }
+  }
+  requestSceneUpdate();
+}
+
 void WindowSwitcher::recordFocusedWindow() {
   if (m_platform == nullptr || !mruEnabled()) {
     return;
@@ -724,6 +807,9 @@ void WindowSwitcher::onToplevelChange() {
 void WindowSwitcher::show(wl_output* output) { showWithDirection(output, 1); }
 
 void WindowSwitcher::showFromShortcut(wl_output* output, std::uint32_t modifiers) {
+  if (m_active && m_overviewMode) {
+    hide();
+  }
   showWithDirection(output, (modifiers & KeyMod::Shift) != 0 ? -1 : 1);
   if (!m_active) {
     return;
@@ -784,6 +870,7 @@ void WindowSwitcher::hide() {
   }
 
   m_active = false;
+  m_overviewMode = false;
   m_output = nullptr;
   m_windows.clear();
   m_selectedIndex = 0;
@@ -819,11 +906,11 @@ void WindowSwitcher::refreshWindows() {
   }
 
   const int iconSize = static_cast<int>(std::round((Style::controlHeightLg + Style::spaceLg) * shellUiScale(m_config)));
-  const bool allOutputs = m_config == nullptr || m_config->config().shell.windowSwitcher.showAllOutputs;
-  const bool currentWorkspaceOnly = m_config != nullptr && m_config->config().shell.windowSwitcher.currentWorkspaceOnly;
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
   buildWindowEntries(
-      *m_platform, *m_wayland, m_iconResolver, iconSize, allOutputs ? nullptr : m_output, m_windows,
-      currentFocusedWindowKey(*m_platform), mruEnabled() ? &m_mruKeys : nullptr, currentWorkspaceOnly
+      *m_platform, *m_wayland, m_iconResolver, iconSize, switcherConfig.showAllOutputs ? nullptr : m_output, m_windows,
+      currentFocusedWindowKey(*m_platform), switcherConfig.mru ? &m_mruKeys : nullptr,
+      switcherConfig.currentWorkspaceOnly
   );
 
   for (auto& entry : m_windows) {
@@ -1068,8 +1155,7 @@ void WindowSwitcher::syncSelection(bool animate) {
     m_instance->carouselAnimId = 0;
   }
 
-  const ShellConfig::WindowSwitcherConfig switcherConfig =
-      m_config != nullptr ? m_config->config().shell.windowSwitcher : ShellConfig::WindowSwitcherConfig{};
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
   if (m_instance->surface->width() > 0 && m_instance->surface->height() > 0) {
     m_instance->styleLayout = computeSwitcherLayout(
         static_cast<float>(m_instance->surface->width()), static_cast<float>(m_instance->surface->height()),
@@ -1417,12 +1503,15 @@ bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
     navigateList(1);
     return true;
   }
+  // In the grid, Up/Down move between rows; elsewhere they step like Left/Right.
+  const int rowStride =
+      m_instance->styleLayout.columns > 0 ? static_cast<int>(m_instance->styleLayout.columns) : 1;
   if (matchesAction(KeybindAction::Up)) {
-    navigateList(-1);
+    navigateList(-rowStride);
     return true;
   }
   if (matchesAction(KeybindAction::Down)) {
-    navigateList(1);
+    navigateList(rowStride);
     return true;
   }
 
@@ -1594,8 +1683,7 @@ void WindowSwitcher::prepareFrame(Instance& instance, bool /*needsUpdate*/, bool
   m_renderContext->makeCurrent(instance.surface->renderTarget());
   Renderer& renderer = instance.surface->renderTarget().renderer();
 
-  const ShellConfig::WindowSwitcherConfig switcherConfig =
-      m_config != nullptr ? m_config->config().shell.windowSwitcher : ShellConfig::WindowSwitcherConfig{};
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
   const auto layout = computeSwitcherLayout(
       static_cast<float>(width), static_cast<float>(height), instance.uiLayoutScale, m_windows.size(), m_selectedIndex,
       switcherConfig
@@ -1607,7 +1695,8 @@ void WindowSwitcher::prepareFrame(Instance& instance, bool /*needsUpdate*/, bool
       || instance.style != switcherConfig.style
       || instance.showCaption != switcherConfig.showCaption
       || instance.showCount != switcherConfig.showCount
-      || instance.showAppIcon != switcherConfig.showAppIcon;
+      || instance.showAppIcon != switcherConfig.showAppIcon
+      || (m_overviewMode && instance.workspaceSignature != workspaceSignature());
   if (needsSceneBuild) {
     instance.styleLayout = layout;
     buildScene(instance, width, height);
@@ -1661,6 +1750,13 @@ void WindowSwitcher::positionPanel(Instance& instance, float screenW, float scre
   }
 
   std::vector<InputRect> blurRects;
+  if (m_overviewMode) {
+    // Frosted desktop behind the whole overview, like Mission Control.
+    instance.surface->setBlurRegion(
+        {InputRect{0, 0, static_cast<int>(std::ceil(screenW)), static_cast<int>(std::ceil(screenH))}}
+    );
+    return;
+  }
   if (layout.boxed && instance.panelBackground != nullptr) {
     float left = 0.0F;
     float top = 0.0F;
@@ -1709,6 +1805,44 @@ void WindowSwitcher::positionPanel(Instance& instance, float screenW, float scre
   instance.surface->setBlurRegion(blurRects);
 }
 
+void WindowSwitcher::buildWorkspaceBar(Instance& instance, InputArea& parent, Renderer& renderer, float width) {
+  if (m_platform == nullptr || m_output == nullptr) {
+    return;
+  }
+  const float scale = instance.uiLayoutScale;
+  auto bar = ui::row({
+      .out = &instance.workspaceBar,
+      .align = FlexAlign::Center,
+      .gap = Style::spaceSm * scale,
+      .padding = Style::spaceXs * scale,
+      .fill = colorSpecFromRole(ColorRole::Surface, 0.7F),
+      .radius = Style::scaledRadiusXl(scale),
+      .height = kWindowSwitcherWorkspaceBarHeight * scale,
+      .participatesInLayout = false,
+  });
+  for (const Workspace& workspace : m_platform->workspaces(m_output)) {
+    const std::string name = workspace.name.empty() ? std::to_string(workspace.index + 1) : workspace.name;
+    bar->addChild(ui::button({
+        .text = i18n::tr("window-switcher.desktop", "name", name),
+        .fontSize = Style::fontSizeCaption * scale,
+        .variant = workspace.active ? ButtonVariant::Primary : ButtonVariant::Ghost,
+        .radius = Style::scaledRadiusLg(scale),
+        .onClick =
+            [this, workspace]() {
+              // The workspace change refreshes the grid through onToplevelChange().
+              if (m_platform != nullptr && m_output != nullptr && !workspace.active) {
+                m_platform->activateWorkspace(m_output, workspace);
+              }
+            },
+    }));
+  }
+  instance.workspaceSignature = workspaceSignature();
+  Flex* barNode = instance.workspaceBar;
+  parent.addChild(std::move(bar));
+  barNode->layout(renderer);
+  barNode->setPosition(std::round((width - barNode->width()) * 0.5F), std::round(Style::spaceLg * 2.0F * scale));
+}
+
 void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::uint32_t height) {
   UiPhaseScope layoutPhase(UiPhase::Layout);
 
@@ -1743,13 +1877,16 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
 
   const WindowSwitcherStyleLayout& layout = instance.styleLayout;
 
+  // The overview dims the desktop further, like Mission Control.
+  constexpr float kOverviewDimOpacity = 0.7F;
+  const float dimOpacity = m_overviewMode ? kOverviewDimOpacity : Style::windowSwitcherDimOpacity;
   input->addChild(
       ui::box({
           .out = &instance.dimmer,
           .fill = colorSpecFromRole(ColorRole::Shadow),
           .width = w,
           .height = h,
-          .opacity = Style::windowSwitcherDimOpacity,
+          .opacity = dimOpacity,
           .participatesInLayout = false,
       })
   );
@@ -1791,8 +1928,7 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
   instance.tiles.clear();
   instance.counterLabel = nullptr;
   instance.countBackground = nullptr;
-  const ShellConfig::WindowSwitcherConfig switcherConfig =
-      m_config != nullptr ? m_config->config().shell.windowSwitcher : ShellConfig::WindowSwitcherConfig{};
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
   instance.style = switcherConfig.style;
   instance.showCaption = switcherConfig.showCaption;
   instance.showCount = switcherConfig.showCount;
@@ -1857,6 +1993,12 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
 
   input->addChild(std::move(panel));
 
+  instance.workspaceBar = nullptr;
+  instance.workspaceSignature.clear();
+  if (m_overviewMode) {
+    buildWorkspaceBar(instance, *input, renderer, w);
+  }
+
   instance.input = input.get();
   instance.sceneRoot->addChild(std::move(input));
   syncSelection(false);
@@ -1881,10 +2023,10 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
     instance.dimmer->setOpacity(0.0F);
     instance.animations.animate(
         0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
-        [panelNode = instance.panel, dimmer = instance.dimmer](float value) {
+        [panelNode = instance.panel, dimmer = instance.dimmer, dimOpacity](float value) {
           panelNode->setOpacity(value);
           panelNode->setScale(Style::windowSwitcherRevealScale + (1.0F - Style::windowSwitcherRevealScale) * value);
-          dimmer->setOpacity(Style::windowSwitcherDimOpacity * value);
+          dimmer->setOpacity(dimOpacity * value);
         },
         {}, instance.panel
     );

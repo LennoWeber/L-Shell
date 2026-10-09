@@ -4158,6 +4158,7 @@
     }
   },
   "window-switcher": {
+    "desktop": "Schreibtisch {name}",
     "empty": "Keine offenen Fenster",
     "hint": "Tab · Shift+Tab · Pfeiltasten · Alt loslassen zum Wechseln · Esc zum Abbrechen",
     "title": "Fenster"

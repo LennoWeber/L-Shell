@@ -1587,7 +1587,8 @@
         },
         "window-switcher-style": {
           "carousel": "Carousel",
-          "compact": "Compact"
+          "compact": "Compact",
+          "grid": "Grid (Mission Control)"
         }
       },
       "theme": {
@@ -5016,6 +5017,7 @@
   "window-switcher": {
     "count": "{count} window",
     "count-plural": "{count} windows",
+    "desktop": "Desktop {name}",
     "empty": "No open windows",
     "hint": "Tab · Shift+Tab · Arrow keys · Release the shortcut modifier to switch · Esc to cancel",
     "title": "Windows"

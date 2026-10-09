@@ -242,6 +242,10 @@ namespace noctalia::cli {
       Positional{"path", {}, {}, true, false, false},
   };
   inline constexpr std::array<std::string_view, 3> kMsgWindowSwitcherActionChoices{"close", "hide", "hold"};
+  inline constexpr std::array<std::string_view, 2> kMsgOverviewActionChoices{"close", "toggle"};
+  inline constexpr std::array kMsgOverviewPositionals{
+      Positional{"action", {}, kMsgOverviewActionChoices, false, false, false},
+  };
   inline constexpr std::array kMsgWindowSwitcherPositionals{
       Positional{"action", {}, kMsgWindowSwitcherActionChoices, false, false, false},
   };
@@ -573,6 +577,12 @@ namespace noctalia::cli {
                                               {},
                                               false};
     inline constexpr Command osdDisable{"osd-disable", "Disable OSD popups", {}, {}, {}, {}, {}, false};
+    inline constexpr Command overview{
+        "overview", "Toggle the Mission-Control-style overview of the current workspace's windows",
+        {},         {},
+        {},         kMsgOverviewPositionals,
+        {},         false
+    };
     inline constexpr Command osdEnable{"osd-enable", "Enable OSD popups", {}, {}, {}, {}, {}, false};
     inline constexpr Command osdToggle{"osd-toggle", "Toggle OSD popups", {}, {}, {}, {}, {}, false};
     inline constexpr Command panelClose{
@@ -902,6 +912,7 @@ namespace noctalia::cli {
       msg::osdDisable,
       msg::osdEnable,
       msg::osdToggle,
+      msg::overview,
       msg::panelClose,
       msg::panelOpen,
       msg::panelToggle,

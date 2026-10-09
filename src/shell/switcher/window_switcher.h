@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config/config_types.h"
 #include "shell/switcher/window_switcher_shortcut_state.h"
 #include "shell/switcher/window_switcher_tile.h"
 #include "system/icon_resolver.h"
@@ -15,8 +16,10 @@
 class AsyncTextureCache;
 class CompositorPlatform;
 class ConfigService;
+class InputArea;
 class IpcService;
 class RenderContext;
+class Renderer;
 class ToplevelThumbnailCapture;
 class WaylandConnection;
 struct wl_callback;
@@ -37,6 +40,9 @@ public:
   void onOutputChange();
   void onToplevelChange();
   void show(wl_output* output);
+  // Mission-Control-style overview: grid of the current workspace's windows plus a
+  // workspace bar. Independent of the configured alt-tab style.
+  void toggleOverview(wl_output* output);
 
   [[nodiscard]] bool isActive() const noexcept { return m_active; }
   [[nodiscard]] bool onPointerEvent(const PointerEvent& event);
@@ -47,6 +53,10 @@ private:
   struct Instance;
 
   void hide();
+  // Switcher config with the overview's fixed presentation applied while it is open.
+  [[nodiscard]] ShellConfig::WindowSwitcherConfig effectiveConfig() const;
+  [[nodiscard]] std::string workspaceSignature() const;
+  void buildWorkspaceBar(Instance& instance, InputArea& parent, Renderer& renderer, float width);
   void refreshWindows();
   void setSelectedIndex(std::size_t index);
   void cycleSelection(int delta);
@@ -100,4 +110,5 @@ private:
   std::uint64_t m_shortcutSessionGeneration = 0;
   bool m_active = false;
   bool m_shortcutSession = false;
+  bool m_overviewMode = false;
 };
