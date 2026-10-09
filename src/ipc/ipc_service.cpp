@@ -322,5 +322,5 @@ std::string IpcService::resolveSocketPath() {
   if (display == nullptr || display[0] == '\0') {
     display = "wayland-0";
   }
-  return std::string(runtime) + "/noctalia-" + display + ".sock";
+  return std::string(runtime) + "/" NOCTALIA_APP_NAME "-" + display + ".sock";
 }

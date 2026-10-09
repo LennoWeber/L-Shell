@@ -1390,7 +1390,7 @@
           "label": "Zaoblení rohů"
         },
         "custom-palette": {
-          "description": "Vybrat paletu z ~/.config/noctalia/palettes/",
+          "description": "Vybrat paletu z ~/.config/l-shell/palettes/",
           "label": "Vlastní paleta",
           "search-placeholder": "Hledat vlastní palety..."
         },

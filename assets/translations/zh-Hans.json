@@ -1761,7 +1761,7 @@
           "label": "圆角缩放"
         },
         "custom-palette": {
-          "description": "从 ~/.config/noctalia/palettes/ 中选择配色方案",
+          "description": "从 ~/.config/l-shell/palettes/ 中选择配色方案",
           "label": "自定义配色方案",
           "search-placeholder": "搜索自定义配色方案…"
         },

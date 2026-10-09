@@ -1307,7 +1307,7 @@
           "label": "Hoekronding"
         },
         "custom-palette": {
-          "description": "Kies een palet uit ~/.config/noctalia/palettes/",
+          "description": "Kies een palet uit ~/.config/l-shell/palettes/",
           "label": "Aangepast palet",
           "search-placeholder": "Aangepaste paletten zoeken..."
         },

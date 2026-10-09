@@ -1775,7 +1775,7 @@
           "label": "Corner Roundness"
         },
         "custom-palette": {
-          "description": "Choose a palette from ~/.config/noctalia/palettes/",
+          "description": "Choose a palette from ~/.config/l-shell/palettes/",
           "label": "Custom Palette",
           "search-placeholder": "Search custom palettes…"
         },

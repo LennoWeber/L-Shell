@@ -38,7 +38,7 @@ int main() {
   const auto configHome = root / "config";
   const auto stateHome = root / "state";
   const auto cacheHome = root / "cache";
-  const auto configDir = configHome / "noctalia";
+  const auto configDir = configHome / NOCTALIA_APP_NAME;
   const auto configPath = configDir / "config.toml";
 
   std::filesystem::remove_all(root);

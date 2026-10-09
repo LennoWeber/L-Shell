@@ -904,7 +904,7 @@ namespace noctalia::theme {
     const std::string state = FileUtils::stateDir();
     if (!state.empty())
       return std::filesystem::path(state) / "community-templates";
-    return std::filesystem::path("/tmp") / "noctalia" / "community-templates";
+    return std::filesystem::path("/tmp") / NOCTALIA_APP_NAME / "community-templates";
   }
 
   std::filesystem::path communityTemplateDir(std::string_view id) {

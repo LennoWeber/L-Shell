@@ -107,9 +107,10 @@ namespace noctalia::theme {
     // reach all Firefox profiles, not only the process that owns the Unix socket.
     [[nodiscard]] std::filesystem::path commandNotifyDir() {
       if (const char* runtime = std::getenv("XDG_RUNTIME_DIR"); runtime != nullptr && runtime[0] != '\0') {
-        return std::filesystem::path(runtime) / "noctalia" / "firefox-theme";
+        return std::filesystem::path(runtime) / NOCTALIA_APP_NAME / "firefox-theme";
       }
-      return std::filesystem::temp_directory_path() / ("noctalia-firefox-theme-" + std::to_string(::getuid()));
+      return std::filesystem::temp_directory_path()
+          / (NOCTALIA_APP_NAME "-firefox-theme-" + std::to_string(::getuid()));
     }
 
     [[nodiscard]] std::filesystem::path commandNotifyPath() { return commandNotifyDir() / "command"; }
@@ -196,7 +197,7 @@ namespace noctalia::theme {
         return self;
       }
 #ifdef NOCTALIA_INSTALL_PREFIX
-      const auto installed = std::filesystem::path(NOCTALIA_INSTALL_PREFIX) / "bin" / "noctalia";
+      const auto installed = std::filesystem::path(NOCTALIA_INSTALL_PREFIX) / "bin" / NOCTALIA_APP_NAME;
       std::error_code ec;
       if (std::filesystem::is_regular_file(installed, ec)) {
         return installed;

@@ -1101,7 +1101,13 @@ _noctalia_test_dependencies = _noctalia_system_dependencies + [
   _luau_selective_dep,
 ]
 
+# Name of the executable and of every per-user directory, runtime socket/lock
+# and installed data dir.
+# Distinct from upstream Noctalia so both can coexist without sharing any state.
+app_name = 'l-shell'
+
 _noctalia_compile_definitions = [
+  '-DNOCTALIA_APP_NAME="' + app_name + '"',
   '-DNOCTALIA_INSTALL_PREFIX="' + get_option('prefix') + '"',
   '-DNOCTALIA_INSTALL_DATADIR="' + get_option('datadir') + '"',
   '-DNOCTALIA_VERSION="' + meson.project_version() + '"',
@@ -1129,7 +1135,7 @@ noctalia_core_dep = declare_dependency(
   sources: _protocol_headers,
 )
 
-noctalia_exe = executable('noctalia',
+noctalia_exe = executable(app_name,
   sources: files('src/main.cpp') + _protocol_headers,
   dependencies: _noctalia_dependencies,
   include_directories: _noctalia_inc,
@@ -1139,7 +1145,7 @@ noctalia_exe = executable('noctalia',
 )
 
 install_subdir('assets',
-  install_dir: get_option('datadir') / 'noctalia',
+  install_dir: get_option('datadir') / app_name,
   exclude_files: ['dev.noctalia.Noctalia.desktop'],
 )
 

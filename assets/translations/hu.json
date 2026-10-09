@@ -1552,7 +1552,7 @@
           "label": "Sarokkerekítés"
         },
         "custom-palette": {
-          "description": "Válassz egy palettát a ~/.config/noctalia/palettes/ mappából",
+          "description": "Válassz egy palettát a ~/.config/l-shell/palettes/ mappából",
           "label": "Egyéni paletta",
           "search-placeholder": "Egyéni paletták keresése…"
         },

@@ -49,7 +49,7 @@ int main() {
   const std::filesystem::path root =
       std::filesystem::temp_directory_path() / ("noctalia-override-mutation-" + std::to_string(::getpid()));
   std::filesystem::remove_all(root);
-  writeFile(root / "config" / "noctalia" / "config.toml", "[dock]\nenabled = true\nmonitors = [\"legacy\"]\n");
+  writeFile(root / "config" / NOCTALIA_APP_NAME / "config.toml", "[dock]\nenabled = true\nmonitors = [\"legacy\"]\n");
 
   ::setenv("NOCTALIA_CONFIG_HOME", (root / "config").c_str(), 1);
   ::setenv("XDG_STATE_HOME", (root / "state").c_str(), 1);
@@ -128,9 +128,10 @@ int main() {
   }
 
   const std::filesystem::path overlayRoot = root / "overlay-case";
-  writeFile(overlayRoot / "config" / "noctalia" / "config.toml", "[dock]\nenabled = true\n");
+  writeFile(overlayRoot / "config" / NOCTALIA_APP_NAME / "config.toml", "[dock]\nenabled = true\n");
   writeFile(
-      overlayRoot / "state" / "noctalia" / "settings.toml", "config_version = 14\n[dock]\nmonitors = [\"DP-1\"]\n"
+      overlayRoot / "state" / NOCTALIA_APP_NAME / "settings.toml",
+      "config_version = 14\n[dock]\nmonitors = [\"DP-1\"]\n"
   );
   ::setenv("NOCTALIA_CONFIG_HOME", (overlayRoot / "config").c_str(), 1);
   ::setenv("XDG_STATE_HOME", (overlayRoot / "state").c_str(), 1);
@@ -150,7 +151,7 @@ int main() {
   // widget schema default is a real override and must survive the no-op override pruning.
   const std::filesystem::path inheritRoot = root / "bar-inherit-case";
   writeFile(
-      inheritRoot / "config" / "noctalia" / "config.toml",
+      inheritRoot / "config" / NOCTALIA_APP_NAME / "config.toml",
       "[bar.default]\nshow_tooltip = false\n\n[widget.clock]\ntype = \"clock\"\n"
   );
   ::setenv("NOCTALIA_CONFIG_HOME", (inheritRoot / "config").c_str(), 1);

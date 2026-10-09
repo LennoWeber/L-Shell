@@ -1511,7 +1511,7 @@
           "label": "角の丸み"
         },
         "custom-palette": {
-          "description": "~/.config/noctalia/palettes/から配色を選択"
+          "description": "~/.config/l-shell/palettes/から配色を選択"
         },
         "export-wallpaper-palette": {
           "button": "独自の配色として保存",

@@ -1598,7 +1598,7 @@
           "label": "Độ bo góc"
         },
         "custom-palette": {
-          "description": "Chọn bảng màu từ ~/.config/noctalia/palettes/",
+          "description": "Chọn bảng màu từ ~/.config/l-shell/palettes/",
           "label": "Bảng màu tùy chỉnh",
           "search-placeholder": "Tìm kiếm bảng màu tùy chỉnh..."
         },

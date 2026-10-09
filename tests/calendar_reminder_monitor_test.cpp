@@ -56,7 +56,7 @@ int main() {
   const auto configHome = root / "config";
   const auto stateHome = root / "state";
   const auto cacheHome = root / "cache";
-  const auto configDir = configHome / "noctalia";
+  const auto configDir = configHome / NOCTALIA_APP_NAME;
 
   std::filesystem::remove_all(root);
   std::filesystem::create_directories(configDir);

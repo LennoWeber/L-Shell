@@ -1761,7 +1761,7 @@
           "label": "Radio de las esquinas"
         },
         "custom-palette": {
-          "description": "Elige una paleta de ~/.config/noctalia/palettes/",
+          "description": "Elige una paleta de ~/.config/l-shell/palettes/",
           "label": "Paleta personalizada",
           "search-placeholder": "Buscar paletas personalizadas..."
         },

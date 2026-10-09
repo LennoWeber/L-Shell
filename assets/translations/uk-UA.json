@@ -1653,7 +1653,7 @@
           "label": "Закруглення кутів"
         },
         "custom-palette": {
-          "description": "Обери палітру з ~/.config/noctalia/palettes/",
+          "description": "Обери палітру з ~/.config/l-shell/palettes/",
           "label": "Користувацька палітра",
           "search-placeholder": "Пошук власних палітр..."
         },

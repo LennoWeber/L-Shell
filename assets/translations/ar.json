@@ -1646,7 +1646,7 @@
           "label": "انحناء الزوايا"
         },
         "custom-palette": {
-          "description": "اختر لوحة ألوان من ~/.config/noctalia/palettes/",
+          "description": "اختر لوحة ألوان من ~/.config/l-shell/palettes/",
           "label": "لوحة ألوان مخصصة",
           "search-placeholder": "البحث في لوحات الألوان المخصصة..."
         },

@@ -1618,7 +1618,7 @@
           "label": "Eckenrundung"
         },
         "custom-palette": {
-          "description": "Wähle eine Palette aus ~/.config/noctalia/palettes/",
+          "description": "Wähle eine Palette aus ~/.config/l-shell/palettes/",
           "label": "Benutzerdefinierte Palette",
           "search-placeholder": "Benutzerdefinierte Paletten suchen…"
         },

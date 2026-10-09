@@ -202,7 +202,7 @@ undo_hook = "bash '{{ config_dir }}/umbriel/undo.sh'"
 
 [templates.starship]
 input_path = "./starship/starship.toml"
-output_path = "$XDG_CACHE_HOME/noctalia/starship-palette.toml"
+output_path = "$XDG_CACHE_HOME/l-shell/starship-palette.toml"
 post_hook = "bash '{{ config_dir }}/starship/apply.sh'"
 undo_hook = "bash '{{ config_dir }}/starship/undo.sh'"
 

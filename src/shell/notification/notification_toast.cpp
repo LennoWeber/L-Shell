@@ -531,7 +531,7 @@ namespace {
   }
 
   std::filesystem::path remoteIconCachePath(std::string_view url) {
-    const std::filesystem::path cacheDir = std::filesystem::path("/tmp") / "noctalia-notification-icons";
+    const std::filesystem::path cacheDir = std::filesystem::path("/tmp") / (NOCTALIA_APP_NAME "-notification-icons");
     const std::size_t hash = std::hash<std::string_view>{}(url);
     return cacheDir / (std::to_string(hash) + ".img");
   }

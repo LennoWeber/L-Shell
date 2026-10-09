@@ -1618,7 +1618,7 @@
           "label": "עיגול פינות"
         },
         "custom-palette": {
-          "description": "בחר פלטה מ-~/.config/noctalia/palettes/",
+          "description": "בחר פלטה מ-~/.config/l-shell/palettes/",
           "label": "פלטת צבעים מותאמת אישית",
           "search-placeholder": "חיפוש פלטות מותאמות אישית…"
         },

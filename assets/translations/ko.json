@@ -1669,7 +1669,7 @@
           "label": "모서리 둥글기"
         },
         "custom-palette": {
-          "description": "~/.config/noctalia/palettes/에서 팔레트 선택",
+          "description": "~/.config/l-shell/palettes/에서 팔레트 선택",
           "label": "사용자 팔레트",
           "search-placeholder": "사용자 팔레트 검색…"
         },
