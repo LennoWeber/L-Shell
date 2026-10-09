@@ -27,7 +27,28 @@ Classic mode.
 - The Pixel-style handle is primarily a **hover target**: resting the pointer on it (or pulling it up) reveals
   either a **pop-up bar** or a **full-screen status overlay** (battery, network, …). Which one is a setting.
 - The full Noctalia bar system stays available as a **Classic** mode, unchanged.
-- macOS-like Spotlight and theming are **out of scope**. Another session works on them separately.
+- Spotlight is **out of scope** (another session works on it).
+- Everything must look **sleek, minimal and smooth like macOS**. The new parts of this feature follow the design
+  rules below from the start.
+- The system-wide macOS restyle (all panels, neutral colors, wallpaper color only for accents) is done **in this
+  session as a second feature after the layout modes** (see "Next feature"). The other session only does Spotlight.
+
+## Design rules (macOS-like)
+
+Apply to everything this feature adds (island, handle, edge drawers, status overlay, mode bar presets):
+
+- **Neutral first, accent rarely.** Surfaces, text, icons and borders use the neutral roles (`surface`,
+  `on_surface`, `surface_variant`, `on_surface_variant`, `outline`). The accent (`primary`) appears only on small
+  state carriers: level fills (volume/brightness), active toggles, the selected item, the focus ring. Never as a
+  large fill or background.
+- **Material.** Translucent surfaces with compositor blur ("vibrancy"), a 1px hairline inner border at low alpha,
+  a large soft shadow. No hard outlines, no gradients.
+- **Shape.** The island is a full capsule; the handle is a rounded line like the iOS/Pixel home indicator, in
+  `on_surface` at reduced alpha; cards and tiles use generous, consistent radii.
+- **Type.** System font, few sizes, weight for hierarchy (clock semibold), secondary text in `on_surface_variant`.
+- **Motion.** Short, eased, interruptible: size changes animate with an ease-out/spring feel (≈200–350 ms),
+  content crossfades instead of popping, nothing bounces or slides further than needed.
+- **Density.** Small icons, tight but even spacing, everything still clearly readable.
 
 ## The modes
 
@@ -237,13 +258,31 @@ otherwise on the laptop).
 - **Panels from edges**: the panel system has no "close when the pointer leaves" yet, and floating placement
   next to a screen edge without a bar is untested.
 - **Handle drag**: dragging beyond the small surface relies on the Wayland implicit pointer grab.
-- **Parallel work**: the Spotlight/theme session may touch settings and translations too → expect small merge conflicts.
+- **Parallel work**: the Spotlight session may touch settings and translations too → expect small merge conflicts.
 
 ## Out of scope
 
-- Spotlight-style launcher and macOS-like theming (other session)
+- Spotlight-style launcher (other session)
+- The system-wide restyle of existing panels (next feature, see below)
 - Different modes per monitor
 - A real shape morph between bar and island (Flow uses a crossfade first)
+
+## Next feature: system-wide macOS look (planned after this one)
+
+Own phased plan once the layout modes are done. Starting points found during phase 1:
+
+- New built-in palette **macOS** (neutral grey ramps, light and dark, system-blue accent) in
+  `src/theme/builtin_palettes.cpp`, made the L-Shell default.
+- New theme option **accent-only dynamic color**: a palette transform next to `applyPureBlackDark`
+  (`src/theme/palette_transform.*`) that takes only the accent roles (`primary`, `secondary`, `tertiary` and their
+  `on_*`) from the wallpaper-generated palette and keeps every surface, text, outline and hover role neutral.
+  App templates (GTK, Qt, terminals) follow the same palette automatically.
+- Global shape, spacing and motion constants in `src/ui/style.h`; panel chrome (translucency, hairline border,
+  shadow) in `src/shell/panel/panel_surface_style.h` and `src/shell/surface/shadow.*`.
+- Restyle every panel (Control Center, launcher, notifications, OSD, session, clipboard, tray menus, settings)
+  to the design rules above.
+- Window title bars with close buttons are drawn by apps or the compositor, not by the shell. They only follow
+  through the generated GTK/Qt themes.
 
 ## Open points
 
