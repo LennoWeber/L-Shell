@@ -46,7 +46,8 @@ namespace settings {
     Hooks,
     Niri,
     Umbriel,
-    Bar,
+    Layout, // the [layout] mode picker and the active mode's settings
+    Bar,    // the [bar.*] bars; shown only in the classic layout mode
     Plugins,
   };
 

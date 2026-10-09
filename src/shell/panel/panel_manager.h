@@ -46,6 +46,8 @@ struct PanelOpenRequest {
   bool hasAnchorPosition = false;
   std::string_view context;
   std::string_view sourceBarName;
+  // Screen-edge drawers: close the panel once the pointer leaves it (after it has entered once).
+  bool dismissOnPointerLeave = false;
 };
 
 class PanelManager : public PopupGrabHost {
@@ -277,6 +279,9 @@ private:
   std::string m_sourceBarName;       // name of the bar that opened the current panel
   std::optional<AttachedPanelGeometry> m_attachedPanelGeometry;
   bool m_pointerInside = false;
+  // Opened with PanelOpenRequest::dismissOnPointerLeave; armed once the pointer has entered the panel.
+  bool m_dismissOnPointerLeave = false;
+  bool m_pointerEnteredSinceOpen = false;
   bool m_inTransition = false;
   bool m_closing = false;
   bool m_attachedToBar = false;

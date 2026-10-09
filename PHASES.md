@@ -7,8 +7,8 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 
 | Phase | State |
 |---|---|
-| 1 Understand and plan | done, waiting for approval |
-| 2 Structures | – |
+| 1 Understand and plan | done |
+| 2 Structures | done, in review |
 | 3 Signatures | – |
 | 4 TODO markers | – |
 | 5 Trial implementation (discarded) | – |
@@ -134,64 +134,81 @@ Key choices:
   bar and dock each keep a private copy of that check today (three copies). One shared helper replaces them.
 - **Classic mode** must behave exactly as upstream; everything else may change freely.
 
-## Config (draft)
+## Config (as structured in phase 2)
 
 ```toml
 [layout]
 mode = "flow"   # classic | smart_bar | minimal_bar | island | edges | handle | flow
 
-[layout.smart_bar]          # ModeBarConfig, preset: Noctalia look + smart hide
-position = "top"            # top | bottom
-thickness = 34
+# ModeBarConfig — used by smart_bar, minimal_bar, handle.bar and flow.bar (each with its own preset)
+[layout.smart_bar]
+position = "top"              # top | bottom
+thickness = 30
+scale = 1.0
+font_scale = 1.0
+background = "glass"          # transparent | glass | solid
+background_opacity = 0.55
 floating = false
-background_opacity = 1.0
-reveal_on_hover = true      # edge hover reveals it while windows are open
+reserve_space = true
+reveal_on_hover = true        # auto-hiding bars: touching the edge reveals
 show_on_workspace_switch = true
-start = ["launcher", "workspaces"]
+start = ["launcher", "workspaces", "active_window"]
 center = ["clock"]
 end = ["tray", "network", "bluetooth", "volume", "battery", "control-center"]
 
-[layout.minimal_bar]        # ModeBarConfig, preset: thin
-thickness = 22
-scale = 0.8
-reserve_space = true
-# position/floating/background_opacity/start/center/end as above
+[layout.minimal_bar]          # Tahoe menu bar preset: 24 px, scale 0.85, logo + app name left, clock right
+thickness = 24
+scale = 0.85
+start = ["launcher", "active_window"]
+end = ["tray", "network", "battery", "control-center", "clock"]
 
-[layout.island]             # IslandConfig
+[layout.island]               # IslandConfig
+material = "glass"            # glass | black
+height = 32
 collapsed_width = 150
-height = 30
 expanded_width = 440
+expanded_height = 76
 margin_top = 6
 reserve_space = true
 expand_on_hover = true
 click_action = "panel-toggle control-center"
-activities = ["media", "volume", "brightness", "notification", "battery"]
 activity_seconds = 3.0
+suppress_osd = true           # the island replaces the OSD for what it shows
 
-[layout.edges]              # EdgesConfig
+[layout.island.activities]
+media = true
+volume = true
+brightness = true
+notification = false
+battery = true
+system = true                 # Wi-Fi, Bluetooth, power profile, Do Not Disturb, …
+
+[layout.edges]                # EdgesConfig
 delay_ms = 150
-length = 0.5                # fraction of each edge covered by its trigger strip (centered)
+trigger_size = 2
+length = 0.5                  # fraction of each edge covered by its strip, centered
 close_on_leave = true
 top = "panel-open control-center"
 bottom = "panel-open launcher"
 left = "panel-open status-overlay"
 right = "panel-open session"
 
-[layout.handle]             # HandleConfig
-reveal = "overlay"          # bar | overlay
-width = 120
+[layout.handle]               # HandleConfig
+reveal = "overlay"            # bar | overlay
+width = 134
 thickness = 5
-margin_bottom = 6
-hover_delay_ms = 200
+margin_bottom = 8
+hover_delay_ms = 250
 pull_up = true
 swipe_workspaces = true
-bar = { thickness = 30, start = [], center = ["clock"], end = ["network", "battery"] }  # used when reveal = "bar"
 
-[layout.flow]               # FlowConfig: its own copies of each component's settings
-bar    = { ... }            # ModeBarConfig, home bar
-island = { ... }            # IslandConfig, reserve_space = false (the bar's strip is used)
-edges  = { ... }            # EdgesConfig, default: left = launcher, right = control-center, top/bottom = none
-handle = { ... }            # HandleConfig, default reveal = "overlay"
+[layout.handle.bar]           # ModeBarConfig, bottom bar shown on reveal = "bar"
+
+[layout.flow]                 # FlowConfig: its own copy of every component
+[layout.flow.bar]             # home bar: 34 px, launcher + workspaces | … clock
+[layout.flow.island]          # height 28, margin_top 3, reserve_space = false (uses the bar's strip)
+[layout.flow.edges]           # top/bottom = "none", left = launcher, right = control-center
+[layout.flow.handle]
 ```
 
 Per-mode tables reuse the same sub-schemas, so `[layout.flow.island]` takes exactly the keys of `[layout.island]`.

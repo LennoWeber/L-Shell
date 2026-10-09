@@ -2,6 +2,7 @@
 
 #include "config/config_migrations.h"
 #include "config/config_types.h"
+#include "config/layout_resolver.h"
 #include "config/schema/diagnostics.h"
 #include "config/state_store.h"
 #include "core/inotify/inotify.h"
@@ -240,6 +241,8 @@ private:
 
   Config m_config;
   ConfigChangeSet m_lastChange;
+  // What the active [layout] mode puts on screen; recomputed after every parse of m_config.
+  noctalia::layout::ResolvedLayout m_resolvedLayout;
 
   // Hand-authored config directory: all *.toml merged alphabetically.
   std::string m_configDir;
