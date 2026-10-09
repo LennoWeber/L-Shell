@@ -699,6 +699,9 @@
         "command-subtitle": "Konfigurierten Befehl ausführen",
         "title": "Sitzung"
       },
+      "settings": {
+        "title": "Einstellungen"
+      },
       "wallpaper": {
         "title": "Hintergrundbild"
       },
@@ -2371,6 +2374,10 @@
           "description": "Zeige Emoji-Ergebnisse auch in der unpräfixierten Suche",
           "label": "Emoji in globaler Suche"
         },
+        "launcher-global-settings": {
+          "description": "Shell-Einstellungen auch in der Suche ohne Präfix anzeigen",
+          "label": "Einstellungen in globaler Suche"
+        },
         "launcher-global-session": {
           "description": "Zeige Sitzungsaktionen auch in der unpräfixierten Suche",
           "label": "Sitzung in globaler Suche"
@@ -2398,6 +2405,10 @@
         "launcher-prefix-emoji": {
           "description": "Trigger-Präfix für die Emoji-Suche",
           "label": "Emoji-Präfix"
+        },
+        "launcher-prefix-settings": {
+          "description": "Präfix für die Suche nach Shell-Einstellungen",
+          "label": "Präfix für Einstellungen"
         },
         "launcher-prefix-session": {
           "description": "Trigger-Präfix für Sitzungs- und Energieaktionen",

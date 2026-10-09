@@ -794,6 +794,9 @@
         "command-subtitle": "Run configured command",
         "title": "Session"
       },
+      "settings": {
+        "title": "Settings"
+      },
       "wallpaper": {
         "title": "Wallpaper"
       },
@@ -2592,6 +2595,10 @@
           "description": "Also show panels in unprefixed search",
           "label": "Panels in Global Search"
         },
+        "launcher-global-settings": {
+          "description": "Also show shell settings in unprefixed search",
+          "label": "Settings in Global Search"
+        },
         "launcher-global-session": {
           "description": "Also show session actions in unprefixed search",
           "label": "Session in Global Search"
@@ -2627,6 +2634,10 @@
         "launcher-prefix-panels": {
           "description": "Trigger prefix for panel search",
           "label": "Panels Prefix"
+        },
+        "launcher-prefix-settings": {
+          "description": "Trigger prefix for shell settings search",
+          "label": "Settings Prefix"
         },
         "launcher-prefix-session": {
           "description": "Trigger prefix for session power actions",

@@ -530,6 +530,57 @@ bool SettingsWindow::openToPlugin(std::string pluginId) {
   return true;
 }
 
+std::vector<settings::SettingEntry> SettingsWindow::buildSearchIndex() const {
+  if (m_config == nullptr) {
+    return {};
+  }
+  return settings::buildSettingsRegistry(m_config->config(), nullptr, nullptr, buildRegistryEnvironment());
+}
+
+void SettingsWindow::openToSetting(const std::vector<std::string>& path) {
+  const auto index = buildSearchIndex();
+  const auto it = std::ranges::find(index, path, &settings::SettingEntry::path);
+  if (it == index.end()) {
+    open();
+    return;
+  }
+  const settings::SettingEntry& entry = *it;
+
+  clearTransientSettingsState();
+  clearStatusMessage();
+  m_searchQuery.clear();
+  m_pluginSearchQuery.clear();
+  m_selectedSection = std::string(settings::settingsSectionId(entry.section));
+  if (entry.section == settings::SettingsSection::Bar && path.size() >= 2) {
+    m_selectedBarName = path[1];
+    m_selectedMonitorOverride = settings::isBarMonitorOverrideSettingPath(path) ? path[3] : std::string{};
+  } else if (entry.section == settings::SettingsSection::Dock) {
+    m_selectedMonitorOverride = settings::isDockMonitorOverrideSettingPath(path) ? path[2] : std::string{};
+  }
+  if (!entry.group.empty()) {
+    m_expandedSettingGroups[settings::barSettingContentSectionKey(entry)].insert(entry.group);
+  }
+  m_pendingFocusSettingKey.clear();
+  for (const auto& part : path) {
+    if (!m_pendingFocusSettingKey.empty()) {
+      m_pendingFocusSettingKey += '.';
+    }
+    m_pendingFocusSettingKey += part;
+  }
+  m_contentScrollState.offset = 0.0F;
+  m_sidebarScrollState.offset = 0.0F;
+
+  const bool wasOpen = isOpen();
+  open();
+  // open() resets the advanced toggle from config when it creates the window.
+  if (entry.advanced) {
+    m_showAdvanced = true;
+  }
+  if (wasOpen && isOpen()) {
+    requestSceneRebuild();
+  }
+}
+
 void SettingsWindow::close() {
   if (!isOpen()) {
     return;
@@ -719,6 +770,10 @@ void SettingsWindow::prepareFrame(bool needsUpdate, bool needsLayout) {
         m_inputDispatcher.setFocus(m_settingsSearchInput->inputArea());
       }
       m_focusSearchOnRebuild = false;
+    }
+    if (!m_pendingFocusSettingKey.empty()) {
+      // The scene is laid out by buildScene, so the focus change scrolls the control into view.
+      m_inputDispatcher.restoreTabFocus({.key = std::exchange(m_pendingFocusSettingKey, {})});
     }
     logSettingsProfile("prepareFrame buildScene", phaseProfileWatch);
     m_lastSceneWidth = width;

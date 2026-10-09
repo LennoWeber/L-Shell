@@ -54,6 +54,7 @@ namespace settings {
         {.name = "emoji", .prefixPlaceholder = "emo"},
         {.name = "panels", .prefixPlaceholder = "pan"},
         {.name = "session", .prefixPlaceholder = "session"},
+        {.name = "settings", .prefixPlaceholder = "set", .globalByDefault = true},
         {.name = "wallpaper", .prefixPlaceholder = "wall"},
         {.name = "windows", .prefixPlaceholder = "win"},
     });
@@ -330,6 +331,8 @@ namespace settings {
     ) {
       std::string searchText = std::string(settingsSectionId(section))
           + " "
+          + i18n::tr(settingsSectionLabelKey(section))
+          + " "
           + group
           + " "
           + title
@@ -391,10 +394,16 @@ namespace settings {
   std::string normalizedSettingQuery(std::string_view query) { return StringUtils::toLower(query); }
 
   bool matchesNormalizedSettingQuery(const SettingEntry& entry, std::string_view normalizedQuery) {
-    if (normalizedQuery.empty()) {
-      return true;
+    // Every whitespace-separated word must appear somewhere, so "bar position" finds
+    // the bar's position setting although the words are not adjacent in the text.
+    for (std::size_t start = 0; start < normalizedQuery.size();) {
+      const std::size_t end = std::min(normalizedQuery.find(' ', start), normalizedQuery.size());
+      if (end > start && !entry.searchText.contains(normalizedQuery.substr(start, end - start))) {
+        return false;
+      }
+      start = end + 1;
     }
-    return entry.searchText.contains(normalizedQuery);
+    return true;
   }
 
   bool matchesSettingQuery(const SettingEntry& entry, std::string_view query) {

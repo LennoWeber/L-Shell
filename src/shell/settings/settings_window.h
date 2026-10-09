@@ -77,6 +77,11 @@ public:
   // Opens the window on the plugins section with the plugin's settings editor.
   // Returns false when the plugin is unknown, disabled, or exposes no settings.
   [[nodiscard]] bool openToPlugin(std::string pluginId);
+  // Opens the window on one setting: its page, its group expanded, its control focused.
+  // Falls back to a plain open when the path names no visible setting.
+  void openToSetting(const std::vector<std::string>& path);
+  // Searchable settings for the current config, as shown in the window (used by the launcher).
+  [[nodiscard]] std::vector<settings::SettingEntry> buildSearchIndex() const;
   void close();
   // Closes the window for a widget editor while preserving the active section for its return.
   void closeForWidgetEditor();
@@ -322,6 +327,8 @@ private:
   // the Settings scene is available so the requested editor can be mounted into it.
   std::string m_pendingOpenWidgetInspectorName;
   std::string m_pendingOpenPluginSettingsId;
+  // Tab-focus key (dotted setting path) to focus after the next scene build; set by openToSetting.
+  std::string m_pendingFocusSettingKey;
   std::string m_editingWidgetName;
   std::string m_editingCapsuleGroupId;
   std::vector<std::string> m_selectedLaneWidgets;

@@ -525,6 +525,7 @@ _noctalia_sources = files(
   'src/launcher/panel_provider.cpp',
   'src/launcher/plugin_launcher_provider.cpp',
   'src/launcher/session_provider.cpp',
+  'src/launcher/settings_provider.cpp',
   'src/launcher/wallpaper_provider.cpp',
   'src/launcher/window_provider.cpp',
   'src/launcher/usage_tracker.cpp',
@@ -1271,6 +1272,7 @@ if build_tests
     'scheme',
     'scrollbar_geometry',
     'secret_store',
+    'settings_search',
     'security_primitives',
     'state_store',
     'string_utils',
@@ -1315,7 +1317,7 @@ if build_tests
       override_options: ['b_ndebug=false'],
     )
     test_args = []
-    if test_name == 'desktop_entry_localization'
+    if test_name == 'desktop_entry_localization' or test_name == 'settings_search'
       test_args = [meson.project_source_root() / 'assets']
     elif test_name == 'i18n_supported_languages'
       test_args = [meson.project_source_root() / 'assets' / 'translations']

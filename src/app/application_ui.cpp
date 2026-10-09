@@ -45,6 +45,7 @@
 #include "launcher/panel_provider.h"
 #include "launcher/plugin_launcher_provider.h"
 #include "launcher/session_provider.h"
+#include "launcher/settings_provider.h"
 #include "launcher/wallpaper_provider.h"
 #include "launcher/window_provider.h"
 #include "notification/notifications.h"
@@ -639,6 +640,10 @@ void Application::initPanelManagerAndPanels() {
     launcherPanel->addProvider(std::make_unique<SessionProvider>(&m_configService, &m_sessionActionRunner));
     launcherPanel->addProvider(std::make_unique<MathProvider>(&m_clipboardService, &m_configService, &m_httpClient));
     launcherPanel->addProvider(std::make_unique<EmojiProvider>(&m_clipboardService));
+    launcherPanel->addProvider(std::make_unique<SettingsProvider>(
+        [this]() { return m_settingsWindow.buildSearchIndex(); },
+        [this](std::vector<std::string> path) { m_settingsWindow.openToSetting(path); }, &m_configService
+    ));
     launcherPanel->setCopiedActivationCallback([this]() {
       const ClipboardAutoPasteMode mode = m_configService.config().shell.launcher.autoPaste;
       if (mode == ClipboardAutoPasteMode::Off) {
