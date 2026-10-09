@@ -1272,7 +1272,7 @@ bool ConfigService::markSetupWizardCompleted() {
   // The bundled wallpaper is served via firstRunWallpaperPath() until setup
   // completes. Persist it so finishing the wizard does not clear the desktop.
   if (!hasConfiguredWallpaper()) {
-    const auto bundled = paths::assetPath("noctalia-wallpaper.png");
+    const auto bundled = paths::assetPath("l-shell-wallpaper.png");
     std::error_code ec;
     if (std::filesystem::exists(bundled, ec)) {
       setWallpaperPath(std::nullopt, bundled.string());
@@ -2224,7 +2224,7 @@ std::string ConfigService::firstRunWallpaperPath() const {
   if (hasConfiguredWallpaper()) {
     return {};
   }
-  const auto path = paths::assetPath("noctalia-wallpaper.png");
+  const auto path = paths::assetPath("l-shell-wallpaper.png");
   std::error_code ec;
   if (!std::filesystem::exists(path, ec)) {
     return {};
