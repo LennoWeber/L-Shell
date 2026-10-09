@@ -2081,9 +2081,13 @@ void LauncherPanel::syncCollapsedState() {
       node->setParticipatesInLayout(!collapsed);
     }
   }
-  if (auto* manager = PanelManager::current(); manager != nullptr && manager->isOpenPanel("launcher")) {
-    manager->relayoutActivePanelPreferredSize();
-  }
+  // Deferred: on open this runs inside the panel's first scene build, after the surface size
+  // was chosen from the previous state.
+  DeferredCall::callLater([]() {
+    if (auto* manager = PanelManager::current(); manager != nullptr && manager->isOpenPanel("launcher")) {
+      manager->relayoutActivePanelPreferredSize();
+    }
+  });
 }
 
 void LauncherPanel::refreshResults() {

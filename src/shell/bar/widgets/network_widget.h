@@ -25,7 +25,7 @@ class NetworkWidget : public Widget {
 public:
   struct Options {
     VpnStatusMode vpnStatusMode = VpnStatusMode::Replace;
-    bool showLabel = true;
+    bool showLabel = false; // macOS-style: icon only
     bool showVpnLabel = false;
   };
 

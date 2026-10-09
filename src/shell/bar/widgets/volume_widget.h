@@ -28,7 +28,7 @@ public:
     std::unordered_map<std::string, std::string> effectsProfileGlyphs;
     std::string customImage;
     bool customImageColorize = false;
-    bool showLabel = true;
+    bool showLabel = false; // macOS-style: icon only
     bool hideWhenInactive = false;
     ColorSpec muteColor = colorSpecFromRole(ColorRole::Error);
   };
