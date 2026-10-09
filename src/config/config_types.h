@@ -977,9 +977,9 @@ constexpr EnumOption<PanelPlacement> kPanelPlacements[] = {
 // panel bar-relative (the historical floating behavior); "center" reserves the
 // screen center; the rest anchor to a screen edge/corner. Same vocabulary as the
 // OSD/notification `position`.
-constexpr std::string_view kPanelPositions[] = {"auto",          "center",      "top_left",     "top_center",
-                                                "top_right",     "center_left", "center_right", "bottom_left",
-                                                "bottom_center", "bottom_right"};
+constexpr std::string_view kPanelPositions[] = {"auto",          "center",       "spotlight",   "top_left",
+                                                "top_center",    "top_right",    "center_left", "center_right",
+                                                "bottom_left",   "bottom_center", "bottom_right"};
 
 constexpr EnumOption<WallpaperFillMode> kWallpaperFillModes[] = {
     {WallpaperFillMode::Center, "center", "settings.options.wallpaper.fill.center"},
@@ -1078,7 +1078,7 @@ struct ShellConfig {
     PanelPlacement polkitPlacement = PanelPlacement::Floating;
     // Floating screen position per panel (one of kPanelPositions). "auto" = bar-relative.
     // Launcher/clipboard default to "center" (the historical center-screen behavior).
-    std::string launcherPosition = "center";
+    std::string launcherPosition = "spotlight";
     std::string clipboardPosition = "center";
     std::string controlCenterPosition = "auto";
     std::string wallpaperPosition = "auto";
@@ -1098,7 +1098,7 @@ struct ShellConfig {
   // under [shell.panel] (launcher_placement/position/open_near_click_launcher),
   // parallel to every other surface.
   struct LauncherConfig {
-    bool categories = true;
+    bool categories = false; // chip row; F6 still reveals it on demand
     bool showIcons = true;
     bool showAppOriginIndicator = true;
     bool compact = false;

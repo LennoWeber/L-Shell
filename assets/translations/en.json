@@ -801,7 +801,10 @@
         "title": "Windows"
       }
     },
-    "search-placeholder": "Search applications…"
+    "search-placeholder": "Spotlight Search",
+    "sections": {
+      "top-hit": "Top Hit"
+    }
   },
   "location": {
     "errors": {
@@ -1549,6 +1552,7 @@
         "center": "Center",
         "center-left": "Center Left",
         "center-right": "Center Right",
+        "spotlight": "Spotlight (upper third)",
         "top-center": "Top Center",
         "top-left": "Top Left",
         "top-right": "Top Right"

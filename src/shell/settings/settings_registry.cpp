@@ -1234,6 +1234,7 @@ namespace settings {
           plainSelect(
               {{"auto", "settings.options.panel-position.auto"},
                {"center", "settings.options.screen-position.center"},
+               {"spotlight", "settings.options.screen-position.spotlight"},
                {"top_left", "settings.options.screen-position.top-left"},
                {"top_center", "settings.options.screen-position.top-center"},
                {"top_right", "settings.options.screen-position.top-right"},

@@ -71,7 +71,7 @@ clipboard_placement      = "floating" # attached | floating
 control_center_placement = "attached" # attached | floating
 wallpaper_placement      = "attached" # attached | floating
 session_placement        = "attached" # attached | floating
-launcher_position        = "center"   # auto | center | top_left | … (floating only)
+launcher_position        = "spotlight" # auto | center | spotlight | top_left | … (floating only)
 clipboard_position       = "center"   # auto | center | top_left | … (floating only)
 open_near_click_control_center = false # for attached/floating placement, follow the bar click instead of bar-center
 open_near_click_launcher       = false # for attached/floating placement, follow the bar click instead of bar-center
@@ -80,7 +80,7 @@ open_near_click_wallpaper      = false # for attached/floating placement, follow
 open_near_click_session        = false # for attached/floating placement, follow the bar click instead of bar-center
 
 [shell.launcher]
-categories    = true                    # show category filters in the launcher
+categories    = false                   # show category chips in the launcher (F6 reveals them)
 show_icons    = true                    # show application icons in launcher results
 show_app_origin_indicator = true        # show package origin indicators on application results
 compact       = false                   # use smaller icons and tighter result rows

@@ -265,7 +265,10 @@ namespace {
 
   [[nodiscard]] AttachedRevealDirection
   detachedRevealDirection(std::string_view panelPosition, std::string_view barPosition) {
-    if (panelPosition == "top_left" || panelPosition == "top_center" || panelPosition == "top_right") {
+    if (panelPosition == "top_left"
+        || panelPosition == "top_center"
+        || panelPosition == "top_right"
+        || panelPosition == "spotlight") {
       return AttachedRevealDirection::Down;
     }
     if (panelPosition == "bottom_left" || panelPosition == "bottom_center" || panelPosition == "bottom_right") {
@@ -723,6 +726,10 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
       const auto sp = shell::screenPositionAnchor(panelPosition, panelGap);
       standaloneAnchor = sp.anchor;
       standaloneMarginTop = sp.marginTop;
+      if (panelPosition == "spotlight" && outputHeight > 0) {
+        // Like macOS Spotlight: the search field sits in the upper third and results grow downward.
+        standaloneMarginTop = static_cast<std::int32_t>(std::lround(static_cast<double>(outputHeight) * 0.2));
+      }
       standaloneMarginRight = sp.marginRight;
       standaloneMarginBottom = sp.marginBottom;
       standaloneMarginLeft = sp.marginLeft;

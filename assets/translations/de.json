@@ -706,7 +706,10 @@
         "title": "Fenster"
       }
     },
-    "search-placeholder": "Anwendungen suchen…"
+    "search-placeholder": "Spotlight-Suche",
+    "sections": {
+      "top-hit": "Bester Treffer"
+    }
   },
   "location": {
     "errors": {
@@ -1406,6 +1409,7 @@
         "center": "Mitte",
         "center-left": "Mitte links",
         "center-right": "Mitte rechts",
+        "spotlight": "Spotlight (oberes Drittel)",
         "top-center": "Oben mittig",
         "top-left": "Oben links",
         "top-right": "Oben rechts"
