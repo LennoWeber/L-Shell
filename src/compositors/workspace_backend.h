@@ -34,6 +34,8 @@ struct WorkspaceWindow {
   // top-left corner in the global layout space (the same space as output positions).
   std::int32_t width = 0;
   std::int32_t height = 0;
+  // Not drawn right now although on its workspace: an inactive tab of a window group.
+  bool hidden = false;
   std::string outputName;
 };
 
@@ -44,9 +46,10 @@ struct WorkspaceWindowAssignment {
   std::string title;
   std::int32_t x = 0;
   std::int32_t y = 0;
-  // See WorkspaceWindow::width/height.
+  // See WorkspaceWindow::width/height/hidden.
   std::int32_t width = 0;
   std::int32_t height = 0;
+  bool hidden = false;
 };
 
 struct TaskbarWindowCandidate {

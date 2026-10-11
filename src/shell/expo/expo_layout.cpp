@@ -28,6 +28,8 @@ namespace {
   constexpr float kGridGapFraction = 0.6F; // of the padding
   constexpr float kFallbackWindowAspect = 16.0F / 10.0F;
   constexpr float kMinWindowSide = 14.0F;
+  // Borders and shadows may poke a little past the monitor; that is still clamped, not zoomed out.
+  constexpr float kOverflowTolerance = 0.02F;
 
   struct Metrics {
     float marginX = 0.0F;
@@ -255,8 +257,40 @@ std::vector<ExpoRect> placeExpoWindows(
       });
 
   if (realGeometry) {
-    const float sx = cardWidth / outputWidth;
-    const float sy = cardHeight / outputHeight;
+    // Windows reaching past the monitor (Hyprland's scrolling layout, a floating window dragged
+    // half off screen) would be squashed against the card edge. Show the union of the monitor and
+    // every window instead, scaled to fit with its aspect kept, like hyprexpo and niri's overview.
+    float left = 0.0F;
+    float top = 0.0F;
+    float right = outputWidth;
+    float bottom = outputHeight;
+    for (const ExpoWindowGeometry& window : windows) {
+      left = std::min(left, window.x);
+      top = std::min(top, window.y);
+      right = std::max(right, window.x + window.width);
+      bottom = std::max(bottom, window.y + window.height);
+    }
+    const float slackX = outputWidth * kOverflowTolerance;
+    const float slackY = outputHeight * kOverflowTolerance;
+    const bool overflows =
+        left < -slackX || top < -slackY || right > outputWidth + slackX || bottom > outputHeight + slackY;
+    float sx = cardWidth / outputWidth;
+    float sy = cardHeight / outputHeight;
+    float originX = 0.0F;
+    float originY = 0.0F;
+    float offsetX = 0.0F;
+    float offsetY = 0.0F;
+    if (overflows) {
+      const float unionWidth = right - left;
+      const float unionHeight = bottom - top;
+      const float fit = std::min(cardWidth / unionWidth, cardHeight / unionHeight);
+      sx = fit;
+      sy = fit;
+      originX = left;
+      originY = top;
+      offsetX = (cardWidth - (unionWidth * fit)) * 0.5F;
+      offsetY = (cardHeight - (unionHeight * fit)) * 0.5F;
+    }
     // Clamps one axis into [0, extent], keeping at least `minSide` so tiny windows stay clickable.
     const auto fitAxis = [minSide](float start, float length, float extent, float& outStart, float& outLength) {
       float a = std::clamp(start, 0.0F, extent);
@@ -271,8 +305,8 @@ std::vector<ExpoRect> placeExpoWindows(
     };
     for (std::size_t i = 0; i < windows.size(); ++i) {
       const ExpoWindowGeometry& window = windows[i];
-      fitAxis(window.x * sx, window.width * sx, cardWidth, rects[i].x, rects[i].width);
-      fitAxis(window.y * sy, window.height * sy, cardHeight, rects[i].y, rects[i].height);
+      fitAxis(((window.x - originX) * sx) + offsetX, window.width * sx, cardWidth, rects[i].x, rects[i].width);
+      fitAxis(((window.y - originY) * sy) + offsetY, window.height * sy, cardHeight, rects[i].y, rects[i].height);
     }
     return rects;
   }

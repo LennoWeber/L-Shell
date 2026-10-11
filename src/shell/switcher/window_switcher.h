@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -42,6 +43,8 @@ public:
   void show(wl_output* output);
   // Dismisses the switcher or overview without switching windows.
   void close() { hide(); }
+  // Runs when the switcher or the overview starts to open, so other full-screen overlays can step aside.
+  void setOnOpen(std::function<void()> callback) { m_onOpen = std::move(callback); }
   // Mission-Control-style overview: grid of the current workspace's windows plus a
   // workspace bar. Independent of the configured alt-tab style.
   void toggleOverview(wl_output* output);
@@ -113,4 +116,5 @@ private:
   bool m_active = false;
   bool m_shortcutSession = false;
   bool m_overviewMode = false;
+  std::function<void()> m_onOpen;
 };

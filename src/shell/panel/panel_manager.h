@@ -93,6 +93,8 @@ public:
   void setFocusGrabBarSurfacesProvider(std::function<std::vector<wl_surface*>()> provider);
   void setPanelClosedCallback(std::function<void()> callback);
   void setPanelOpenedCallback(std::function<void()> callback);
+  // Runs before any panel (persistent ones included) starts opening.
+  void setPanelOpeningCallback(std::function<void()> callback) { m_panelOpeningCallback = std::move(callback); }
   void setAttachedPanelAvailabilityCallback(std::function<bool(wl_output*, std::string_view)> callback);
   void setBarConfigProvider(std::function<std::optional<BarConfig>(wl_output*, std::string_view)> provider);
   void setAttachedPanelBarSettledCallback(std::function<bool(wl_output*, std::string_view)> callback);
@@ -233,6 +235,7 @@ private:
   std::function<std::vector<wl_surface*>()> m_focusGrabBarSurfacesProvider;
   std::function<void()> m_panelClosedCallback;
   std::function<void()> m_panelOpenedCallback;
+  std::function<void()> m_panelOpeningCallback;
   std::function<bool(wl_output*, std::string_view)> m_attachedPanelAvailabilityCallback;
   std::function<std::optional<BarConfig>(wl_output*, std::string_view)> m_barConfigProvider;
   std::function<bool(wl_output*, std::string_view)> m_attachedPanelBarSettledCallback;

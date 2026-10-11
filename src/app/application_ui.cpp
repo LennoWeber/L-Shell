@@ -417,14 +417,9 @@ void Application::initInputDispatch() {
       m_lockScreen.onPointerEvent(event);
       return;
     }
-    if (m_expo.isActive()) {
-      if (m_expo.onPointerEvent(event)) {
-        return;
-      }
-      if (event.type == PointerEvent::Type::Button || event.type == PointerEvent::Type::Axis) {
-        return;
-      }
-      // Enter/Leave/Motion fall through so other surfaces' hover state stays in sync.
+    // Events for other shell surfaces fall through: a click on one also closes the expo.
+    if (m_expo.isActive() && m_expo.onPointerEvent(event)) {
+      return;
     }
     if (m_windowSwitcher.isActive()) {
       if (m_windowSwitcher.onPointerEvent(event)) {
@@ -733,6 +728,8 @@ void Application::initPanelManagerAndPanels() {
     m_island.onWorkspaceChanged();
     m_gestureHandle.onWorkspaceChanged();
   });
+  // A panel opened while the expo shows (launcher, control center, ...) replaces it.
+  m_panelManager.setPanelOpeningCallback([this]() { m_expo.close(); });
   m_panelManager.setPanelOpenedCallback([this]() {
     m_overviewLauncherCapture.sync();
     if (m_panelManager.isAttachedOpen()) {
@@ -820,12 +817,13 @@ void Application::initNotificationAndOsd() {
   );
   m_configService.addReloadCallback([this]() { m_windowSwitcher.onConfigReload(); });
   m_expo.initialize(m_wayland, &m_renderContext, m_compositorPlatform, &m_configService, &m_asyncTextureCache);
-  // One full-screen window overview at a time.
+  // One full-screen window overview at a time: opening either one closes the other.
   m_expo.setOnOpen([this]() {
     if (m_windowSwitcher.isActive()) {
       m_windowSwitcher.close();
     }
   });
+  m_windowSwitcher.setOnOpen([this]() { m_expo.close(); });
   m_configService.addReloadCallback([this]() { m_expo.onConfigReload(); });
   m_configService.addReloadCallback([this]() { m_osdOverlay.onConfigReload(); });
   m_idleGraceOverlay.initialize(m_wayland, &m_renderContext);

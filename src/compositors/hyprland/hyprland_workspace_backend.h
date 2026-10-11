@@ -104,6 +104,7 @@ private:
     std::int32_t y = 0;
     std::int32_t width = 0;
     std::int32_t height = 0;
+    bool hidden = false;
   };
 
   void refreshSnapshot();

@@ -678,6 +678,10 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     }
   }
 
+  if (m_panelOpeningCallback) {
+    m_panelOpeningCallback();
+  }
+
   // Persistent panels live in their own host: opening one must leave the active
   // panel (and any other persistent panel) alone.
   if (m_persistentHost.hasPanel(panelId)) {
