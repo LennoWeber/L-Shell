@@ -27,6 +27,7 @@ public:
   void setTileSize(float width, float height);
   void setAppIconColorizeTint(std::optional<ColorSpec> tint) { m_appIconColorizeTint = tint; }
   void setOnActivate(std::function<void()> callback) { m_onActivate = std::move(callback); }
+  // Pointer entered or moved over the tile.
   void setOnHover(std::function<void()> callback) { m_onHover = std::move(callback); }
   void setOnInvalidate(std::function<void()> callback) { m_onInvalidate = std::move(callback); }
   // Cheap when the icon and snapshot did not change.

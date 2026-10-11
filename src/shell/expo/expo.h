@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 class AsyncTextureCache;
@@ -24,6 +25,7 @@ class RenderContext;
 class ToplevelThumbnailCapture;
 class WaylandConnection;
 struct wl_output;
+struct wl_surface;
 
 // Super+O "expo": every workspace of every output as a miniature desktop with its windows at
 // their real positions, like hyprexpo and macOS Mission Control. Clicking a window focuses it
@@ -56,6 +58,8 @@ public:
 
 private:
   struct Instance;
+  // Dimmed, content-free surface on every other output: clicking there dismisses the expo.
+  struct Catcher;
 
   struct Window {
     WindowSwitcherEntry entry;
@@ -88,17 +92,28 @@ private:
   };
 
   void open(wl_output* output);
+  // Coalesces change notifications into one refresh per loop iteration.
+  void scheduleRefresh();
+  void applyRefresh();
   void refreshModel();
   // Changes only when cards, their windows or the window geometry change; titles and
   // snapshots update in place.
   [[nodiscard]] std::string structureSignature() const;
   void ensureSurface();
   void destroySurface();
+  void syncCatchers();
+  void destroyCatchers();
+  void prepareCatcherFrame(Catcher& catcher);
+  [[nodiscard]] Catcher* catcherForSurface(const wl_surface* surface) const;
   void requestSceneUpdate();
   void prepareFrame(Instance& instance);
   void buildScene(Instance& instance, std::uint32_t width, std::uint32_t height);
   void rebindTiles(Instance& instance);
   void syncSelection(bool animate);
+  // Hover selects only once the pointer really moved, so the window under a resting cursor (or a
+  // rebuild under it) does not steal the keyboard selection.
+  void selectFromPointer(std::size_t window);
+  void selectCardFromPointer(std::size_t card);
   void positionTitlePill(Instance& instance);
   void selectWindow(std::size_t index, bool animate);
   // `preferWindow` selects the card's first window when it has any (keyboard), otherwise the card itself (pointer).
@@ -128,6 +143,9 @@ private:
   std::unique_ptr<ToplevelThumbnailCapture> m_thumbnailCapture;
   std::deque<ThumbnailRequest> m_thumbnailQueue;
   std::string m_captureInFlightKey;
+  // Windows whose capture failed this session; retrying would only wait for the timeout again.
+  std::unordered_set<std::string> m_failedCaptureKeys;
+  std::vector<std::unique_ptr<Catcher>> m_catchers;
 
   std::vector<Section> m_sections;
   std::vector<Card> m_cards;
@@ -139,4 +157,10 @@ private:
   // Bumped on every open; deferred work checks it still belongs to the same session.
   std::uint64_t m_session = 0;
   bool m_active = false;
+  bool m_refreshScheduled = false;
+  bool m_refreshing = false;
+  bool m_hoverSelects = false;
+  bool m_hasPointerPosition = false;
+  double m_pointerX = 0.0;
+  double m_pointerY = 0.0;
 };

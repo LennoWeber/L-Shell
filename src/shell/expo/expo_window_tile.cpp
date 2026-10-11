@@ -52,6 +52,12 @@ ExpoWindowTile::ExpoWindowTile(float contentScale, float iconPixelScale, AsyncTe
       m_onHover();
     }
   });
+  // Motion too: hovering only selects after the pointer moved, maybe while already over this tile.
+  setOnMotion([this](const InputArea::PointerData&) {
+    if (m_onHover) {
+      m_onHover();
+    }
+  });
 
   addChild(ui::box({.out = &m_shadow, .participatesInLayout = false}));
   m_shadow->setHitTestVisible(false);

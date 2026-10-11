@@ -164,13 +164,37 @@ struct Expo::Instance {
   bool contentDirty = false;
   bool titleDirty = false;
   bool pointerInside = false;
-  bool revealStarted = false;
+  float revealProgress = 0.0F;
+};
+
+struct Expo::Catcher {
+  wl_output* output = nullptr;
+  std::unique_ptr<LayerSurface> surface;
+  AnimationManager animations;
+  std::unique_ptr<Node> root;
+  Box* dimmer = nullptr;
+  std::uint32_t builtWidth = 0;
+  std::uint32_t builtHeight = 0;
+  bool revealed = false;
+
+  Catcher() = default;
+  Catcher(const Catcher&) = delete;
+  Catcher& operator=(const Catcher&) = delete;
+  ~Catcher() {
+    animations.cancelAll();
+    if (surface != nullptr) {
+      surface->setPrepareFrameCallback(nullptr);
+      surface->setConfigureCallback(nullptr);
+      surface->setSceneRoot(nullptr);
+    }
+  }
 };
 
 Expo::Expo() = default;
 
 Expo::~Expo() {
   cancelThumbnailCaptures();
+  destroyCatchers();
   destroySurface();
 }
 
@@ -234,11 +258,31 @@ void Expo::onOutputChange() {
     close();
     return;
   }
-  // Another monitor came or went: its desktops join or leave the expo.
-  onWindowsChanged();
+  // Another monitor came or went: it gets a catcher, and its desktops join or leave the expo.
+  syncCatchers();
+  scheduleRefresh();
 }
 
-void Expo::onWindowsChanged() {
+void Expo::onWindowsChanged() { scheduleRefresh(); }
+
+void Expo::scheduleRefresh() {
+  // Toplevel and workspace callbacks often fire together (and terminals retitle constantly):
+  // one refresh per loop iteration is enough. Deferring also keeps a refresh from nesting in
+  // another one when reading the model makes a backend re-sync and notify.
+  if (!m_active || m_refreshScheduled) {
+    return;
+  }
+  m_refreshScheduled = true;
+  DeferredCall::callLater([this, session = m_session]() {
+    if (m_session != session) {
+      return;
+    }
+    m_refreshScheduled = false;
+    applyRefresh();
+  });
+}
+
+void Expo::applyRefresh() {
   if (!m_active) {
     return;
   }
@@ -273,6 +317,10 @@ void Expo::open(wl_output* output) {
   }
   ++m_session;
   m_output = output;
+  m_refreshScheduled = false;
+  m_failedCaptureKeys.clear();
+  m_hoverSelects = false;
+  m_hasPointerPosition = false;
   // Hyprland reports no resize events, so the cached window geometry may be stale.
   m_platform->refreshWorkspaceWindowGeometry();
   m_windows.clear();
@@ -314,6 +362,7 @@ void Expo::open(wl_output* output) {
     close();
     return;
   }
+  syncCatchers();
   requestSceneUpdate();
   startThumbnailCaptures();
 }
@@ -323,7 +372,10 @@ void Expo::close() {
     return;
   }
   m_active = false;
+  m_refreshScheduled = false;
   cancelThumbnailCaptures();
+  m_failedCaptureKeys.clear();
+  destroyCatchers();
   destroySurface();
   m_windows.clear();
   m_cards.clear();
@@ -334,6 +386,16 @@ void Expo::close() {
 }
 
 void Expo::refreshModel() {
+  if (m_refreshing) {
+    scheduleRefresh();
+    return;
+  }
+  m_refreshing = true;
+  struct Reset {
+    bool& flag;
+    ~Reset() { flag = false; }
+  } reset{m_refreshing};
+
   // Snapshots and the selection survive a refresh, matched by window identity.
   std::unordered_map<std::string, std::shared_ptr<const ScreencopyImage>> thumbnails;
   for (const auto& window : m_windows) {
@@ -362,17 +424,18 @@ void Expo::refreshModel() {
   }
 
   // Sections run left to right like the monitors on the desk.
-  std::vector<const WaylandOutput*> outputs;
+  // Copies: nothing below may keep pointing into the connection's output list.
+  std::vector<WaylandOutput> outputs;
   for (const auto& output : m_wayland->outputs()) {
     if (output.output != nullptr && output.hasUsableGeometry()) {
-      outputs.push_back(&output);
+      outputs.push_back(output);
     }
   }
-  std::ranges::stable_sort(outputs, [](const WaylandOutput* a, const WaylandOutput* b) {
-    if (a->logicalX != b->logicalX) {
-      return a->logicalX < b->logicalX;
+  std::ranges::stable_sort(outputs, [](const WaylandOutput& a, const WaylandOutput& b) {
+    if (a.logicalX != b.logicalX) {
+      return a.logicalX < b.logicalX;
     }
-    return a->logicalY < b->logicalY;
+    return a.logicalY < b.logicalY;
   });
 
   struct OutputModel {
@@ -383,11 +446,11 @@ void Expo::refreshModel() {
   std::vector<OutputModel> models;
   models.reserve(outputs.size());
   bool anyAssignments = false;
-  for (const WaylandOutput* output : outputs) {
+  for (const WaylandOutput& output : outputs) {
     OutputModel model{
-        .output = output,
-        .workspaces = m_platform->workspaces(output->output),
-        .assignments = m_platform->workspaceWindowAssignments(output->output),
+        .output = &output,
+        .workspaces = m_platform->workspaces(output.output),
+        .assignments = m_platform->workspaceWindowAssignments(output.output),
     };
     anyAssignments = anyAssignments || !model.assignments.empty();
     models.push_back(std::move(model));
@@ -408,7 +471,8 @@ void Expo::refreshModel() {
 
     for (const auto& assignment : model.assignments) {
       std::string key = canonicalWindowId(assignment.windowId);
-      if (key.empty() || seenKeys.contains(key) || !hasWorkspaces) {
+      // Inactive tabs of a window group sit under the visible one: only that one is shown and clicked.
+      if (key.empty() || seenKeys.contains(key) || !hasWorkspaces || assignment.hidden) {
         continue;
       }
       const auto workspace = std::ranges::find_if(model.workspaces, [&assignment](const Workspace& candidate) {
@@ -633,6 +697,115 @@ void Expo::destroySurface() {
   m_instance.reset();
 }
 
+void Expo::syncCatchers() {
+  if (!m_active || m_wayland == nullptr || m_renderContext == nullptr) {
+    destroyCatchers();
+    return;
+  }
+  std::erase_if(m_catchers, [this](const std::unique_ptr<Catcher>& catcher) {
+    const WaylandOutput* output = findOutput(*m_wayland, catcher->output);
+    return output == nullptr || !output->hasUsableGeometry() || catcher->output == m_output;
+  });
+  for (const WaylandOutput& output : m_wayland->outputs()) {
+    if (output.output == nullptr || output.output == m_output || !output.hasUsableGeometry()) {
+      continue;
+    }
+    if (std::ranges::any_of(m_catchers, [&output](const auto& catcher) { return catcher->output == output.output; })) {
+      continue;
+    }
+    auto catcher = std::make_unique<Catcher>();
+    catcher->output = output.output;
+    auto config = LayerSurfaceConfig{
+        .nameSpace = "noctalia-expo",
+        .layer = LayerShellLayer::Overlay,
+        .anchor = LayerShellAnchor::Top | LayerShellAnchor::Bottom | LayerShellAnchor::Left | LayerShellAnchor::Right,
+        .width = 0,
+        .height = 0,
+        .exclusiveZone = -1,
+        .keyboard = LayerShellKeyboard::None,
+        .defaultWidth = static_cast<std::uint32_t>(output.effectiveLogicalWidth()),
+        .defaultHeight = static_cast<std::uint32_t>(output.effectiveLogicalHeight()),
+    };
+    catcher->surface = std::make_unique<LayerSurface>(*m_wayland, std::move(config));
+    catcher->surface->setRenderContext(m_renderContext);
+    catcher->surface->setAnimationManager(&catcher->animations);
+    Catcher* catcherPtr = catcher.get();
+    catcher->surface->setConfigureCallback([catcherPtr](std::uint32_t /*width*/, std::uint32_t /*height*/) {
+      if (catcherPtr->surface != nullptr) {
+        catcherPtr->surface->requestLayout();
+      }
+    });
+    catcher->surface->setPrepareFrameCallback([this, catcherPtr](bool /*needsUpdate*/, bool /*needsLayout*/) {
+      prepareCatcherFrame(*catcherPtr);
+    });
+    if (!catcher->surface->initialize(output.output)) {
+      kLog.warn("failed to initialize expo backdrop on {}", output.connectorName);
+      continue;
+    }
+    m_catchers.push_back(std::move(catcher));
+  }
+}
+
+void Expo::destroyCatchers() { m_catchers.clear(); }
+
+void Expo::prepareCatcherFrame(Catcher& catcher) {
+  if (!m_active || m_renderContext == nullptr || catcher.surface == nullptr) {
+    return;
+  }
+  const std::uint32_t width = catcher.surface->width();
+  const std::uint32_t height = catcher.surface->height();
+  if (width == 0
+      || height == 0
+      || (catcher.root != nullptr && width == catcher.builtWidth && height == catcher.builtHeight)) {
+    return;
+  }
+  m_renderContext->makeCurrent(catcher.surface->renderTarget());
+  Renderer& renderer = catcher.surface->renderTarget().renderer();
+  UiPhaseScope layoutPhase(UiPhase::Layout);
+
+  const auto w = static_cast<float>(width);
+  const auto h = static_cast<float>(height);
+  catcher.surface->setSceneRoot(nullptr);
+  catcher.root = ui::node({});
+  catcher.root->setAnimationManager(&catcher.animations);
+  catcher.root->setSize(w, h);
+  catcher.root->addChild(
+      ui::box({
+          .out = &catcher.dimmer,
+          .fill = colorSpecFromRole(ColorRole::Shadow),
+          .width = w,
+          .height = h,
+          .opacity = catcher.revealed ? kDimOpacity : 0.0F,
+          .participatesInLayout = false,
+      })
+  );
+  catcher.root->layout(renderer);
+  catcher.builtWidth = width;
+  catcher.builtHeight = height;
+  catcher.surface->setBlurRegion({InputRect{0, 0, static_cast<int>(width), static_cast<int>(height)}});
+  catcher.surface->setSceneRoot(catcher.root.get());
+  if (!catcher.revealed) {
+    // Fades in with the expo, then nothing runs per frame.
+    catcher.revealed = true;
+    catcher.animations.animate(
+        0.0F, kDimOpacity, Style::animNormal, Easing::EaseOutCubic,
+        [dimmer = catcher.dimmer](float value) { dimmer->setOpacity(value); }, {}, catcher.dimmer
+    );
+  }
+}
+
+Expo::Catcher* Expo::catcherForSurface(const wl_surface* surface) const {
+  if (surface == nullptr) {
+    return nullptr;
+  }
+  for (const auto& catcher : m_catchers) {
+    if (catcher->surface != nullptr && catcher->surface->wlSurface() == surface) {
+      return catcher.get();
+    }
+  }
+  return nullptr;
+}
+
 void Expo::requestSceneUpdate() {
   if (m_instance != nullptr && m_instance->surface != nullptr) {
     m_instance->surface->requestLayout();
@@ -800,7 +973,8 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
           // The caption belongs to the card: clicking it switches too.
           .frameHeight = rect.height + layout.captionGap + layout.captionHeight,
           .participatesInLayout = false,
-          .onEnter = [this, cardIndex](const InputArea::PointerData&) { selectCard(cardIndex, false, true); },
+          .onEnter = [this, cardIndex](const InputArea::PointerData&) { selectCardFromPointer(cardIndex); },
+          .onMotion = [this, cardIndex](const InputArea::PointerData&) { selectCardFromPointer(cardIndex); },
           .onClick =
               [this, output = card.output, workspaceId = card.workspace.id](const InputArea::PointerData&) {
                 runAfterPointerDispatch([this, output, workspaceId]() {
@@ -871,7 +1045,7 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
             }
           });
         });
-        tile->setOnHover([this, windowIndex]() { selectWindow(windowIndex, true); });
+        tile->setOnHover([this, windowIndex]() { selectFromPointer(windowIndex); });
         tile->setOnInvalidate([this]() { requestSceneUpdate(); });
         tile->bind(renderer, m_windows[windowIndex].entry);
         instance.tiles[windowIndex] = tile.get();
@@ -977,19 +1151,20 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
   });
   instance.inputDispatcher.setFocus(instance.input);
 
-  if (!instance.revealStarted && instance.content != nullptr && instance.dimmer != nullptr) {
-    instance.revealStarted = true;
-    instance.content->setOpacity(0.0F);
-    instance.content->setScale(Style::windowSwitcherRevealScale);
-    instance.dimmer->setOpacity(0.0F);
+  // The reveal resumes where it was when a rebuild (sway answering the geometry refresh right
+  // after opening) replaced the nodes it animated.
+  if (instance.revealProgress < 1.0F && instance.content != nullptr && instance.dimmer != nullptr) {
+    const float from = instance.revealProgress;
+    const auto apply = [&instance, contentNode = instance.content, dimmer = instance.dimmer](float value) {
+      instance.revealProgress = value;
+      contentNode->setOpacity(value);
+      contentNode->setScale(Style::windowSwitcherRevealScale + ((1.0F - Style::windowSwitcherRevealScale) * value));
+      dimmer->setOpacity(kDimOpacity * value);
+    };
+    apply(from);
     instance.animations.animate(
-        0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
-        [contentNode = instance.content, dimmer = instance.dimmer](float value) {
-          contentNode->setOpacity(value);
-          contentNode->setScale(Style::windowSwitcherRevealScale + ((1.0F - Style::windowSwitcherRevealScale) * value));
-          dimmer->setOpacity(kDimOpacity * value);
-        },
-        {}, instance.content
+        from, 1.0F, static_cast<float>(Style::animNormal) * (1.0F - from), Easing::EaseOutCubic, apply,
+        [&instance]() { instance.revealProgress = 1.0F; }, instance.content
     );
   }
 }
@@ -1070,6 +1245,18 @@ void Expo::positionTitlePill(Instance& instance) {
   instance.titlePill->setVisible(true);
 }
 
+void Expo::selectFromPointer(std::size_t window) {
+  if (m_hoverSelects) {
+    selectWindow(window, true);
+  }
+}
+
+void Expo::selectCardFromPointer(std::size_t card) {
+  if (m_hoverSelects) {
+    selectCard(card, false, true);
+  }
+}
+
 void Expo::selectWindow(std::size_t index, bool animate) {
   if (index >= m_windows.size() || m_selectedWindow == index) {
     return;
@@ -1099,6 +1286,7 @@ void Expo::moveSelection(ExpoDirection direction) {
   if (m_instance == nullptr) {
     return;
   }
+  m_hoverSelects = false;
   const Instance& instance = *m_instance;
   // Every window plus the empty desktops, which can only be reached as a whole.
   struct Target {
@@ -1146,6 +1334,7 @@ void Expo::cycleCard(int delta) {
   if (m_cards.empty()) {
     return;
   }
+  m_hoverSelects = false;
   const auto count = static_cast<long>(m_cards.size());
   const long next = ((static_cast<long>(m_selectedCard) + delta) % count + count) % count;
   selectCard(static_cast<std::size_t>(next), true, true);
@@ -1218,7 +1407,10 @@ void Expo::startThumbnailCaptures() {
   }
   const auto enqueue = [this, &queued](std::size_t index) {
     const WindowSwitcherEntry& entry = m_windows[index].entry;
-    if (entry.thumbnail != nullptr || entry.captureHandle == 0 || entry.identityKey.empty()) {
+    if (entry.thumbnail != nullptr
+        || entry.captureHandle == 0
+        || entry.identityKey.empty()
+        || m_failedCaptureKeys.contains(entry.identityKey)) {
       return;
     }
     if (queued.insert(entry.identityKey).second) {
@@ -1268,6 +1460,9 @@ void Expo::captureNextThumbnail() {
           m_captureInFlightKey.clear();
           if (!error.empty()) {
             kLog.debug("thumbnail capture skipped for {}: {}", windowKey, error);
+            if (m_active) {
+              m_failedCaptureKeys.insert(windowKey);
+            }
           } else if (m_active && image.has_value()) {
             auto thumbnail = std::make_shared<ScreencopyImage>(std::move(*image));
             for (auto& window : m_windows) {
@@ -1301,6 +1496,12 @@ bool Expo::onKeyboardEvent(const KeyboardEvent& event) {
   }
   if (m_instance == nullptr) {
     close();
+    return false;
+  }
+  // Keys typed into another surface (a panel opened on top) are not the expo's.
+  if (m_instance->surface == nullptr
+      || m_wayland == nullptr
+      || m_wayland->lastKeyboardSurface() != m_instance->surface->wlSurface()) {
     return false;
   }
   if (!event.pressed || event.preedit) {
@@ -1351,54 +1552,63 @@ bool Expo::onPointerEvent(const PointerEvent& event) {
   Instance* target = m_instance.get();
   const bool onTarget = event.surface != nullptr && event.surface == target->surface->wlSurface();
 
-  switch (event.type) {
-  case PointerEvent::Type::Enter:
-    if (onTarget) {
-      target->pointerInside = true;
-      target->inputDispatcher.pointerEnter(static_cast<float>(event.sx), static_cast<float>(event.sy), event.serial);
-    }
-    return onTarget;
-  case PointerEvent::Type::Leave:
-    if (onTarget || target->pointerInside) {
-      target->pointerInside = false;
-      target->inputDispatcher.pointerLeave();
-    }
-    return onTarget;
-  case PointerEvent::Type::Motion:
-    if (onTarget) {
-      target->pointerInside = true;
-    }
-    if (onTarget || target->pointerInside) {
-      target->inputDispatcher.pointerMotion(static_cast<float>(event.sx), static_cast<float>(event.sy), 0);
+  if (!onTarget) {
+    if (catcherForSurface(event.surface) != nullptr) {
+      if (event.type == PointerEvent::Type::Enter && m_wayland != nullptr) {
+        m_wayland->setCursorShape(event.serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+      }
+      // A click on another monitor dismisses the expo, like a click on its backdrop.
+      if (event.type == PointerEvent::Type::Button && event.pressed) {
+        close();
+      }
       return true;
     }
+    // Another shell surface (bar, dock, a panel): the click dismisses the expo and still reaches it.
+    if (event.type == PointerEvent::Type::Button && event.pressed) {
+      close();
+    }
     return false;
-  case PointerEvent::Type::Button: {
-    if (onTarget) {
-      target->pointerInside = true;
+  }
+
+  const auto x = static_cast<float>(event.sx);
+  const auto y = static_cast<float>(event.sy);
+  switch (event.type) {
+  case PointerEvent::Type::Enter:
+    // The overlay mapping under a resting cursor is no reason to move the selection.
+    m_hasPointerPosition = true;
+    m_pointerX = event.sx;
+    m_pointerY = event.sy;
+    target->pointerInside = true;
+    target->inputDispatcher.pointerEnter(x, y, event.serial);
+    return true;
+  case PointerEvent::Type::Leave:
+    target->pointerInside = false;
+    target->inputDispatcher.pointerLeave();
+    return true;
+  case PointerEvent::Type::Motion:
+    if (m_hasPointerPosition && (std::abs(event.sx - m_pointerX) > 0.5 || std::abs(event.sy - m_pointerY) > 0.5)) {
+      m_hoverSelects = true;
     }
-    if (!onTarget && !target->pointerInside) {
-      // A click on another monitor dismisses the expo, like a click on its backdrop.
-      if (event.pressed) {
-        close();
-        return true;
-      }
-      return false;
-    }
+    m_hasPointerPosition = true;
+    m_pointerX = event.sx;
+    m_pointerY = event.sy;
+    target->pointerInside = true;
+    target->inputDispatcher.pointerMotion(x, y, 0);
+    return true;
+  case PointerEvent::Type::Button:
+    target->pointerInside = true;
     if (event.pressed
-        && onTarget
         && (target->inputDispatcher.hoveredArea() == nullptr
             || target->inputDispatcher.hoveredArea() == target->input)) {
       close();
       return true;
     }
-    return target->inputDispatcher.pointerButton(
-        static_cast<float>(event.sx), static_cast<float>(event.sy), event.button, event.pressed, event.serial,
-        event.time, event.touch
+    (void)target->inputDispatcher.pointerButton(
+        x, y, event.button, event.pressed, event.serial, event.time, event.touch
     );
-  }
+    return true;
   case PointerEvent::Type::Axis:
-    return onTarget || target->pointerInside;
+    return true;
   }
   return false;
 }

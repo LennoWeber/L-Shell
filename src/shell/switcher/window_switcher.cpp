@@ -579,6 +579,9 @@ void WindowSwitcher::showWithDirection(wl_output* output, int direction) {
   const bool wasActive = m_active;
   const bool outputChanged = output != m_output;
   if (!wasActive) {
+    if (m_onOpen) {
+      m_onOpen();
+    }
     recordFocusedWindow();
     cancelShortcutModifierReleaseCheck();
     m_shortcutState.reset();
