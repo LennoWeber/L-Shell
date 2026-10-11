@@ -33,6 +33,7 @@ Use <IpcCommand command="bar-hide" /> when you want the bar to stay hidden until
 | Toggle clipboard | <IpcCommand command="panel-toggle clipboard" /> | Open or close clipboard history. |
 | Toggle wallpaper panel | <IpcCommand command="panel-toggle wallpaper" /> | Open or close wallpaper picker. |
 | Toggle control center | <IpcCommand command="panel-toggle control-center [tab]" /> | Open or close Control Center. Optional `tab` opens the tab inside control center by default (e.g. `noctalia msg panel-toggle control-center media`). |
+| Toggle Notification Center | <IpcCommand command="panel-toggle notification-center" /> | Open or close Notification Center, like clicking the date in the macOS menu bar: the latest notifications as cards (click to open the app, × to dismiss, "Clear All"), a month widget and a weather widget (each opens its Control Center tab). The bar clock opens it by default. |
 | Toggle plugin panel | <IpcCommand command="panel-toggle <author/plugin:entry> [context]" /> | Open or close a plugin `[[panel]]` entry (e.g. `noctalia msg panel-toggle noctalia/wallhaven:browser`). Optional `context` is passed to `onOpen`. |
 
 ## Dock

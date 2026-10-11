@@ -723,6 +723,7 @@ _noctalia_sources = files(
   'src/shell/island/island.cpp',
   'src/shell/island/island_activity.cpp',
   'src/shell/screen_edges/screen_edges.cpp',
+  'src/shell/notification_center/notification_center_panel.cpp',
   'src/shell/status_overlay/status_overlay_panel.cpp',
   'src/shell/workspace_occupancy.cpp',
   'src/shell/surface/glass.cpp',

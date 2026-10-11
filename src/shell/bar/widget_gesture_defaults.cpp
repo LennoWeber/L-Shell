@@ -38,7 +38,8 @@ namespace noctalia::bar {
          {Gesture::ScrollDown, "brightness-down"}}
     };
     constexpr std::array<GestureBinding, 1> kClipboard{{{Gesture::Left, "panel-toggle clipboard"}}};
-    constexpr std::array<GestureBinding, 1> kClock{{{Gesture::Left, "panel-toggle control-center calendar"}}};
+    // Like the date in the macOS menu bar: Notification Center (its calendar widget leads on to the full month).
+    constexpr std::array<GestureBinding, 1> kClock{{{Gesture::Left, "panel-toggle notification-center"}}};
     constexpr std::array<GestureBinding, 1> kControlCenter{{{Gesture::Left, "panel-toggle control-center home"}}};
     constexpr std::array<GestureBinding, 1> kLauncher{{{Gesture::Left, "panel-toggle launcher"}}};
     constexpr std::array<GestureBinding, 2> kNetwork{

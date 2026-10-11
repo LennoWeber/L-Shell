@@ -68,6 +68,7 @@
 #include "shell/control_center/control_center_panel.h"
 #include "shell/greeter/greeter_appearance_sync.h"
 #include "shell/launcher/launcher_panel.h"
+#include "shell/notification_center/notification_center_panel.h"
 #include "shell/panel/plugin_panel.h"
 #include "shell/polkit/polkit_panel.h"
 #include "shell/session/session_ipc.h"
@@ -750,6 +751,15 @@ void Application::initPanelManagerAndPanels() {
                                  return m_polkitAgent.get();
                                }));
   m_panelManager.registerPanel("setup-wizard", std::make_unique<SetupWizardPanel>(&m_configService, &m_wayland));
+  m_panelManager.registerPanel(
+      std::string(NotificationCenterPanel::kPanelId),
+      std::make_unique<NotificationCenterPanel>(NotificationCenterServices{
+          .config = &m_configService,
+          .notifications = &m_notificationManager,
+          .weather = &m_weatherService,
+          .platform = &m_compositorPlatform,
+      })
+  );
   m_panelManager.registerPanel(
       std::string(StatusOverlayPanel::kPanelId),
       std::make_unique<StatusOverlayPanel>(StatusOverlayServices{

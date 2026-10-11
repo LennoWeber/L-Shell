@@ -4390,5 +4390,15 @@
       "nothing-playing": "Keine Wiedergabe",
       "unknown-track": "Unbekannter Titel"
     }
+  },
+  "notification-center": {
+    "clear": "Alle löschen",
+    "empty": "Keine Mitteilungen",
+    "high-low": "H:{high} T:{low}",
+    "more": "{count} weitere",
+    "now": "jetzt",
+    "title": "Mitteilungen",
+    "weather": "Wetter",
+    "weather-unavailable": "Keine Wetterdaten"
   }
 }

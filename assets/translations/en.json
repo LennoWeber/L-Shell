@@ -5262,5 +5262,15 @@
       "nothing-playing": "Nothing Playing",
       "unknown-track": "Unknown Track"
     }
+  },
+  "notification-center": {
+    "clear": "Clear All",
+    "empty": "No Notifications",
+    "high-low": "H:{high} L:{low}",
+    "more": "{count} more",
+    "now": "now",
+    "title": "Notifications",
+    "weather": "Weather",
+    "weather-unavailable": "No weather data"
   }
 }

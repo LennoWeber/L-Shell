@@ -348,6 +348,10 @@ namespace {
     if (panelId == "polkit") {
       return pc.polkitPosition;
     }
+    // Notification Center hangs from the right end of the menu bar, like on macOS.
+    if (panelId == "notification-center") {
+      return "top_right";
+    }
     return "auto";
   }
 
