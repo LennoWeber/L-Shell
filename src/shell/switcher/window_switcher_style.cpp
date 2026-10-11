@@ -13,6 +13,7 @@ namespace {
 bool WindowSwitcherStyleLayout::sameGeometryAs(const WindowSwitcherStyleLayout& other) const noexcept {
   if (visibleCards != other.visibleCards
       || boxed != other.boxed
+      || iconOnly != other.iconOnly
       || columns != other.columns
       || !closeEnough(panelWidth, other.panelWidth)
       || !closeEnough(panelHeight, other.panelHeight)

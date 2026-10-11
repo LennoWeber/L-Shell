@@ -9,6 +9,7 @@
 #include "ui/style.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <linux/input-event-codes.h>
 
@@ -16,6 +17,12 @@ namespace {
 
   constexpr float kNearToneAlpha = Style::disabledOutlineAlpha * 0.25F;
   constexpr float kFarToneAlpha = Style::disabledOutlineAlpha * 0.5F;
+  // Icon-only tiles (Command-Tab): the icon fills most of the square, the selection is a neutral frosted square.
+  constexpr float kIconOnlyIconScale = 0.8F;
+  constexpr float kIconOnlyHighlightAlpha = 0.14F;
+  constexpr float kIconOnlyHoverAlpha = 0.07F;
+  constexpr float kIconOnlyRadiusFraction = 0.2F; // of the square's side, like the macOS highlight
+  constexpr float kIconOnlyCaptionWidth = 2.6F;   // the name may run wider than its icon
 
 } // namespace
 
@@ -208,6 +215,16 @@ void WindowSwitcherTile::setShowAppIcon(bool show) {
   markLayoutDirty();
 }
 
+void WindowSwitcherTile::setIconOnly(bool iconOnly) {
+  if (m_iconOnly == iconOnly) {
+    return;
+  }
+  m_iconOnly = iconOnly;
+  m_iconTargetSize = 0;
+  applyVisualState();
+  markLayoutDirty();
+}
+
 void WindowSwitcherTile::bind(
     Renderer& renderer, const WindowSwitcherEntry& entry, WindowSwitcherTileDepth depth, bool showCaption,
     bool wideCaption, WindowSwitcherHorizontalPlacement iconPlacement, WindowSwitcherHorizontalPlacement closePlacement
@@ -219,8 +236,18 @@ void WindowSwitcherTile::bind(
   m_wideCaption = wideCaption;
   m_iconPlacement = iconPlacement;
   m_closePlacement = closePlacement;
-  m_title->setText(entry.title.empty() ? entry.appLabel : entry.title);
-  m_subtitle->setText(entry.appLabel.empty() ? entry.appId : entry.appLabel);
+  if (m_iconOnly) {
+    // Command-Tab names the app; the window title below tells two windows of one app apart.
+    const std::string& app = entry.appLabel.empty() ? entry.appId : entry.appLabel;
+    m_title->setText(app.empty() ? entry.title : app);
+    const bool titleIsApp = std::ranges::equal(entry.title, app, [](char a, char b) {
+      return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+    });
+    m_subtitle->setText(app.empty() || titleIsApp ? std::string() : entry.title);
+  } else {
+    m_title->setText(entry.title.empty() ? entry.appLabel : entry.title);
+    m_subtitle->setText(entry.appLabel.empty() ? entry.appId : entry.appLabel);
+  }
 
   if (entry.iconPath != m_iconPath) {
     m_iconPath = entry.iconPath;
@@ -279,6 +306,26 @@ bool WindowSwitcherTile::refreshIcon(Renderer& renderer) {
 }
 
 void WindowSwitcherTile::applyVisualState() {
+  if (m_iconOnly) {
+    const float highlight = m_selected ? kIconOnlyHighlightAlpha : (m_pointerHovered ? kIconOnlyHoverAlpha : 0.0F);
+    m_frame->setFill(highlight > 0.0F ? colorSpecFromRole(ColorRole::OnSurface, highlight) : clearColorSpec());
+    m_frame->setBorder(clearColorSpec(), 0.0F);
+    m_previewHost->setFill(clearColorSpec());
+    m_toneOverlay->setFill(clearColorSpec());
+    m_thumbnail->setVisible(false);
+    if (m_captionBadge != nullptr) {
+      m_captionBadge->setFill(clearColorSpec());
+      m_captionBadge->setBorder(clearColorSpec(), 0.0F);
+      m_captionBadge->setVisible(m_captionVisible && m_showCaption);
+    }
+    if (m_shadow != nullptr) {
+      m_shadow->setVisible(false);
+    }
+    // Quitting an app from Command-Tab is a key, not a button on the icon.
+    m_close->setVisible(false);
+    m_close->setEnabled(false);
+    return;
+  }
   if (m_selected) {
     m_frame->setFill(colorSpecFromRole(ColorRole::Surface));
     m_frame->setBorder(colorSpecFromRole(ColorRole::Primary), Style::emphasizedBorderWidth);
@@ -311,7 +358,49 @@ void WindowSwitcherTile::applyVisualState() {
   m_close->setEnabled(showClose);
 }
 
+void WindowSwitcherTile::layoutIconOnly(Renderer& renderer) {
+  const float side = std::min(m_cardWidth, m_cardHeight);
+  const float radius = side * kIconOnlyRadiusFraction;
+  m_frame->setPosition(0.0F, 0.0F);
+  m_frame->setFrameSize(side, side);
+  m_frame->setRadius(radius);
+  m_previewHost->setPosition(0.0F, 0.0F);
+  m_previewHost->setFrameSize(side, side);
+
+  const float iconSize = std::round(side * kIconOnlyIconScale);
+  const int targetSize = static_cast<int>(iconSize);
+  if (m_iconTargetSize != targetSize) {
+    m_iconTargetSize = targetSize;
+  }
+  (void)refreshIcon(renderer);
+  const float iconOffset = std::round((side - iconSize) * 0.5F);
+  m_icon->setSize(iconSize, iconSize);
+  m_icon->setPosition(iconOffset, iconOffset);
+  m_fallbackGlyph->setGlyphSize(iconSize * 0.6F);
+  m_fallbackGlyph->measure(renderer);
+  m_fallbackGlyph->setPosition(
+      std::round((side - m_fallbackGlyph->width()) * 0.5F), std::round((side - m_fallbackGlyph->height()) * 0.5F)
+  );
+
+  if (m_captionBadge != nullptr && m_captionVisible && m_showCaption) {
+    const float captionH = std::max(0.0F, m_cardHeight - side - Style::spaceXs * m_contentScale);
+    const float captionW = m_cardWidth * kIconOnlyCaptionWidth;
+    m_title->setMaxWidth(captionW);
+    m_subtitle->setMaxWidth(captionW);
+    m_title->measure(renderer);
+    m_subtitle->measure(renderer);
+    m_captionBadge->setPosition(std::round((m_cardWidth - captionW) * 0.5F), m_cardHeight - captionH);
+    m_captionBadge->setFrameSize(captionW, captionH);
+    m_caption->setPosition(0.0F, 0.0F);
+    m_caption->setFrameSize(captionW, captionH);
+  }
+}
+
 void WindowSwitcherTile::layoutContent(Renderer& renderer) {
+  if (m_iconOnly) {
+    layoutIconOnly(renderer);
+    return;
+  }
   const float outerPad = Style::spaceXs * m_contentScale;
   const float innerW = std::max(0.0F, m_cardWidth - outerPad * 2.0F);
   const float captionH = m_captionVisible && m_showCaption

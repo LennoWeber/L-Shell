@@ -14,6 +14,7 @@
 #include "ui/controls/countdown_ring.h"
 #include "ui/controls/flex.h"
 #include "ui/controls/grid_view.h"
+#include "ui/controls/label.h"
 #include "ui/palette.h"
 #include "ui/style.h"
 #include "util/string_utils.h"
@@ -29,6 +30,31 @@ namespace {
 
   constexpr Logger kLog("session");
   constexpr float kCountdownScrimAlpha = 0.58F;
+
+  // macOS menu rows: transparent until highlighted, then the accent color with white text.
+  [[nodiscard]] Button::ButtonPalette menuRowPalette() {
+    const Button::ButtonStateColors normal{
+        .bg = clearColorSpec(), .border = clearColorSpec(), .label = colorSpecFromRole(ColorRole::OnSurface)
+    };
+    const Button::ButtonStateColors highlighted{
+        .bg = colorSpecFromRole(ColorRole::Primary),
+        .border = clearColorSpec(),
+        .label = colorSpecFromRole(ColorRole::OnPrimary)
+    };
+    return Button::ButtonPalette{
+        .borderWidth = 0.0F,
+        .normal = normal,
+        .hover = highlighted,
+        .pressed = highlighted,
+        .disabled =
+            Button::ButtonStateColors{
+                .bg = clearColorSpec(),
+                .border = clearColorSpec(),
+                .label = colorSpecFromRole(ColorRole::OnSurface, 0.4F)
+            },
+        .selected = highlighted,
+    };
+  }
 
   [[nodiscard]] ButtonVariant buttonVariantFor(SessionActionButtonVariant variant) {
     switch (variant) {
@@ -83,6 +109,9 @@ PanelPlacement SessionPanel::panelPlacement() const noexcept {
 }
 
 float SessionPanel::preferredWidth() const {
+  if (menuStyle()) {
+    return scaled(kMenuWidth + Style::panelPadding * 2.0F);
+  }
   const std::size_t n = visibleColumnCount();
   const float gap = Style::spaceMd;
   const float w = kButtonMinWidth * static_cast<float>(n)
@@ -92,6 +121,10 @@ float SessionPanel::preferredWidth() const {
 }
 
 float SessionPanel::preferredHeight() const {
+  if (menuStyle()) {
+    const auto rows = static_cast<float>(std::max<std::size_t>(1, entryCountForLayout()));
+    return std::ceil(scaled(kMenuRowHeight * rows + kMenuRowGap * (rows - 1.0F) + Style::panelPadding * 2.0F));
+  }
   const std::size_t rows = visibleRowCount();
   const float gap = Style::spaceMd;
   const float h = kActionButtonMinHeight * static_cast<float>(rows)
@@ -109,8 +142,13 @@ std::size_t SessionPanel::entryCountForLayout() const {
 
 bool SessionPanel::gridEnabled() const { return m_config != nullptr && m_config->config().shell.session.grid; }
 
+bool SessionPanel::menuStyle() const { return m_config == nullptr || m_config->config().shell.session.menu; }
+
 std::size_t SessionPanel::visibleColumnCount() const {
   const std::size_t n = std::max<std::size_t>(1, entryCountForLayout());
+  if (menuStyle()) {
+    return 1;
+  }
   if (gridEnabled()) {
     const auto columns = static_cast<std::size_t>(std::max(1, m_config->config().shell.session.gridColumns));
     return std::min(columns, n);
@@ -132,19 +170,22 @@ void SessionPanel::create() {
   m_visibleEntries = effectiveActions();
   const std::size_t columns = visibleColumnCount();
 
+  const bool menu = menuStyle();
   auto rootLayout = std::make_unique<GridView>();
   rootLayout->setColumns(columns);
   rootLayout->setColumnGap(Style::spaceMd * scale);
-  rootLayout->setRowGap(Style::spaceMd * scale);
+  rootLayout->setRowGap((menu ? kMenuRowGap : Style::spaceMd) * scale);
   rootLayout->setStretchItems(true);
   rootLayout->setUniformCellSize(true);
-  rootLayout->setMinCellWidth(kButtonMinWidth * scale);
-  rootLayout->setMinCellHeight(kActionButtonMinHeight * scale);
+  rootLayout->setMinCellWidth((menu ? kMenuWidth : kButtonMinWidth) * scale);
+  rootLayout->setMinCellHeight((menu ? kMenuRowHeight : kActionButtonMinHeight) * scale);
   m_rootLayout = rootLayout.get();
 
   m_visibleButtons.clear();
   m_countdownOverlays.clear();
   m_entryShortcutBadges.clear();
+  m_menuShortcuts.clear();
+  m_menuHovered.assign(m_visibleEntries.size(), false);
   m_visibleButtons.reserve(m_visibleEntries.size());
   m_countdownOverlays.reserve(m_visibleEntries.size());
   m_entryShortcutBadges.reserve(m_visibleEntries.size());
@@ -184,6 +225,60 @@ Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, st
       ? m_entryShortcutBadges[index]
       : std::nullopt;
 
+  if (menuStyle()) {
+    auto row = ui::button({
+        .text = labelText,
+        .glyph = glyph,
+        .fontSize = Style::fontSizeBody * scale,
+        .glyphSize = (Style::fontSizeBody + 2.0F) * scale,
+        .contentAlign = ButtonContentAlign::Start,
+        .customPalette = menuRowPalette(),
+        .minWidth = kMenuWidth * scale,
+        .minHeight = kMenuRowHeight * scale,
+        .paddingV = 0.0F,
+        .paddingH = Style::spaceSm * scale,
+        .gap = Style::spaceSm * scale,
+        .radius = Style::scaledRadiusMd(scale),
+        .flexGrow = 1.0F,
+        .onClick = [this, index]() { armEntry(index); },
+        .onEnter =
+            [this, index]() {
+              if (index < m_menuHovered.size()) {
+                m_menuHovered[index] = true;
+                syncMenuShortcut(index);
+              }
+            },
+        .onLeave =
+            [this, index]() {
+              if (index < m_menuHovered.size()) {
+                m_menuHovered[index] = false;
+                syncMenuShortcut(index);
+              }
+            },
+        .configure =
+            [](Button& control) {
+              control.setFillHeight(true);
+              control.setTabStop(false);
+            },
+    });
+    Label* shortcut = nullptr;
+    const bool showShortcut = index < m_entryShortcutBadges.size()
+        && m_entryShortcutBadges[index].has_value()
+        && (m_config == nullptr || m_config->config().shell.session.showShortcuts);
+    if (showShortcut) {
+      shortcut = static_cast<Label*>(row->addChild(
+          ui::label({
+              .text = *m_entryShortcutBadges[index],
+              .fontSize = Style::fontSizeBody * scale,
+              .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+              .participatesInLayout = false,
+          })
+      ));
+    }
+    m_menuShortcuts.push_back(shortcut);
+    return row.release();
+  }
+
   auto button = ui::button({
       .text = labelText,
       .glyph = glyph,
@@ -214,7 +309,8 @@ Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, st
 }
 
 void SessionPanel::attachCountdownOverlay(Button& button, ActionCountdownOverlay& overlay, float scale) {
-  const float ringSize = 64.0F * scale;
+  // A menu row shows a small ring where its shortcut sits; a tile a large one in its middle.
+  const float ringSize = (menuStyle() ? kMenuRowHeight - 8.0F : 64.0F) * scale;
 
   auto overlayRoot = ui::column({
       .out = &overlay.root,
@@ -235,8 +331,8 @@ void SessionPanel::attachCountdownOverlay(Button& button, ActionCountdownOverlay
 
   auto ring = std::make_unique<CountdownRing>();
   ring->setRingSize(ringSize);
-  ring->setThickness(std::max(5.0F, 5.5F * scale));
-  ring->setFontSize(22.0F * scale);
+  ring->setThickness(menuStyle() ? 2.0F * scale : std::max(5.0F, 5.5F * scale));
+  ring->setFontSize((menuStyle() ? Style::fontSizeMini : 22.0F) * scale);
   ring->setParticipatesInLayout(false);
   ring->setZIndex(1);
   overlay.ring = ring.get();
@@ -353,7 +449,29 @@ void SessionPanel::hideCountdownOverlays() {
   }
 }
 
+void SessionPanel::syncMenuShortcut(std::size_t index) {
+  if (index >= m_menuShortcuts.size() || m_menuShortcuts[index] == nullptr) {
+    return;
+  }
+  const bool countdown = m_pendingCountdown.has_value() && m_pendingCountdown->index == index;
+  const bool highlighted = countdown
+      || (index < m_menuHovered.size() && m_menuHovered[index])
+      || (m_selectedIndex.has_value() && *m_selectedIndex == index);
+  Label* shortcut = m_menuShortcuts[index];
+  shortcut->setVisible(!countdown);
+  shortcut->setColor(
+      highlighted ? colorSpecFromRole(ColorRole::OnPrimary, 0.8F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
+  );
+}
+
 void SessionPanel::restoreEntryBadges() {
+  if (menuStyle()) {
+    // Menu rows carry their shortcut as a hint on the right, never as a badge.
+    for (std::size_t i = 0; i < m_menuShortcuts.size(); ++i) {
+      syncMenuShortcut(i);
+    }
+    return;
+  }
   for (std::size_t i = 0; i < m_visibleButtons.size(); ++i) {
     Button* button = m_visibleButtons[i];
     if (button == nullptr) {
@@ -396,7 +514,9 @@ void SessionPanel::updateCountdownVisuals() {
     overlay.ring->setProgress(progress);
     overlay.ring->setSeconds(seconds);
   }
-  if (pendingIndex < m_visibleButtons.size()) {
+  if (menuStyle()) {
+    syncMenuShortcut(pendingIndex);
+  } else if (pendingIndex < m_visibleButtons.size()) {
     if (Button* button = m_visibleButtons[pendingIndex]; button != nullptr) {
       button->setBadge("");
     }
@@ -424,7 +544,7 @@ void SessionPanel::layoutCountdownOverlays(Renderer& renderer) {
 
     if (overlay.ring != nullptr) {
       const float ringSize = overlay.ring->ringSize();
-      const float ringX = (width - ringSize) * 0.5F;
+      const float ringX = menuStyle() ? width - ringSize - Style::spaceSm * contentScale() : (width - ringSize) * 0.5F;
       const float ringY = (height - ringSize) * 0.5F;
       overlay.ring->setPosition(ringX, ringY);
       overlay.ring->layout(renderer);
@@ -572,6 +692,9 @@ void SessionPanel::updateSelectionVisuals() {
     const bool keyboardSelected = m_selectedIndex.has_value() && i == *m_selectedIndex;
     button->setSelected(keyboardSelected);
   }
+  for (std::size_t i = 0; i < m_menuShortcuts.size(); ++i) {
+    syncMenuShortcut(i);
+  }
 }
 
 void SessionPanel::doLayout(Renderer& renderer, float width, float height) {
@@ -587,6 +710,18 @@ void SessionPanel::doLayout(Renderer& renderer, float width, float height) {
       button->updateInputArea();
     }
   }
+  for (std::size_t i = 0; i < m_menuShortcuts.size() && i < m_visibleButtons.size(); ++i) {
+    Label* shortcut = m_menuShortcuts[i];
+    const Button* row = m_visibleButtons[i];
+    if (shortcut == nullptr || row == nullptr) {
+      continue;
+    }
+    shortcut->measure(renderer);
+    shortcut->setPosition(
+        std::round(row->width() - shortcut->width() - Style::spaceMd * contentScale()),
+        std::round((row->height() - shortcut->height()) * 0.5F)
+    );
+  }
   layoutCountdownOverlays(renderer);
 }
 
@@ -600,5 +735,7 @@ void SessionPanel::onClose() {
   m_visibleButtons.clear();
   m_countdownOverlays.clear();
   m_entryShortcutBadges.clear();
+  m_menuShortcuts.clear();
+  m_menuHovered.clear();
   clearReleasedRoot();
 }

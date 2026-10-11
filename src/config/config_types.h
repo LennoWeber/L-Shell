@@ -246,6 +246,8 @@ struct SessionPanelActionConfig {
 
 struct ShellSessionConfig {
   std::vector<SessionPanelActionConfig> actions;
+  // A compact list like the Apple menu (icon, name, shortcut per row) instead of large tiles. Wins over `grid`.
+  bool menu = true;
   // Lay the session panel actions out over multiple rows of `gridColumns` instead of
   // fitting them on a single row.
   bool grid = false;
@@ -1186,17 +1188,20 @@ struct ShellConfig {
     Carousel = 0,
     Compact = 1,
     Grid = 2,
+    Apps = 3, // macOS Command-Tab: a row of large app icons on glass
   };
 
   static constexpr EnumOption<WindowSwitcherStyle> kWindowSwitcherStyles[] = {
+      {WindowSwitcherStyle::Apps, "apps", "settings.options.shell.window-switcher-style.apps"},
       {WindowSwitcherStyle::Carousel, "carousel", "settings.options.shell.window-switcher-style.carousel"},
       {WindowSwitcherStyle::Compact, "compact", "settings.options.shell.window-switcher-style.compact"},
       {WindowSwitcherStyle::Grid, "grid", "settings.options.shell.window-switcher-style.grid"},
   };
 
   struct WindowSwitcherConfig {
-    WindowSwitcherStyle style = WindowSwitcherStyle::Carousel;
-    bool mru = false;
+    // Alt+Tab like Command-Tab on macOS: app icons, most recently used first. No window previews are captured.
+    WindowSwitcherStyle style = WindowSwitcherStyle::Apps;
+    bool mru = true;
     bool showCaption = true;
     bool showCount = true;
     bool showAppIcon = true;

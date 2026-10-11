@@ -558,7 +558,7 @@ location = "https://example.invalid/bad"
     };
     c.shell.keyboardLayout.customLabels = {{"English (US)", "US"}, {"German", "DE"}};
     c.shell.windowSwitcher.style = ShellConfig::WindowSwitcherStyle::Compact;
-    c.shell.windowSwitcher.mru = true;
+    c.shell.windowSwitcher.mru = false; // non-default (L-Shell orders by recent use)
     c.shell.windowSwitcher.showCaption = false;
     c.shell.windowSwitcher.showCount = false;
     c.shell.windowSwitcher.showAppIcon = false;

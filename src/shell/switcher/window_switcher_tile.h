@@ -44,6 +44,8 @@ public:
   void setShadowStyle(const RoundedRectStyle& style);
   void setShowCaption(bool show);
   void setShowAppIcon(bool show);
+  // App icon without a window preview: no card, a soft highlight square when selected (macOS Command-Tab).
+  void setIconOnly(bool iconOnly);
   void setAppIconColorizeTint(std::optional<ColorSpec> tint) { m_appIconColorizeTint = tint; }
   void setOnInvalidate(std::function<void()> callback) { m_onInvalidate = std::move(callback); }
   void setOnActivate(std::function<void()> callback) { m_onActivate = std::move(callback); }
@@ -59,6 +61,7 @@ private:
   void setPointerHovered(bool hovered);
   void applyVisualState();
   void layoutContent(Renderer& renderer);
+  void layoutIconOnly(Renderer& renderer);
 
 protected:
   void doLayout(Renderer& renderer) override;
@@ -88,6 +91,7 @@ protected:
   bool m_captionVisible = false;
   bool m_wideCaption = false;
   bool m_showAppIcon = true;
+  bool m_iconOnly = false;
   WindowSwitcherHorizontalPlacement m_iconPlacement = WindowSwitcherHorizontalPlacement::Left;
   WindowSwitcherHorizontalPlacement m_closePlacement = WindowSwitcherHorizontalPlacement::Right;
   WindowSwitcherTileDepth m_depth = WindowSwitcherTileDepth::Far;

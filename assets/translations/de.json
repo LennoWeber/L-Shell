@@ -903,12 +903,12 @@
   "session": {
     "actions": {
       "custom": "Benutzerdefiniert",
-      "lock": "Sperren",
-      "lock-and-suspend": "Sperren & Energiesparen",
+      "lock": "Bildschirm sperren",
+      "lock-and-suspend": "Ruhezustand",
       "logout": "Abmelden",
-      "reboot": "Neu starten",
-      "shutdown": "Herunterfahren",
-      "suspend": "Energiesparen"
+      "reboot": "Neustart",
+      "shutdown": "Ausschalten",
+      "suspend": "Ruhezustand ohne Sperren"
     },
     "errors": {
       "lock-body": "Das Sitzungssperrprotokoll ist nicht verfügbar.",
@@ -2589,6 +2589,10 @@
           "description": "Einträge des Sitzungsmenüs, Reihenfolge, benutzerdefinierte Befehle und Icons",
           "label": "Einträge"
         },
+        "session-menu": {
+          "description": "Eine kompakte Liste wie das Apple-Menü statt großer Schaltflächen",
+          "label": "Menüstil"
+        },
         "session-grid": {
           "description": "Zeige Sitzungsmenü-Aktionen in einem Rasterlayout an",
           "label": "Rasterlayout"
@@ -3341,7 +3345,7 @@
         "handle": {
           "reveal": {
             "label": "Zeigt",
-            "description": "Was erscheint, wenn du über die Linie unten fährst oder sie hochziehst. Die Linie braucht die Mitte unten: Ist dort immer ein Dock sichtbar, stell das Dock auf intelligentes Ausblenden."
+            "description": "Was erscheint, wenn du über die Linie unten fährst oder sie hochziehst. Mit einem Dock unten sitzt die Linie im Spalt darunter."
           },
           "pull-up": {
             "label": "Hochziehen",

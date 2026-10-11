@@ -14,6 +14,7 @@ class Button;
 class Flex;
 class GridView;
 class InputArea;
+class Label;
 class CountdownRing;
 class Renderer;
 class ConfigService;
@@ -52,6 +53,10 @@ private:
   static constexpr float kActionButtonMinHeight = 112.0F;
   static constexpr float kButtonMinWidth = 152.0F;
   static constexpr std::size_t kMaxColumns = 5;
+  // Menu style (the Apple menu): slim rows with an icon, the name and the shortcut on the right.
+  static constexpr float kMenuWidth = 236.0F;
+  static constexpr float kMenuRowHeight = 30.0F;
+  static constexpr float kMenuRowGap = 1.0F;
 
   void doLayout(Renderer& renderer, float width, float height) override;
   void doUpdate(Renderer& renderer) override;
@@ -70,6 +75,9 @@ private:
   [[nodiscard]] Button* createActionButton(const SessionPanelActionConfig& cfg, std::size_t index, float scale);
   [[nodiscard]] std::size_t entryCountForLayout() const;
   [[nodiscard]] bool gridEnabled() const;
+  [[nodiscard]] bool menuStyle() const;
+  // Shortcut hint color of a menu row: white on the accent highlight, secondary text otherwise.
+  void syncMenuShortcut(std::size_t index);
   [[nodiscard]] std::size_t visibleColumnCount() const;
   [[nodiscard]] std::size_t visibleRowCount() const;
 
@@ -78,6 +86,8 @@ private:
   std::vector<Button*> m_visibleButtons;
   std::vector<ActionCountdownOverlay> m_countdownOverlays;
   std::vector<std::optional<std::string>> m_entryShortcutBadges;
+  std::vector<Label*> m_menuShortcuts; // menu style: right-aligned shortcut hint per row (nullptr without one)
+  std::vector<bool> m_menuHovered;
   std::optional<std::size_t> m_selectedIndex;
   std::optional<PendingCountdown> m_pendingCountdown;
   bool m_actionQueued = false;

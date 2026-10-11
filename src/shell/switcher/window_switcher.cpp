@@ -19,7 +19,9 @@
 #include "render/scene/input_area.h"
 #include "render/scene/input_dispatcher.h"
 #include "render/scene/node.h"
+#include "shell/surface/glass.h"
 #include "shell/surface/shadow.h"
+#include "shell/switcher/window_switcher_apps_style.h"
 #include "shell/switcher/window_switcher_carousel_style.h"
 #include "shell/switcher/window_switcher_compact_style.h"
 #include "shell/switcher/window_switcher_grid_style.h"
@@ -75,6 +77,9 @@ namespace {
     }
     if (config.style == ShellConfig::WindowSwitcherStyle::Grid) {
       return computeWindowSwitcherGridLayout(context);
+    }
+    if (config.style == ShellConfig::WindowSwitcherStyle::Apps) {
+      return computeWindowSwitcherAppsLayout(context);
     }
     return computeWindowSwitcherCarouselLayout(context);
   }
@@ -721,6 +726,10 @@ ShellConfig::WindowSwitcherConfig WindowSwitcher::effectiveConfig() const {
     config.showAllOutputs = false;
     config.showCount = false;
     config.mru = false; // a stable arrangement reads better than recency order
+  } else if (config.style == ShellConfig::WindowSwitcherStyle::Apps) {
+    // Command-Tab shows no counter, and the icons are the content.
+    config.showCount = false;
+    config.showAppIcon = true;
   }
   return config;
 }
@@ -937,6 +946,10 @@ void WindowSwitcher::refreshWindows() {
 
 void WindowSwitcher::startThumbnailCaptures() {
   cancelThumbnailCaptures();
+  // App icons need no window previews: no screencopy per window, nothing to wait for.
+  if (effectiveConfig().style == ShellConfig::WindowSwitcherStyle::Apps) {
+    return;
+  }
   if (!m_active || m_wayland == nullptr || m_thumbnailCapture == nullptr || !m_thumbnailCapture->available()) {
     return;
   }
@@ -1504,8 +1517,7 @@ bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
     return true;
   }
   // In the grid, Up/Down move between rows; elsewhere they step like Left/Right.
-  const int rowStride =
-      m_instance->styleLayout.columns > 0 ? static_cast<int>(m_instance->styleLayout.columns) : 1;
+  const int rowStride = m_instance->styleLayout.columns > 0 ? static_cast<int>(m_instance->styleLayout.columns) : 1;
   if (matchesAction(KeybindAction::Up)) {
     navigateList(-rowStride);
     return true;
@@ -1822,19 +1834,20 @@ void WindowSwitcher::buildWorkspaceBar(Instance& instance, InputArea& parent, Re
   });
   for (const Workspace& workspace : m_platform->workspaces(m_output)) {
     const std::string name = workspace.name.empty() ? std::to_string(workspace.index + 1) : workspace.name;
-    bar->addChild(ui::button({
-        .text = i18n::tr("window-switcher.desktop", "name", name),
-        .fontSize = Style::fontSizeCaption * scale,
-        .variant = workspace.active ? ButtonVariant::Primary : ButtonVariant::Ghost,
-        .radius = Style::scaledRadiusLg(scale),
-        .onClick =
-            [this, workspace]() {
+    bar->addChild(
+        ui::button({
+            .text = i18n::tr("window-switcher.desktop", "name", name),
+            .fontSize = Style::fontSizeCaption * scale,
+            .variant = workspace.active ? ButtonVariant::Primary : ButtonVariant::Ghost,
+            .radius = Style::scaledRadiusLg(scale),
+            .onClick = [this, workspace]() {
               // The workspace change refreshes the grid through onToplevelChange().
               if (m_platform != nullptr && m_output != nullptr && !workspace.active) {
                 m_platform->activateWorkspace(m_output, workspace);
               }
             },
-    }));
+        })
+    );
   }
   instance.workspaceSignature = workspaceSignature();
   Flex* barNode = instance.workspaceBar;
@@ -1879,7 +1892,9 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
 
   // The overview dims the desktop further, like Mission Control.
   constexpr float kOverviewDimOpacity = 0.7F;
-  const float dimOpacity = m_overviewMode ? kOverviewDimOpacity : Style::windowSwitcherDimOpacity;
+  // Command-Tab leaves the desktop as it is: only the glass panel appears.
+  const float dimOpacity =
+      m_overviewMode ? kOverviewDimOpacity : (layout.iconOnly ? 0.0F : Style::windowSwitcherDimOpacity);
   input->addChild(
       ui::box({
           .out = &instance.dimmer,
@@ -1909,6 +1924,12 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
           .participatesInLayout = false,
       })
   );
+  if (layout.iconOnly) {
+    // Liquid Glass like the Command-Tab panel: a light tint over the compositor blur, an edge-lit rim.
+    const shell::glass::GlassStyle glass;
+    instance.panelBackground->setFill(colorSpecFromRole(ColorRole::Surface, glass.tintOpacity));
+    shell::glass::applyRim(*instance.panelBackground, glass, isResolvedLightTheme(), scale);
+  }
   std::optional<ColorSpec> iconTint;
   if (m_config != nullptr) {
     iconTint = effectiveShellAppIconColorizationTint(m_config->config().shell);
@@ -1942,6 +1963,7 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
       tile->setVisible(false);
       tile->setAppIconColorizeTint(iconTint);
       tile->setShadowStyle(selectedShadowStyle);
+      tile->setIconOnly(layout.iconOnly);
       tile->setShowCaption(switcherConfig.showCaption);
       tile->setShowAppIcon(switcherConfig.showAppIcon);
       tile->setOnInvalidate([this]() { requestSceneUpdate(); });

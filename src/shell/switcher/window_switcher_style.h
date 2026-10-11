@@ -56,6 +56,7 @@ struct WindowSwitcherStyleLayout {
   float countWidth = 0.0F;
   float countHeight = 0.0F;
   bool boxed = false;
+  bool iconOnly = false;   // app icons without window previews (the macOS Command-Tab look)
   std::size_t columns = 0; // grid styles only; 0 = single row/carousel navigation
 
   [[nodiscard]] bool sameGeometryAs(const WindowSwitcherStyleLayout& other) const noexcept;

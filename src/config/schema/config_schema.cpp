@@ -1707,6 +1707,7 @@ namespace noctalia::config::schema {
               &ShellSessionConfig::actions, "actions", sessionActionSchema(),
               [](const SessionPanelActionConfig& a) { return !a.action.empty(); }
           ),
+          field(&ShellSessionConfig::menu, "menu"),
           field(&ShellSessionConfig::grid, "grid"),
           field(&ShellSessionConfig::gridColumns, "grid_columns", kSessionGridColumnsRange),
           field(&ShellSessionConfig::showShortcuts, "show_shortcuts"),

@@ -3343,10 +3343,19 @@ namespace settings {
         &ShellConfig::PanelConfig::sessionPlacement, &ShellConfig::PanelConfig::sessionPosition
     ));
     entries.push_back(makeEntry(
-        SettingsSection::Power, "session-panel", tr("settings.schema.power.session-grid.label"),
-        tr("settings.schema.power.session-grid.description"), {"shell", "session", "grid"},
-        ToggleSetting{.checked = cfg.shell.session.grid}, "session panel grid layout rows columns"
+        SettingsSection::Power, "session-panel", tr("settings.schema.power.session-menu.label"),
+        tr("settings.schema.power.session-menu.description"), {"shell", "session", "menu"},
+        ToggleSetting{.checked = cfg.shell.session.menu}, "session panel menu list apple menu macos"
     ));
+    {
+      auto e = makeEntry(
+          SettingsSection::Power, "session-panel", tr("settings.schema.power.session-grid.label"),
+          tr("settings.schema.power.session-grid.description"), {"shell", "session", "grid"},
+          ToggleSetting{.checked = cfg.shell.session.grid}, "session panel grid layout rows columns"
+      );
+      e.visibleWhen = [](const Config& c) { return !c.shell.session.menu; };
+      entries.push_back(std::move(e));
+    }
     {
       auto e = makeEntry(
           SettingsSection::Power, "session-panel", tr("settings.schema.power.session-grid-columns.label"),
@@ -3359,7 +3368,7 @@ namespace settings {
           },
           "session panel grid columns per row"
       );
-      e.visibleWhen = [](const Config& c) { return c.shell.session.grid; };
+      e.visibleWhen = [](const Config& c) { return !c.shell.session.menu && c.shell.session.grid; };
       entries.push_back(std::move(e));
     }
     entries.push_back(makeEntry(

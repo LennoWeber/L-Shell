@@ -1014,12 +1014,12 @@
   "session": {
     "actions": {
       "custom": "Custom",
-      "lock": "Lock",
-      "lock-and-suspend": "Lock & Suspend",
+      "lock": "Lock Screen",
+      "lock-and-suspend": "Sleep",
       "logout": "Log Out",
-      "reboot": "Reboot",
+      "reboot": "Restart",
       "shutdown": "Shut Down",
-      "suspend": "Suspend"
+      "suspend": "Sleep Without Locking"
     },
     "errors": {
       "lock-body": "The session lock protocol is not available.",
@@ -1603,6 +1603,7 @@
           "up-right": "Up Right"
         },
         "window-switcher-style": {
+          "apps": "App Icons (macOS)",
           "carousel": "Carousel",
           "compact": "Compact",
           "grid": "Grid (Mission Control)"
@@ -2835,6 +2836,10 @@
           "description": "Session panel entries, order, custom commands, and icons",
           "label": "Entries"
         },
+        "session-menu": {
+          "description": "A compact list like the Apple menu instead of large buttons",
+          "label": "Menu Style"
+        },
         "session-grid": {
           "description": "Display session panel actions in a grid layout",
           "label": "Grid Layout"
@@ -3500,7 +3505,7 @@
           "label": "Show Window Count"
         },
         "window-switcher-style": {
-          "description": "Choose the freestanding depth carousel or the boxed compact strip",
+          "description": "App icons like Command-Tab on macOS, the freestanding depth carousel or the boxed compact strip of previews",
           "label": "Switcher Style"
         }
       },
@@ -3707,7 +3712,7 @@
         "handle": {
           "reveal": {
             "label": "Shows",
-            "description": "What appears when you hover or pull up the line at the bottom. The line needs the bottom center free: with a dock always visible at the bottom, set the dock to Smart Hide."
+            "description": "What appears when you hover or pull up the line at the bottom. With a dock at the bottom, the line sits in the gap under it."
           },
           "pull-up": {
             "label": "Pull Up",
