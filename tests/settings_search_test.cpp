@@ -53,6 +53,11 @@ int main(int argc, char* argv[]) {
     return result.id == std::string("bar\x1f" "default\x1f" "position");
   });
   ok = expect(hasBarPosition, "results include the bar position setting") && ok;
+  ok = expect(
+           !results.empty() && results.front().id == std::string("bar\x1f" "default\x1f" "position"),
+           "the bar's own position setting ranks first"
+       )
+      && ok;
   ok = expect(provider.query("   ").empty(), "blank query lists nothing") && ok;
   ok = expect(provider.query("zzzz-no-such-setting").empty(), "unknown words find nothing") && ok;
 

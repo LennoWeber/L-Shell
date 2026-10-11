@@ -3,7 +3,6 @@
 #include "config/config_service.h"
 #include "core/deferred_call.h"
 #include "i18n/i18n.h"
-#include "util/fuzzy_match.h"
 #include "util/string_utils.h"
 
 #include <algorithm>
@@ -25,6 +24,23 @@ namespace {
       joined += part;
     }
     return joined;
+  }
+
+  // Relevance by where each query word appears: the setting's own name counts most,
+  // then the page and group it lives on, then descriptions and keywords.
+  [[nodiscard]] double relevance(
+      std::string_view query, std::string_view title, std::string_view section, std::string_view group
+  ) {
+    double score = 0.0;
+    for (std::size_t start = 0; start < query.size();) {
+      const std::size_t end = std::min(query.find(' ', start), query.size());
+      const std::string_view word = query.substr(start, end - start);
+      if (!word.empty()) {
+        score += title.contains(word) ? 3.0 : (section.contains(word) || group.contains(word) ? 2.0 : 1.0);
+      }
+      start = end + 1;
+    }
+    return score;
   }
 
   [[nodiscard]] std::vector<std::string> splitPath(std::string_view joined) {
@@ -67,19 +83,21 @@ std::vector<LauncherResult> SettingsProvider::query(std::string_view text) const
       continue;
     }
 
-    // Every query word already matched; a fuzzy hit on the title ranks closer names first.
-    const double titleScore = FuzzyMatch::score(query, StringUtils::toLower(entry.title));
+    const std::string section = i18n::tr(settings::settingsSectionLabelKey(entry.section));
+    const std::string group = entry.group.empty() ? std::string{} : i18n::tr("settings.navigation.groups." + entry.group);
 
     LauncherResult result;
     result.id = joinPath(entry.path);
     result.title = entry.title;
-    result.subtitle = i18n::tr(settings::settingsSectionLabelKey(entry.section));
-    if (!entry.group.empty()) {
-      result.subtitle += " › " + i18n::tr("settings.navigation.groups." + entry.group);
+    result.subtitle = section;
+    if (!group.empty() && group != section) {
+      result.subtitle += " › " + group;
     }
     result.glyphName = std::string(settings::sectionGlyph(entry.section));
-    result.category = i18n::tr(settings::settingsSectionLabelKey(entry.section));
-    result.score = FuzzyMatch::isMatch(titleScore) ? titleScore : 0.0;
+    result.category = section;
+    result.score = relevance(
+        query, StringUtils::toLower(entry.title), StringUtils::toLower(section), StringUtils::toLower(group)
+    );
     results.push_back(std::move(result));
   }
 
