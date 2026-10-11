@@ -1578,6 +1578,12 @@ namespace settings {
     };
 
     entries.push_back(makeEntry(
+        SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-style.label"),
+        tr("settings.schema.panels.launcher-style.description"), {"shell", "launcher", "style"},
+        asSegmented(enumSelect(ShellConfig::kLauncherStyles, cfg.shell.launcher.style)),
+        "launcher spotlight command bar style look"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.placement-launcher.label"),
         tr("settings.schema.panels.placement-launcher.description"), {"shell", "panel", "launcher_placement"},
         asSegmented(enumSelect(kPanelPlacements, cfg.shell.panel.launcherPlacement)),
@@ -1609,21 +1615,30 @@ namespace settings {
         {"shell", "launcher", "show_app_origin_indicator"}, ToggleSetting{cfg.shell.launcher.showAppOriginIndicator},
         "launcher app origin indicator"
     ));
-    entries.push_back(makeEntry(
-        SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-app-grid.label"),
-        tr("settings.schema.panels.launcher-app-grid.description"), {"shell", "launcher", "app_grid"},
-        ToggleSetting{cfg.shell.launcher.appGrid}, "launcher app grid icons view"
-    ));
+    {
+      // The command bar has one row kind and no app grid.
+      auto e = makeEntry(
+          SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-app-grid.label"),
+          tr("settings.schema.panels.launcher-app-grid.description"), {"shell", "launcher", "app_grid"},
+          ToggleSetting{cfg.shell.launcher.appGrid}, "launcher app grid icons view"
+      );
+      e.visibleWhen = [](const Config& c) { return c.shell.launcher.style == ShellConfig::LauncherStyle::Spotlight; };
+      entries.push_back(std::move(e));
+    }
     entries.push_back(makeEntry(
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-app-actions.label"),
         tr("settings.schema.panels.launcher-app-actions.description"), {"shell", "launcher", "show_app_actions"},
         ToggleSetting{cfg.shell.launcher.showAppActions}, "launcher app actions show"
     ));
-    entries.push_back(makeEntry(
-        SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-compact.label"),
-        tr("settings.schema.panels.launcher-compact.description"), {"shell", "launcher", "compact"},
-        ToggleSetting{cfg.shell.launcher.compact}, "launcher compact rows dense"
-    ));
+    {
+      auto e = makeEntry(
+          SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-compact.label"),
+          tr("settings.schema.panels.launcher-compact.description"), {"shell", "launcher", "compact"},
+          ToggleSetting{cfg.shell.launcher.compact}, "launcher compact rows dense"
+      );
+      e.visibleWhen = [](const Config& c) { return c.shell.launcher.style == ShellConfig::LauncherStyle::Spotlight; };
+      entries.push_back(std::move(e));
+    }
     entries.push_back(makeEntry(
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-sort-by-usage.label"),
         tr("settings.schema.panels.launcher-sort-by-usage.description"), {"shell", "launcher", "sort_by_usage"},

@@ -102,6 +102,7 @@ open_near_click_wallpaper      = false  # attached/floating: follow the bar clic
 open_near_click_session        = false  # attached/floating: follow the bar click instead of bar-center
 
 [shell.launcher]
+style           = "command" # command | spotlight (compact command bar, or the macOS Spotlight original)
 categories      = true   # show launcher category filters; Tab toggles them while open
 show_icons      = true   # show application icons in launcher results
 show_app_origin_indicator = true # show package origin indicators on application results
@@ -263,6 +264,7 @@ Notes:
 - `shell.panel.floating_offset` sets the gap in pixels a floating panel keeps from the bar edge, or from the screen edge when it is pinned with a `*_position` (default `8`). It also spaces panels using the reserved edge area when multiple bars share an edge. `attached` panels ignore it.
 - When multiple enabled bars resolve to the same edge on one monitor, exact source-bar attachment is ambiguous. In that case attached/floating panels use the compositor's reserved edge area and open outside the bar stack instead of anchoring to one bar. Prefer setting `shell.panel_anchor_bar` when you have more than one bar and open panels via IPC or shortcuts.
 - `shell.panel.open_near_click_control_center`, `open_near_click_launcher`, `open_near_click_clipboard`, `open_near_click_wallpaper`, and `open_near_click_session` position attached or floating panels near the click location on the bar instead of centering them along the bar. They are ignored when a panel is `floating` with a `*_position` other than `auto`, since it is then pinned to a fixed screen position.
+- `shell.launcher.style` picks the launcher's look. `command` (the default) is a compact, square-cut command bar: one-line results with the result's kind as a tag on the right, a neutral selection with an accent edge, and a footer with the result count and key hints; the panel grows with its results up to nine rows. `spotlight` is the macOS Tahoe Spotlight original: a capsule search field that opens into a rounded sheet with results grouped under headers. `compact` and `app_grid` only apply to `spotlight`.
 - `shell.launcher.categories` shows compact category filters in the launcher for providers that expose categories, currently Applications and Emoji. **All** leaves results unfiltered. With a prefixed provider such as `/emo`, the filters come from that provider. Press `Tab` while the launcher is open to hide/show the filters; the left/right keybind actions move between filters.
 - `shell.launcher.show_icons` toggles application icons in launcher result rows. Prefixed-provider rows (for example emoji) still show their leading character when icons are hidden.
 - `shell.launcher.show_app_origin_indicator` toggles the package-origin overlays on application results, such as Flatpak, Snap, Nix, and AppImage.

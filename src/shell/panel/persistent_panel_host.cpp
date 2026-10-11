@@ -437,7 +437,9 @@ void PersistentPanelHost::layoutScene(Instance& instance, std::uint32_t width, s
     instance.bgNode->setSize(panelW, panelH);
   }
 
-  const float padding = instance.panel->hasDecoration() ? instance.panel->contentScale() * Style::panelPadding : 0.0F;
+  const float padding = instance.panel->hasDecoration()
+      ? instance.panel->contentScale() * instance.panel->contentPadding().value_or(Style::panelPadding)
+      : 0.0F;
   const float contentWidth = panelW - padding * 2.0F;
   const float contentHeight = panelH - padding * 2.0F;
   Renderer& renderer = instance.surface->renderTarget().renderer();

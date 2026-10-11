@@ -728,6 +728,25 @@
     "search-placeholder": "Spotlight-Suche",
     "sections": {
       "top-hit": "Bester Treffer"
+    },
+    "footer": {
+      "results": "{count} Treffer",
+      "results-plural": "{count} Treffer",
+      "open": "Öffnen",
+      "actions": "Aktionen",
+      "commands": "Befehle",
+      "close": "Schließen"
+    },
+    "command-placeholder": "Apps, Einstellungen und Befehle suchen…",
+    "tags": {
+      "applications": "Programm",
+      "calculator": "Rechner",
+      "emoji": "Emoji",
+      "panels": "Panel",
+      "session": "Sitzung",
+      "settings": "Einstellung",
+      "wallpaper": "Hintergrund",
+      "windows": "Fenster"
     }
   },
   "location": {
@@ -1464,6 +1483,10 @@
           "up": "Oben",
           "up-left": "Oben links",
           "up-right": "Oben rechts"
+        },
+        "launcher-style": {
+          "command": "Befehlsleiste",
+          "spotlight": "Spotlight"
         }
       },
       "theme": {
@@ -2583,6 +2606,10 @@
         "transparency-mode": {
           "description": "Panel-Glasstil, einschließlich Deckkraft schwebender Panels und Kartentransluzenz",
           "label": "Transparenz"
+        },
+        "launcher-style": {
+          "label": "Stil",
+          "description": "Befehlsleiste ist kompakt und kantig mit einzeiligen Treffern; Spotlight ist das macOS-Original"
         }
       },
       "power": {

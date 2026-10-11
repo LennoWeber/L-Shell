@@ -818,6 +818,25 @@
     "search-placeholder": "Spotlight Search",
     "sections": {
       "top-hit": "Top Hit"
+    },
+    "footer": {
+      "results": "{count} result",
+      "results-plural": "{count} results",
+      "open": "Open",
+      "actions": "Actions",
+      "commands": "Commands",
+      "close": "Close"
+    },
+    "command-placeholder": "Search apps, settings and commands…",
+    "tags": {
+      "applications": "Application",
+      "calculator": "Calculator",
+      "emoji": "Emoji",
+      "panels": "Panel",
+      "session": "Session",
+      "settings": "Setting",
+      "wallpaper": "Wallpaper",
+      "windows": "Window"
     }
   },
   "location": {
@@ -1608,6 +1627,10 @@
           "carousel": "Carousel",
           "compact": "Compact",
           "grid": "Grid (Mission Control)"
+        },
+        "launcher-style": {
+          "command": "Command Bar",
+          "spotlight": "Spotlight"
         }
       },
       "theme": {
@@ -2830,6 +2853,10 @@
         "wallpaper-show-names": {
           "description": "Caption each thumbnail with its file name in the wallpaper picker.",
           "label": "Show File Names"
+        },
+        "launcher-style": {
+          "label": "Style",
+          "description": "Command Bar is compact and square-cut with one-line results; Spotlight is the macOS original"
         }
       },
       "power": {

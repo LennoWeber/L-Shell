@@ -82,6 +82,9 @@ public:
   // Corner radius of the floating panel in surface px (background, glass, shadow and blur follow it); nullopt
   // keeps the shell's panel radius. Spotlight is a capsule while it is only its search field.
   [[nodiscard]] virtual std::optional<float> floatingCornerRadius() const { return std::nullopt; }
+  // Inset between a decorated panel's edge and its content, before contentScale(); nullopt keeps the shell's
+  // panel padding. The command-bar launcher runs its dividers edge to edge.
+  [[nodiscard]] virtual std::optional<float> contentPadding() const { return std::nullopt; }
   // For attached panels: which bar edge to attach to when more than one bar exists on
   // the target output. Returned value must outlive the call (use a string literal).
   [[nodiscard]] virtual std::string_view preferredAttachedBarPosition() const noexcept { return "top"; }

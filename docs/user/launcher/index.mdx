@@ -7,6 +7,13 @@ sidebar:
 
 The Noctalia launcher is a centralized search interface that provides quick access to your applications, system actions, and utility providers.
 
+## Styles
+
+`shell.launcher.style` (Settings → Launcher → Style) switches between two looks:
+
+- **Command Bar** (`command`, default): a compact, square-cut bar. Results are single lines (icon, title, subtitle) with their kind as a tag on the right (Application, Setting, Window, …); the selected row gets a neutral wash with an accent edge. A footer shows the result count and key hints (`↵` open, `Shift+↵` app actions, `Esc` close), and the panel grows with its results up to nine rows. With the field empty it is just the search bar, with a `/` hint for the provider list.
+- **Spotlight** (`spotlight`): the macOS Tahoe original — a capsule search field that opens into a rounded sheet with a Top Hit and results grouped under provider headers. `compact` rows and the `app_grid` view apply to this style.
+
 ## How search works
 
 As you type, Noctalia queries all active **Launcher Providers**. Providers can either be "global" (always searching) or "prefixed" (triggered by a specific keyword).

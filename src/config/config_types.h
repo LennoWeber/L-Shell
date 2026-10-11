@@ -1106,10 +1106,21 @@ struct ShellConfig {
     bool operator==(const PanelConfig&) const = default;
   };
 
+  enum class LauncherStyle : std::uint8_t {
+    Spotlight = 0, // macOS Tahoe Spotlight: a capsule field, results grouped under headers on a rounded sheet
+    Command = 1,   // a compact, square-cut command bar: dense one-line rows, type tags and key hints
+  };
+
+  static constexpr EnumOption<LauncherStyle> kLauncherStyles[] = {
+      {LauncherStyle::Command, "command", "settings.options.shell.launcher-style.command"},
+      {LauncherStyle::Spotlight, "spotlight", "settings.options.shell.launcher-style.spotlight"},
+  };
+
   // Launcher behavior/appearance. Panel placement for the launcher surface stays
   // under [shell.panel] (launcher_placement/position/open_near_click_launcher),
   // parallel to every other surface.
   struct LauncherConfig {
+    LauncherStyle style = LauncherStyle::Command;
     bool categories = false; // chip row; F6 still reveals it on demand
     bool showIcons = true;
     bool showAppOriginIndicator = true;

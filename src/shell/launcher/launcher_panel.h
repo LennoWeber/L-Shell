@@ -54,10 +54,11 @@ public:
   // supports auto-paste. The host schedules virtual-keyboard paste (clipboard path).
   void setCopiedActivationCallback(std::function<void()> callback) { m_onCopiedActivation = std::move(callback); }
 
-  [[nodiscard]] float preferredWidth() const override { return scaled(540.0F); }
-  // Spotlight style: only the search row until there is something to show.
+  [[nodiscard]] float preferredWidth() const override;
+  // Only the search row until there is something to show; the command bar then fits its rows.
   [[nodiscard]] float preferredHeight() const override;
   [[nodiscard]] std::optional<float> floatingCornerRadius() const override;
+  [[nodiscard]] std::optional<float> contentPadding() const override;
   [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }
   [[nodiscard]] InputArea* initialFocusArea() const override;
   [[nodiscard]] bool handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, bool pressed, bool preedit) override;
@@ -101,6 +102,14 @@ private:
   [[nodiscard]] std::string providerDisplayName(std::string_view providerId) const;
   [[nodiscard]] bool shouldCollapse() const;
   void syncCollapsedState();
+  // shell.launcher.style = "command"; fixed from create() until close so the tree and geometry agree.
+  [[nodiscard]] bool commandStyle() const;
+  [[nodiscard]] std::string defaultPlaceholder() const;
+  [[nodiscard]] std::string resultTag(std::string_view providerId) const;
+  [[nodiscard]] float commandBodyHeight() const;
+  // Footer count and key hints, the "/" hint, and the panel height as the rows come and go.
+  void syncCommandChrome();
+  void queuePreferredSizeRelayout();
   void syncLauncherListStyle();
   void syncLauncherViewLayout(Renderer* renderer = nullptr);
   [[nodiscard]] bool shouldUseAppGrid() const;
@@ -120,6 +129,13 @@ private:
   Flex* m_container = nullptr;
   Input* m_input = nullptr;
   Separator* m_searchDivider = nullptr;
+  Flex* m_commandHint = nullptr;
+  Separator* m_footerDivider = nullptr;
+  Flex* m_footer = nullptr;
+  Label* m_footerCount = nullptr;
+  Flex* m_footerNavigate = nullptr;
+  Flex* m_footerOpen = nullptr;
+  Flex* m_footerActions = nullptr;
   Segmented* m_categoryFilter = nullptr;
   Flex* m_body = nullptr;
   VirtualGridView* m_grid = nullptr;
@@ -142,6 +158,8 @@ private:
   std::size_t m_selectedIndex = 0;
   bool m_categoryFilterVisible = true;
   bool m_collapsed = true;
+  bool m_commandStyle = false;
+  float m_commandHeight = 0.0F;
   bool m_launcherShowIcons = true;
   bool m_launcherShowAppOriginIndicator = true;
   bool m_launcherCompact = false;

@@ -82,6 +82,7 @@ open_near_click_wallpaper      = false # for attached/floating placement, follow
 open_near_click_session        = false # for attached/floating placement, follow the bar click instead of bar-center
 
 [shell.launcher]
+style         = "command"               # command (compact command bar) | spotlight (macOS Spotlight)
 categories    = false                   # show category chips in the launcher (F6 reveals them)
 show_icons    = true                    # show application icons in launcher results
 show_app_origin_indicator = true        # show package origin indicators on application results
