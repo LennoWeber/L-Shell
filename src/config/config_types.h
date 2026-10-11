@@ -1719,7 +1719,10 @@ struct ThemeConfig {
 
   struct TemplatesConfig {
     bool enableBuiltinTemplates = true;
-    std::vector<std::string> builtinIds;
+    // Toolkits follow the L-Shell palette out of the box, like apps on macOS follow the system appearance; the
+    // templates import a separate colors file, so a user's own GTK/Qt settings stay. Terminals are opt-in (their
+    // templates create the terminal's config file).
+    std::vector<std::string> builtinIds = {"gtk3", "gtk4", "qt", "kcolorscheme"};
     bool enableCommunityTemplates = true;
     std::vector<std::string> communityIds;
     std::vector<TemplateColorConfig> customColors;

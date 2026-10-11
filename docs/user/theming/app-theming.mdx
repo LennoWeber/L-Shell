@@ -20,10 +20,12 @@ Built-in templates ship with Noctalia. Enable the built-in catalog, then opt in 
 ```toml
 [theme.templates]
 enable_builtin_templates = true
-builtin_ids              = []        # opt-in; run: noctalia theme --list-templates
+builtin_ids              = ["gtk3", "gtk4", "qt", "kcolorscheme"] # run: l-shell theme --list-templates
 ```
 
-`builtin_ids` selects which shipped templates run. An empty array means no built-in templates are applied.
+`builtin_ids` selects which shipped templates run. L-Shell applies the GTK 3/4, Qt and KDE color scheme templates by
+default, so toolkit apps follow its palette and accent like apps on macOS follow the system; terminals are opt-in
+(the setup wizard's *Match Apps* adds the installed ones). An empty array means no built-in templates are applied.
 
 Disabling a built-in template removes its generated Noctalia theme file and undoes any Noctalia-owned include or theme
 selection that the template added to the application's config. Disabling `enable_builtin_templates` performs the same
@@ -86,7 +88,7 @@ Put dotfile-managed templates in `~/.config/noctalia/*.toml`:
 [theme.templates]
 enable_builtin_templates   = true
 enable_community_templates = true
-builtin_ids                = []
+builtin_ids                = ["gtk3", "gtk4", "qt", "kcolorscheme"]
 community_ids              = []
 
 [theme.templates.user.my_app]

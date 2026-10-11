@@ -457,7 +457,9 @@ void SetupWizardPanel::create() {
 
 void SetupWizardPanel::doLayout(Renderer& renderer, float width, float height) {
   if (m_logo != nullptr && !m_logo->hasImage()) {
-    m_logo->setSourceFile(renderer, paths::assetPath("branding/l-shell-mark.svg").string(), 48 * static_cast<int>(contentScale()));
+    m_logo->setSourceFile(
+        renderer, paths::assetPath("branding/l-shell-mark.svg").string(), 48 * static_cast<int>(contentScale())
+    );
   }
   if (m_root != nullptr) {
     m_root->setPosition(0.0F, 0.0F);
@@ -522,7 +524,11 @@ void SetupWizardPanel::commit() {
     }
     m_config->setOverride({"theme", "templates", "enable_builtin_templates"}, true);
     m_config->setOverride({"theme", "templates", "builtin_ids"}, std::move(ids));
+  } else if (m_appThemeToggle != nullptr) {
+    // Toolkit templates are on by default; turning the switch off leaves the apps alone.
+    m_config->setOverride({"theme", "templates", "builtin_ids"}, std::vector<std::string>{});
   }
+
   // Theme/palette overrides are written live by the select callbacks only when
   // the user actually changes them, so commit must not force any defaults here.
   if (m_config != nullptr) {

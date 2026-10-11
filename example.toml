@@ -163,7 +163,8 @@ pure_black_dark = false             # anchor dark surfaces to true black (OLED);
 
 [theme.templates]
 enable_builtin_templates            = true
-builtin_ids                = []     # opt-in; list ids with: noctalia theme --list-templates
+builtin_ids                = ["gtk3", "gtk4", "qt", "kcolorscheme"] # toolkits follow L-Shell; add terminals
+                                    # (kitty, foot, ghostty, alacritty, …); list ids: l-shell theme --list-templates
 enable_community_templates = true
 community_ids              = []     # fetched from api.noctalia.dev/templates, cached locally
 
