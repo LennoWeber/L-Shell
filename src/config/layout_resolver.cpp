@@ -2,7 +2,9 @@
 
 #include "ui/style.h"
 
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 
 namespace noctalia::config {
 
@@ -120,6 +122,16 @@ namespace noctalia::config {
       break;
     }
     return out;
+  }
+
+  std::int32_t islandReservedZone(const ResolvedLayout& layout, float uiScale) {
+    if (!layout.island.has_value() || !layout.island->reserveSpace) {
+      return 0;
+    }
+    const float scale = std::max(0.1F, uiScale);
+    return static_cast<std::int32_t>(
+        std::ceil(static_cast<float>(layout.island->marginTop + layout.island->height) * scale)
+    );
   }
 
 } // namespace noctalia::config

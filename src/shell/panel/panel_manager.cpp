@@ -276,7 +276,11 @@ namespace {
         inset = std::max(inset, resolved.thickness + std::max(resolved.marginEdge, 0));
       }
     }
-    return inset;
+    // The island's reserved strip already pushes panels down; the bar covers that strip as well.
+    const std::int32_t reserved = noctalia::config::islandReservedZone(
+        configService->resolvedLayout(), configService->config().accessibility.uiScale
+    );
+    return std::max(0, inset - reserved);
   }
 
   [[nodiscard]] AttachedRevealDirection

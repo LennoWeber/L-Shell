@@ -50,4 +50,8 @@ namespace noctalia::config {
   // What `config.layout.mode` puts on screen. Classic passes `config.bars` through unchanged.
   [[nodiscard]] ResolvedLayout resolveLayout(const Config& config);
 
+  // Exclusive zone the island reserves at the top (logical px), 0 without an island or with reserve_space off.
+  // A top bar without a zone of its own covers this strip too, so insets below such a bar subtract it.
+  [[nodiscard]] std::int32_t islandReservedZone(const ResolvedLayout& layout, float uiScale);
+
 } // namespace noctalia::config

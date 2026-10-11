@@ -65,7 +65,8 @@ namespace {
   }
 
   [[nodiscard]] bool looksLikeTechnicalId(std::string_view name) {
-    if (name.empty() || name.contains(' ')) {
+    // The shell's own notifications carry its brand name, which is hyphenated but not an id.
+    if (name.empty() || name.contains(' ') || name == "L-Shell") {
       return false;
     }
     if (name.contains('.')) {

@@ -246,9 +246,7 @@ void Island::createInstance(const WaylandOutput& output) {
   const auto height = static_cast<std::uint32_t>(
       std::ceil((static_cast<float>(config.marginTop + config.expandedHeight) + kBleed) * scale)
   );
-  const std::int32_t reserved = config.reserveSpace
-      ? static_cast<std::int32_t>(std::ceil(static_cast<float>(config.marginTop + config.height) * scale))
-      : 0;
+  const std::int32_t reserved = noctalia::config::islandReservedZone(m_config->resolvedLayout(), scale);
 
   auto instance = std::make_unique<Instance>();
   instance->outputName = output.name;
