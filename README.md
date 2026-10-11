@@ -44,8 +44,19 @@ Brand assets live in [`assets/branding/`](assets/branding) and are rendered by
 - **Neutral by default.** The built-in *L-Shell* palette is mostly dark greys with a single system-blue accent; color
   appears only where it carries meaning. Common apps (GTK, Qt, KDE, terminals, btop) follow the same palette.
 - **Inter** as the UI font, bundled.
-- **Layout modes** (in progress): Classic bars, Smart Bar, Minimal Bar, Island, Edges, a bottom handle and *Flow*,
-  which combines them. See [`PHASES.md`](PHASES.md).
+- **Layout modes.** Switch in *Settings → Layout* or with `l-shell-msg layout-mode-set <mode>`:
+  - *Flow* (default): the menu bar on an empty desktop; while you work it steps away, a Liquid Glass island at the
+    top shows the time and expands for volume, brightness, charging and track changes, the screen edges open
+    Spotlight and Control Center, and an iPhone-style home line at the bottom opens a full-screen status overview.
+  - *Classic* (your `[bar.*]` bars, as upstream), *Smart Bar*, *Minimal Bar*, *Island*, *Edges* and *Handle*, each
+    with its own settings. See [docs/user/layout](docs/user/layout/index.mdx).
+- **Control Center like Tahoe.** A compact grid of glass modules: Wi-Fi/Bluetooth/VPN, Focus, Caffeine, Night Light,
+  Display and Sound sliders, Now Playing, and round shortcuts.
+- **System Settings like Tahoe.** Floating glass sidebar with colored squircle icons, grouped rows, neutral segmented
+  controls and pop-up buttons, accent colors (blue, purple, pink, red, orange, yellow, green, graphite, or taken
+  from the wallpaper).
+- **Instant key bindings.** `l-shell-msg` is an IPC client that links only libc: bound to a key it answers in about
+  2 ms instead of loading the whole shell (~45 ms), so Spotlight and Control Center appear the moment you press.
 
 ## Build and run
 
@@ -64,10 +75,16 @@ installed side by side; only one should run at a time.
 Useful commands:
 
 ```sh
-l-shell msg panel-toggle launcher   # Spotlight
-l-shell msg overview                # Mission Control
-l-shell msg settings-toggle         # Settings
+l-shell-msg panel-toggle launcher        # Spotlight
+l-shell-msg panel-toggle control-center  # Control Center
+l-shell-msg overview                     # Mission Control
+l-shell-msg settings-toggle              # System Settings
+l-shell-msg layout-mode-set flow         # layout mode
 ```
+
+Bind these to keys with `l-shell-msg` (not `l-shell msg`): it is the fast path. For Hyprland, see
+[docs/user/compositor-settings/hyprland.mdx](docs/user/compositor-settings/hyprland.mdx), which also has the Liquid
+Glass blur and window shadow settings.
 
 ## Staying current with Noctalia
 
