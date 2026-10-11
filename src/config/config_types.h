@@ -1990,8 +1990,8 @@ struct HandleConfig {
 struct FlowConfig {
   ModeBarConfig bar{
       .thickness = 28,
-      .startWidgets = {"launcher", "workspaces"},
-      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "control-center", "clock"},
+      .startWidgets = {"logo", "workspaces"},
+      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
   };
   IslandConfig island{
       .height = 24,
@@ -2011,17 +2011,19 @@ struct FlowConfig {
 
 struct LayoutConfig {
   LayoutMode mode = LayoutMode::Flow;
+  // Menu-bar presets use the seeded "logo" (session menu, like the Apple menu) and "app_name" widgets and the
+  // launcher as the Spotlight button, matching the [bar.*] defaults.
   ModeBarConfig smartBar{
       .thickness = 28,
-      .startWidgets = {"launcher", "workspaces", "active_window"},
+      .startWidgets = {"logo", "workspaces", "app_name"},
       .centerWidgets = {"clock"},
-      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "control-center"},
+      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"},
   };
   ModeBarConfig minimalBar{
       .thickness = 24,
       .scale = 0.85F,
-      .startWidgets = {"launcher", "active_window"},
-      .endWidgets = {"tray", "network", "battery", "control-center", "clock"},
+      .startWidgets = {"logo", "app_name"},
+      .endWidgets = {"tray", "network", "battery", "launcher", "control-center", "clock"},
   };
   IslandConfig island;
   EdgesConfig edges;

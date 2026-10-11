@@ -162,15 +162,15 @@ floating = false
 reserve_space = true
 reveal_on_hover = true        # auto-hiding bars: touching the edge reveals
 show_on_workspace_switch = true
-start = ["launcher", "workspaces", "active_window"]
+start = ["logo", "workspaces", "app_name"]
 center = ["clock"]
-end = ["tray", "network", "bluetooth", "volume", "battery", "control-center"]
+end = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"]
 
 [layout.minimal_bar]          # Tahoe menu bar preset: 24 px, scale 0.85, logo + app name left, clock right
 thickness = 24
 scale = 0.85
-start = ["launcher", "active_window"]
-end = ["tray", "network", "battery", "control-center", "clock"]
+start = ["logo", "app_name"]
+end = ["tray", "network", "battery", "launcher", "control-center", "clock"]
 
 [layout.island]               # IslandConfig
 material = "glass"            # glass | black
@@ -215,7 +215,7 @@ swipe_workspaces = true
 [layout.handle.bar]           # ModeBarConfig, bottom bar shown on reveal = "bar"
 
 [layout.flow]                 # FlowConfig: its own copy of every component
-[layout.flow.bar]             # home bar: 28 px, launcher + workspaces | … clock
+[layout.flow.bar]             # home bar: 28 px, logo + workspaces | … launcher, clock
 [layout.flow.island]          # height 24, margin_top 2, reserve_space = false (uses the bar's strip)
 [layout.flow.edges]           # top/bottom = "none", left = launcher, right = control-center
 [layout.flow.handle]
@@ -348,9 +348,43 @@ Own phased plan once the layout modes are done. Starting points found during pha
   wallpaper, so it can measure its luminance). Until then the mode bars default to `background = "glass"`.
 - A real Liquid Glass shader (refraction, specular highlight) for every glass surface.
 
+## Done in the parallel session (Spotlight + first macOS pass)
+
+Merged into this branch on 2026-10-11 (`macos-look`). It covers the Spotlight work and a first pass of the
+"Next feature" restyle, so that feature starts from here instead of from scratch:
+
+- **Palette**: built-in palette **"L-Shell"** (dark + light; neutral greys, system blue `#0a84ff` accent,
+  green/red only for status, neutral hover) is the default. This is the planned "macOS" palette under another
+  name. Accent-only dynamic color is still open.
+- **Font**: Inter (OFL) is bundled in `assets/fonts/` and registered at startup; default `shell.font_family`.
+- **Shell chrome defaults**: no button/card borders, `corner_radius_scale` 1.15, glass panels, wider softer
+  shadow (`Shadow::kBlurRadius` 20, alpha 0.45), translucent notifications and OSD.
+- **`[bar.*]` defaults are the macOS menu bar**: 28 px, full width, translucent (0.65), no shadow; left `logo`
+  (seeded `session` widget with the `spiral` glyph) and `app_name` (seeded `active_window` with the new
+  `display = "app_name"` mode, bold desktop-entry name); right tray, network, bluetooth, volume, battery,
+  launcher (Spotlight button), control center, clock (`%a %-d %b %H:%M`). Network and volume are icon-only.
+  The mode bar presets above use the same widgets.
+- **Dock** on by default: floating, translucent, radius 20, running dots, launcher at the start.
+- **Spotlight launcher**: new floating position `spotlight` (upper fifth, grows downward, default), large
+  frameless search row with a magnifier, collapses to that row on an empty query (unless the app grid is on),
+  results grouped under "Top Hit" and one header per provider, category chips off by default (F6 shows them).
+- **Settings search**: launcher provider `Settings` (prefix `set`, in global search) over the settings
+  registry; Enter opens the settings window on that setting (page, group expanded, control focused,
+  `SettingsWindow::openToSetting`). Word-based matching ("bar position") also in the window's own search.
+- **Overview**: IPC `overview [toggle|close]` opens a Mission-Control-style grid of the current workspace's
+  windows (new switcher style `grid`) with a workspace bar on top, frosted and dimmed backdrop; the `overview`
+  hot-corner action uses it off niri. Surface namespace `noctalia-window-switcher` (Hyprland blur rule must
+  cover it).
+- **Wallpaper**: bundled `l-shell-wallpaper.png` (nautilus) is the first-run default.
+- **Laptop setup**: `~/.local/bin/shell-switch` picks Noctalia or L-Shell (SUPER+ALT+S); keybinds and the
+  idle lock go through `shell-switch msg`. Visual checks run in a nested, isolated Hyprland (own runtime dir,
+  `dbus-run-session`, `NOCTALIA_*_HOME` pointing at a scratch dir) with `grim`.
+
 ## Open points
 
-- None yet.
+- **Classic and the `[bar.*]` defaults.** "Classic must behave exactly as upstream" conflicts with the menu-bar
+  defaults above, which are what L-Shell shows today because the layout modes are not wired yet. Once Flow
+  works, decide with the user whether Classic goes back to Noctalia's bar defaults or keeps the menu bar.
 
 ## Review log
 
