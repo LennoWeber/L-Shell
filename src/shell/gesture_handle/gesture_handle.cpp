@@ -4,6 +4,7 @@
 #include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -15,6 +16,8 @@ void GestureHandle::initialize(
     CompositorPlatform& platform, ConfigService& config, RenderContext* renderContext, IpcService* ipc,
     PanelManager* panels, Bar* bar
 ) {
+  // reveal = "bar" peeks through the Bar; reveal = "overlay" opens a panel.
+  assert(renderContext != nullptr && bar != nullptr && panels != nullptr && "handle dependencies");
   (void)platform;
   (void)config;
   (void)renderContext;

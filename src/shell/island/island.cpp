@@ -8,6 +8,7 @@
 #include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -16,6 +17,7 @@ Island::Island() = default;
 Island::~Island() = default;
 
 void Island::initialize(const IslandServices& services) {
+  assert(services.renderContext != nullptr && "the island draws itself");
   (void)services;
   throw std::logic_error("Island::initialize: not implemented");
 }

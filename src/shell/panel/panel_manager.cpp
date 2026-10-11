@@ -34,6 +34,7 @@
 #include "wayland/wayland_seat.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <format>
 #include <optional>
@@ -553,6 +554,7 @@ void PanelManager::unregisterPanel(const std::string& id) {
 }
 
 std::string PanelManager::effectivePanelPosition() const {
+  assert(m_activePanel != nullptr && "position of a panel that is not open");
   throw std::logic_error("PanelManager::effectivePanelPosition: not implemented");
 }
 
@@ -562,6 +564,17 @@ bool PanelManager::dismissesOnPointerLeave() const {
 
 // TODO(phase): store request.dismissOnPointerLeave (m_dismissOnPointerLeave, reset m_pointerEnteredSinceOpen).
 void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest request) {
+  // A screen position is a concrete kPanelPositions value ("auto" would mean "no override"), and only screen-edge
+  // drawers, which always carry one, dismiss on pointer leave.
+  assert(
+      (request.screenPosition.empty()
+       || (request.screenPosition != "auto" && std::ranges::contains(kPanelPositions, request.screenPosition)))
+      && "PanelOpenRequest::screenPosition must be a concrete panel position"
+  );
+  assert(
+      (!request.dismissOnPointerLeave || !request.screenPosition.empty())
+      && "dismiss-on-leave is for screen-edge drawers, which open at a screen position"
+  );
   if (m_inTransition) {
     return;
   }

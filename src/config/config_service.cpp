@@ -29,6 +29,7 @@
 #include "wayland/wayland_connection.h"
 
 #include <algorithm>
+#include <cassert>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -580,6 +581,7 @@ ConfigService::ConfigService() {
 // ── Public interface ─────────────────────────────────────────────────────────
 
 void ConfigService::setLayoutMode(LayoutMode mode) {
+  assert(!enumToKey(kLayoutModes, mode).empty() && "layout mode outside kLayoutModes");
   (void)mode;
   throw std::logic_error("ConfigService::setLayoutMode: not implemented");
 }

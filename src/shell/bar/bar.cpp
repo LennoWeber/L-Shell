@@ -30,6 +30,7 @@
 #include "wayland/wayland_connection.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cerrno>
 #include <cmath>
 #include <stdexcept>
@@ -1836,6 +1837,8 @@ void Bar::setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)>
 
 void Bar::reevaluateAutoHide() {
   for (const auto& instance : m_instances) {
+    // Only auto-hiding bars can be peeked: a peek holds a slide-out bar revealed.
+    assert(instance == nullptr || !instance->peeked || barSupportsSlideBehavior(instance->barConfig));
     if (instance == nullptr
         || !barPointerHideAllowed(*instance)
         || instance->pointerInside
@@ -2210,6 +2213,7 @@ void Bar::setAttachedPanelGeometry(
 
 // TODO(phase): implement with a per-instance peek flag on top of revealAutoHideBar.
 void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
+  assert(!barName.empty() && "a peek names the bar it holds");
   (void)output;
   (void)barName;
   (void)active;

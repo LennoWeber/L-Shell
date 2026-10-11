@@ -4,6 +4,7 @@
 #include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -77,6 +78,8 @@ void ScreenEdges::triggerStrip(OutputInstance& instance, Strip& strip) {
 InputRect ScreenEdges::stripRect(
     Edge edge, std::int32_t outputWidth, std::int32_t outputHeight, const EdgesConfig& config
 ) {
+  assert(outputWidth > 0 && outputHeight > 0 && "strip on an output without a size");
+  assert(config.length > 0.0F && config.length <= 1.0F && "edge length is a fraction of the edge");
   (void)edge;
   (void)outputWidth;
   (void)outputHeight;
