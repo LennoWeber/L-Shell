@@ -4,6 +4,7 @@
 #include "wayland/layer_surface.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -136,5 +137,7 @@ private:
   wl_output* m_targetOutput = nullptr;
   std::optional<bool> m_runtimeEnabledOverride;
   bool m_lastConfiguredEnabled = true;
+  // Takes OSD content before it is shown (the island); returning true means it was handled there.
+  std::function<bool(const OsdContent&)> m_redirect;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };
