@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
+#include <stdexcept>
 #include <linux/input-event-codes.h>
 #include <optional>
 #include <ranges>
@@ -2199,6 +2200,12 @@ void Bar::setAttachedPanelGeometry(
     );
     instance->surface->requestRedraw();
   }
+}
+
+void Bar::peekBar(wl_output* output, std::string_view barName) {
+  (void)output;
+  (void)barName;
+  throw std::logic_error("Bar::peekBar: not implemented");
 }
 
 void Bar::beginAttachedPopup(wl_surface* surface) {

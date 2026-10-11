@@ -112,6 +112,9 @@ public:
   // bars that have finished sliding into their resting position.
   [[nodiscard]] bool isAttachedPanelBarSettled(wl_output* output, std::string_view barName) const noexcept;
   void revealAutoHideForAttachedPanel(wl_output* output, std::string_view barName);
+  // Reveals an auto-hiding bar as if the pointer touched its edge (the layout handle's hover); it hides again
+  // once the pointer has been on it and left. No-op for bars that are not auto-hiding or not on this output.
+  void peekBar(wl_output* output, std::string_view barName);
   void beginAttachedPopup(wl_surface* surface);
   void endAttachedPopup(wl_surface* surface);
 

@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // Turns the active [layout] mode into the shell components that carry it out. The bar engine receives
@@ -30,5 +31,22 @@ namespace noctalia::config {
 
     bool operator==(const ResolvedLayout&) const = default;
   };
+
+  // Names of the bars the layout modes synthesize; they key attached panels and `bar-*` IPC like [bar.*] names.
+  inline constexpr std::string_view kSmartBarName = "smart";
+  inline constexpr std::string_view kMinimalBarName = "minimal";
+  inline constexpr std::string_view kHandleBarName = "handle";
+  inline constexpr std::string_view kFlowBarName = "flow";
+
+  enum class ModeBarBehavior : std::uint8_t {
+    AlwaysVisible, // minimal bar
+    SmartHide,     // smart bar, flow's home bar, the handle's pop-up bar: hidden while windows are open
+  };
+
+  // A full BarConfig for a mode bar: the [bar.*] defaults (the macOS menu bar) with the mode's own settings on top.
+  [[nodiscard]] BarConfig synthesizeBar(const ModeBarConfig& mode, std::string_view name, ModeBarBehavior behavior);
+
+  // What `config.layout.mode` puts on screen. Classic passes `config.bars` through unchanged.
+  [[nodiscard]] ResolvedLayout resolveLayout(const Config& config);
 
 } // namespace noctalia::config

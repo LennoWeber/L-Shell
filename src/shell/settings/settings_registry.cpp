@@ -24,6 +24,7 @@
 #include "util/string_utils.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -87,8 +88,9 @@ namespace settings {
       return defaultKeybindSet(action);
     }
 
-    constexpr std::array<SettingsSectionDescriptor, 24> kSettingsSections{{
+    constexpr std::array<SettingsSectionDescriptor, 25> kSettingsSections{{
         {SettingsSection::Appearance, "appearance", "adjustments-horizontal"},
+        {SettingsSection::Layout, "layout", "layout-dashboard"},
         {SettingsSection::Wallpaper, "wallpaper", "paint"},
         {SettingsSection::Templates, "templates", "color-swatch"},
         {SettingsSection::Desktop, "desktop", "layout-board"},
@@ -355,6 +357,59 @@ namespace settings {
           .advanced = advanced,
           .searchText = StringUtils::toLower(searchText),
       };
+    }
+
+    // Layout-mode entry builders. Each takes the config path of its table (e.g. {"layout", "flow", "island"}),
+    // so a component's settings render the same in its own mode and inside Flow.
+    void appendModeBarEntries(
+        std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const ModeBarConfig& bar,
+        const SettingVisibility& visibleWhen
+    ) {
+      (void)entries;
+      (void)root;
+      (void)bar;
+      (void)visibleWhen;
+      throw std::logic_error("appendModeBarEntries: not implemented");
+    }
+
+    void appendIslandEntries(
+        std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const IslandConfig& island,
+        const SettingVisibility& visibleWhen
+    ) {
+      (void)entries;
+      (void)root;
+      (void)island;
+      (void)visibleWhen;
+      throw std::logic_error("appendIslandEntries: not implemented");
+    }
+
+    void appendEdgesEntries(
+        std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const EdgesConfig& edges,
+        const SettingVisibility& visibleWhen
+    ) {
+      (void)entries;
+      (void)root;
+      (void)edges;
+      (void)visibleWhen;
+      throw std::logic_error("appendEdgesEntries: not implemented");
+    }
+
+    void appendHandleEntries(
+        std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const HandleConfig& handle,
+        const SettingVisibility& visibleWhen
+    ) {
+      (void)entries;
+      (void)root;
+      (void)handle;
+      (void)visibleWhen;
+      throw std::logic_error("appendHandleEntries: not implemented");
+    }
+
+    // The Layout page: the mode picker, then the active mode's own settings.
+    void appendLayoutEntries(std::vector<SettingEntry>& entries, const Config& cfg) {
+      (void)entries;
+      (void)cfg;
+      throw std::logic_error("appendLayoutEntries: not implemented");
     }
 
   } // namespace

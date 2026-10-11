@@ -579,6 +579,14 @@ ConfigService::ConfigService() {
 
 // ── Public interface ─────────────────────────────────────────────────────────
 
+const std::vector<BarConfig>& ConfigService::activeBars() const noexcept {
+  std::abort(); // not implemented
+}
+
+const noctalia::config::ResolvedLayout& ConfigService::resolvedLayout() const noexcept {
+  std::abort(); // not implemented
+}
+
 void ConfigService::addReloadCallback(ReloadCallback callback, std::string_view label) {
   m_reloadCallbacks.push_back({std::move(callback), std::string(label)});
 }

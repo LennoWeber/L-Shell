@@ -467,6 +467,104 @@ namespace noctalia::config::schema {
   }
 
   namespace {
+    const Schema<ModeBarConfig>& modeBarSchema() {
+      static const Schema<ModeBarConfig> s = {
+          enumField(&ModeBarConfig::position, "position", kModeBarPositions),
+          field(&ModeBarConfig::thickness, "thickness", kModeBarThicknessRange),
+          field(&ModeBarConfig::scale, "scale", kScaleRange),
+          field(&ModeBarConfig::fontScale, "font_scale", kScaleRange),
+          enumField(&ModeBarConfig::background, "background", kModeBarBackgrounds),
+          field(&ModeBarConfig::backgroundOpacity, "background_opacity", kUnitRange),
+          field(&ModeBarConfig::floating, "floating"),
+          field(&ModeBarConfig::reserveSpace, "reserve_space"),
+          field(&ModeBarConfig::revealOnHover, "reveal_on_hover"),
+          field(&ModeBarConfig::showOnWorkspaceSwitch, "show_on_workspace_switch"),
+          field(&ModeBarConfig::startWidgets, "start"),
+          field(&ModeBarConfig::centerWidgets, "center"),
+          field(&ModeBarConfig::endWidgets, "end"),
+      };
+      return s;
+    }
+
+    const Schema<IslandConfig>& islandSchema() {
+      static const Schema<IslandActivitiesConfig> activities = {
+          field(&IslandActivitiesConfig::media, "media"),
+          field(&IslandActivitiesConfig::volume, "volume"),
+          field(&IslandActivitiesConfig::brightness, "brightness"),
+          field(&IslandActivitiesConfig::notification, "notification"),
+          field(&IslandActivitiesConfig::battery, "battery"),
+          field(&IslandActivitiesConfig::system, "system"),
+      };
+      static const Schema<IslandConfig> s = {
+          enumField(&IslandConfig::material, "material", kIslandMaterials),
+          field(&IslandConfig::height, "height", kIslandHeightRange),
+          field(&IslandConfig::collapsedWidth, "collapsed_width", kIslandWidthRange),
+          field(&IslandConfig::expandedWidth, "expanded_width", kIslandWidthRange),
+          field(&IslandConfig::expandedHeight, "expanded_height", kIslandExpandedHeightRange),
+          field(&IslandConfig::marginTop, "margin_top", kLayoutMarginRange),
+          field(&IslandConfig::reserveSpace, "reserve_space"),
+          field(&IslandConfig::expandOnHover, "expand_on_hover"),
+          field(&IslandConfig::clickAction, "click_action"),
+          subTable(&IslandConfig::activities, "activities", activities),
+          field(&IslandConfig::activityMs, "activity_ms", kIslandActivityMsRange),
+          field(&IslandConfig::suppressOsd, "suppress_osd"),
+      };
+      return s;
+    }
+
+    const Schema<EdgesConfig>& edgesSchema() {
+      static const Schema<EdgesConfig> s = {
+          field(&EdgesConfig::delayMs, "delay_ms", kEdgesDelayMsRange),
+          field(&EdgesConfig::triggerSize, "trigger_size", kEdgesTriggerSizeRange),
+          field(&EdgesConfig::length, "length", kEdgesLengthRange),
+          field(&EdgesConfig::closeOnLeave, "close_on_leave"),
+          field(&EdgesConfig::top, "top"),
+          field(&EdgesConfig::bottom, "bottom"),
+          field(&EdgesConfig::left, "left"),
+          field(&EdgesConfig::right, "right"),
+      };
+      return s;
+    }
+
+    const Schema<HandleConfig>& handleSchema() {
+      static const Schema<HandleConfig> s = {
+          enumField(&HandleConfig::reveal, "reveal", kHandleReveals),
+          field(&HandleConfig::width, "width", kHandleWidthRange),
+          field(&HandleConfig::thickness, "thickness", kHandleThicknessRange),
+          field(&HandleConfig::marginBottom, "margin_bottom", kLayoutMarginRange),
+          field(&HandleConfig::hoverDelayMs, "hover_delay_ms", kHandleHoverDelayMsRange),
+          field(&HandleConfig::pullUp, "pull_up"),
+          field(&HandleConfig::swipeWorkspaces, "swipe_workspaces"),
+          subTable(&HandleConfig::bar, "bar", modeBarSchema()),
+      };
+      return s;
+    }
+
+    const Schema<FlowConfig>& flowSchema() {
+      static const Schema<FlowConfig> s = {
+          subTable(&FlowConfig::bar, "bar", modeBarSchema()),
+          subTable(&FlowConfig::island, "island", islandSchema()),
+          subTable(&FlowConfig::edges, "edges", edgesSchema()),
+          subTable(&FlowConfig::handle, "handle", handleSchema()),
+      };
+      return s;
+    }
+  } // namespace
+
+  const Schema<LayoutConfig>& layoutSchema() {
+    static const Schema<LayoutConfig> s = {
+        enumField(&LayoutConfig::mode, "mode", kLayoutModes),
+        subTable(&LayoutConfig::smartBar, "smart_bar", modeBarSchema()),
+        subTable(&LayoutConfig::minimalBar, "minimal_bar", modeBarSchema()),
+        subTable(&LayoutConfig::island, "island", islandSchema()),
+        subTable(&LayoutConfig::edges, "edges", edgesSchema()),
+        subTable(&LayoutConfig::handle, "handle", handleSchema()),
+        subTable(&LayoutConfig::flow, "flow", flowSchema()),
+    };
+    return s;
+  }
+
+  namespace {
     const Schema<BrightnessMonitorOverride>& brightnessMonitorSchema() {
       static const Schema<BrightnessMonitorOverride> s = {
           field(&BrightnessMonitorOverride::match, "match"),

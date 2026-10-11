@@ -9,7 +9,7 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 |---|---|
 | 1 Understand and plan | done |
 | 2 Structures | done, reviewed |
-| 3 Signatures | – |
+| 3 Signatures | done, in review |
 | 4 TODO markers | – |
 | 5 Trial implementation (discarded) | – |
 | 6 Invariants | – |
@@ -387,6 +387,15 @@ Merged into this branch on 2026-10-11 (`macos-look`). It covers the Spotlight wo
   works, decide with the user whether Classic goes back to Noctalia's bar defaults or keeps the menu bar.
 
 ## Review log
+
+### Phase 3 (signatures) — notes
+
+Signatures and placeholder bodies (`std::logic_error`, `std::abort()` for `noexcept`) for everything listed under
+"New functions, constants and data". Pure data was written in full: the `[layout]` schema (registered as a
+section, so `[layout]` already parses, exports and validates), its ranges, the bar-name constants and the
+`Layout` sidebar descriptor. New sources are not in `meson.build` yet (wiring is phase 4/7). Added beyond the
+list: `layout-mode-set` CLI command definition, `ScreenEdges::StripRect`/`stripRect`/`panelPositionForEdge`,
+`Island::surfaces()` (focus-grab whitelist), `shell::showsHome` next to `activeWorkspaceHasWindows`.
 
 ### Phase 2 (structures)
 

@@ -69,6 +69,9 @@ public:
   void requestRedraw();
 
   void show(const OsdContent& content);
+  // Offered every content before it shows; returning true means it was handled elsewhere (the layout island).
+  // An empty function restores the OSD.
+  void setRedirect(std::function<bool(const OsdContent&)> redirect);
   [[nodiscard]] bool isEnabled() const noexcept;
 
   // True while any instance is on screen or animating into view. Callers use this to correct

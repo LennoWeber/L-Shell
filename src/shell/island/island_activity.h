@@ -49,7 +49,26 @@ namespace shell::island {
     bool operator==(const ActivityState&) const = default;
   };
 
+  // Higher shows first; an incoming activity replaces the current one unless the current one ranks higher and
+  // is still on screen.
+  [[nodiscard]] int priority(ActivityKind kind) noexcept;
+
   class ActivityTracker {
+  public:
+    void configure(const IslandConfig& config);
+    // Offers a transient activity. Returns false when its kind is turned off or a higher-ranked one is showing.
+    bool post(Activity activity);
+    // Long-lived content (a playing track); nullopt clears it.
+    void setAmbient(std::optional<Activity> ambient);
+    void setHovered(bool hovered);
+    // Advances time; returns true when the transient activity expired during this step. Hover holds the clock.
+    bool advance(float elapsedMs);
+    void clearTransient();
+
+    [[nodiscard]] Presentation presentation() const noexcept;
+    [[nodiscard]] const ActivityState& state() const noexcept;
+    [[nodiscard]] bool enabled(ActivityKind kind) const noexcept;
+
   private:
     IslandConfig m_config;
     ActivityState m_state;

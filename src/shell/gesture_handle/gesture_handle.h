@@ -22,13 +22,45 @@ class IpcService;
 class Node;
 class PanelManager;
 class RenderContext;
+struct PointerEvent;
+struct WaylandOutput;
 struct wl_output;
+struct wl_surface;
 
 // The bottom-center home-indicator line of the handle and flow layouts. Shown while the active workspace has
 // windows; hovering or pulling it up reveals the pop-up bar or the full-screen status overlay, and dragging it
 // sideways switches workspace.
 class GestureHandle {
+public:
+  GestureHandle();
+  ~GestureHandle();
+
+  GestureHandle(const GestureHandle&) = delete;
+  GestureHandle& operator=(const GestureHandle&) = delete;
+
+  void initialize(
+      CompositorPlatform& platform, ConfigService& config, RenderContext* renderContext, IpcService* ipc,
+      PanelManager* panels, Bar* bar
+  );
+  void reload();
+  void onOutputChange();
+  void onWorkspaceChanged();
+  bool onPointerEvent(const PointerEvent& event);
+
 private:
+  struct Instance;
+
+  void syncInstances();
+  void createInstance(const WaylandOutput& output);
+  void destroyInstances();
+  void buildScene(Instance& instance, std::uint32_t width, std::uint32_t height);
+  void updateVisibility(Instance& instance, bool animate);
+  void handleOutcome(Instance& instance, shell::gesture_handle::Outcome outcome);
+  void reveal(Instance& instance);
+  void switchWorkspace(Instance& instance, int direction);
+  void settleLine(Instance& instance);
+  [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
+
   struct Instance {
     std::uint32_t outputName = 0;
     wl_output* output = nullptr;

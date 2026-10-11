@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
 
@@ -272,6 +273,11 @@ void OsdOverlay::requestLayout() {
       inst->surface->requestLayout();
     }
   }
+}
+
+void OsdOverlay::setRedirect(std::function<bool(const OsdContent&)> redirect) {
+  (void)redirect;
+  throw std::logic_error("OsdOverlay::setRedirect: not implemented");
 }
 
 void OsdOverlay::show(const OsdContent& content) {

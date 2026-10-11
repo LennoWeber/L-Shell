@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 class CompositorPlatform;
@@ -29,7 +30,11 @@ class PanelManager;
 class ProgressBar;
 class RenderContext;
 class UPowerService;
+struct OsdContent;
+struct PointerEvent;
+struct WaylandOutput;
 struct wl_output;
+struct wl_surface;
 
 struct IslandServices {
   CompositorPlatform& platform;
@@ -45,7 +50,52 @@ struct IslandServices {
 // The top-center capsule of the island and flow layouts. One layer surface per output, sized for the expanded
 // state; the visible capsule animates inside it and the input and blur regions follow the capsule.
 class Island {
+public:
+  Island();
+  ~Island();
+
+  Island(const Island&) = delete;
+  Island& operator=(const Island&) = delete;
+
+  void initialize(const IslandServices& services);
+  // Re-reads the resolved layout: creates, retunes or removes the island.
+  void reload();
+  void onOutputChange();
+  // Workspace, window or overview change: re-evaluates whether each output shows home.
+  void onWorkspaceChanged();
+  void onSecondTick();
+  bool onPointerEvent(const PointerEvent& event);
+  // OSD redirect: true when the island shows this content instead of the OSD.
+  [[nodiscard]] bool takeOsdContent(const OsdContent& content);
+  void onNotificationPosted(const std::string& appName, const std::string& summary, const std::string& glyph);
+  void onPowerChanged(bool charging, float percent);
+  // MPRIS state changed: refreshes the ambient now-playing indicator.
+  void onMediaChanged();
+  [[nodiscard]] bool isActive() const noexcept;
+  [[nodiscard]] std::vector<wl_surface*> surfaces() const;
+
 private:
+  struct Instance;
+
+  void syncInstances();
+  void createInstance(const WaylandOutput& output);
+  void destroyInstances();
+  void buildScene(Instance& instance, std::uint32_t width, std::uint32_t height);
+  void prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout);
+  void layoutCapsule(Instance& instance);
+  void updateContent(Instance& instance);
+  void animatePresentation(Instance& instance);
+  void animateVisibility(Instance& instance);
+  void syncInputRegion(Instance& instance);
+  void syncBlurRegion(Instance& instance);
+  void post(shell::island::Activity activity);
+  void scheduleActivityTimer();
+  void onActivityTimer();
+  void activateClick(Instance& instance);
+  [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
+  [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
+  [[nodiscard]] float capsuleHeight(const Instance& instance) const noexcept;
+
   struct Instance {
     std::uint32_t outputName = 0;
     wl_output* output = nullptr;

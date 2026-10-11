@@ -191,6 +191,8 @@ private:
   // and on every output change so first-run stacking matches hot reload.
   void reconcileOutputSurfaces();
   void initIpc();
+  // `layout-mode-set <mode>`: persists [layout].mode as a settings override.
+  [[nodiscard]] std::string layoutModeSetIpc(const std::string& args);
   // (Re)register plugin-backed launcher providers from the enabled plugin set.
   void reloadPluginLauncherProviders();
   // (Re)register config-driven dmenu launcher providers ([shell.launcher.dmenu.entry.*]).

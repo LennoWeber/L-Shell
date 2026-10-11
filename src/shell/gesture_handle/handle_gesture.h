@@ -31,6 +31,24 @@ namespace shell::gesture_handle {
   };
 
   class GestureRecognizer {
+  public:
+    void configure(const GestureSettings& settings);
+    // Pointer entered the handle; the owner starts its hover-dwell timer.
+    void enter();
+    // Pointer left with no button held; ends the hover.
+    void leave();
+    // The owner's hover-dwell timer fired.
+    [[nodiscard]] Outcome dwellElapsed();
+    void press(float x, float y);
+    [[nodiscard]] Outcome motion(float x, float y);
+    [[nodiscard]] Outcome release(float x, float y);
+    // Grab lost (popup, focus change): forget the press without firing.
+    void cancel();
+
+    [[nodiscard]] Phase phase() const noexcept;
+    [[nodiscard]] float pressX() const noexcept;
+    [[nodiscard]] float pressY() const noexcept;
+
   private:
     GestureSettings m_settings;
     Phase m_phase = Phase::Idle;
