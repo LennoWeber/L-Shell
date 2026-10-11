@@ -56,6 +56,43 @@ ensure_gtk_css_import() {
     fi
 }
 
+# Sets gtk-application-prefer-dark-theme in GTK 3's settings.ini, keeping every other line.
+set_gtk3_prefer_dark() {
+    local value="$1"
+    local settings="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/settings.ini"
+    local key="gtk-application-prefer-dark-theme"
+    mkdir -p "$(dirname "$settings")"
+    if [ ! -f "$settings" ]; then
+        printf '[Settings]\n%s=%s\n' "$key" "$value" >"$settings"
+        return
+    fi
+    local tmp
+    tmp="$(mktemp "${settings}.tmp.XXXXXX")"
+    awk -v key="$key" -v value="$value" '
+        /^\[/ {
+            if (in_settings && !done) { print key "=" value; done = 1 }
+            in_settings = ($0 == "[Settings]")
+        }
+        in_settings && $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+            if (!done) { print key "=" value; done = 1 }
+            next
+        }
+        { print }
+        END {
+            if (!done) {
+                if (!in_settings) print "[Settings]"
+                print key "=" value
+            }
+        }
+    ' "$settings" >"$tmp"
+    if cmp -s "$settings" "$tmp"; then
+        rm -f "$tmp"
+    else
+        cat "$tmp" >"$settings"
+        rm -f "$tmp"
+    fi
+}
+
 sync_system_appearance() {
     local mode="$1" update_gtk_theme="${2:-true}"
     local has_gsettings has_dconf
@@ -75,7 +112,26 @@ sync_system_appearance() {
         if theme_exists "$target_theme"; then
             theme_available=true
         else
-            echo "Theme '$target_theme' not found, skipping GTK theme set"
+            # Without adw-gtk3, GTK 3 apps would stay light Adwaita next to a dark shell: GTK 3 ignores the
+            # color-scheme key, so pick the built-in Adwaita's dark variant through settings.ini instead, but only
+            # over a stock theme (a theme the user picked stays).
+            local current_theme=""
+            if [ -n "$has_gsettings" ]; then
+                current_theme=$(gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null | tr -d "'" || true)
+            elif [ -n "$has_dconf" ]; then
+                current_theme=$(dconf read /org/gnome/desktop/interface/gtk-theme 2>/dev/null | tr -d "'" || true)
+            fi
+            case "$current_theme" in
+                "" | Adwaita | Adwaita-dark | adw-gtk3 | adw-gtk3-dark | Default)
+                    target_theme="Adwaita"
+                    theme_available=true
+                    set_gtk3_prefer_dark "$([ "$mode" = "dark" ] && echo 1 || echo 0)"
+                    echo "adw-gtk3 not installed, using GTK's built-in Adwaita ($mode)"
+                    ;;
+                *)
+                    echo "Theme 'adw-gtk3' not found, keeping GTK theme '$current_theme'"
+                    ;;
+            esac
         fi
     fi
 

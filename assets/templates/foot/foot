@@ -1,3 +1,7 @@
+# Breathing room around the text, like Terminal on macOS.
+[main]
+pad=10x6
+
 [colors-dark]
 foreground={{colors.terminal_foreground.default.hex_stripped}}
 background={{colors.terminal_background.default.hex_stripped}}

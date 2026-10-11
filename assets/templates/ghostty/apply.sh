@@ -30,8 +30,11 @@ for config_file in "${config_files[@]}"; do
 done
 
 if [ "$found" != true ]; then
-    echo "Error: no ghostty config file found" >&2
-    exit 1
+    # No config yet: start one that only selects the theme (Ghostty reads config.ghostty since 1.2).
+    config_file="${config_files[1]}"
+    mkdir -p "$(dirname "$config_file")"
+    echo "theme = noctalia" >"$config_file"
+    echo "Created $config_file with the Noctalia theme"
 fi
 
 bash "$script_dir/reload.sh"
