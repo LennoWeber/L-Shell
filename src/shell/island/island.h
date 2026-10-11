@@ -99,7 +99,8 @@ private:
   void animateVisibility(Instance& instance);
   void syncInputRegion(Instance& instance);
   void syncBlurRegion(Instance& instance);
-  void post(shell::island::Activity activity);
+  // False when the island leaves the activity out (nothing to show, kind off, a higher-priority one showing).
+  bool post(shell::island::Activity activity);
   // NotificationManager subscription (multi-listener), registered in initialize().
   void onNotificationEvent(const Notification& notification, NotificationEvent event);
   void scheduleActivityTimer();
@@ -135,7 +136,8 @@ private:
     // 0 = hidden (flow with an empty workspace), 1 = shown; animated.
     float visibility = 1.0F;
     AnimationManager::Id visibilityAnim = 0;
-    bool occupied = false; // active workspace on this output has windows
+    // Where `visibility` is heading; nullopt until the first pass. Repeated workspace events then cost nothing.
+    std::optional<bool> shownTarget;
     bool pointerInside = false;
     float uiScale = 1.0F;
   };
@@ -161,5 +163,7 @@ private:
   std::optional<bool> m_lastCharging;
   std::optional<float> m_lastBatteryPercent;
   bool m_suppressed = false;
+  bool m_visibilityPassQueued = false; // coalesces bursts of workspace/window events into one pass
+  std::string m_clockText;             // last clock text; the island repaints when the minute turns
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

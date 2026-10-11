@@ -50,6 +50,8 @@ namespace {
   constexpr std::string_view kSectionHeaderProviderId = "__launcher_section__";
   constexpr float kSpotlightSearchHeight = 38.0F;
   constexpr float kSpotlightExpandedHeight = 360.0F;
+  // Tahoe's Spotlight: a capsule while it is the search field alone, a generously rounded sheet with results.
+  constexpr float kSpotlightExpandedRadius = 26.0F;
 
   [[nodiscard]] bool isSectionHeader(const LauncherResult& result) {
     return result.providerId == kSectionHeaderProviderId;
@@ -1101,49 +1103,55 @@ void LauncherPanel::create() {
   });
 
   // Spotlight-style search row: magnifier glyph and a large, frameless field.
-  container->addChild(ui::row(
-      {
-          .align = FlexAlign::Center,
-          .gap = Style::spaceSm * scale,
-          .paddingH = Style::spaceSm * scale,
-      },
-      ui::glyph({
-          .glyph = "search",
-          .glyphSize = Style::fontSizeTitle * scale,
-          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-      }),
-      ui::input({
-          .out = &m_input,
-          .placeholder = m_scopedPlaceholder.empty() ? i18n::tr("launcher.search-placeholder") : m_scopedPlaceholder,
-          .fontSize = Style::fontSizeTitle * 1.125F * scale,
-          .controlHeight = kSpotlightSearchHeight * scale,
-          .horizontalPadding = Style::spaceXs * scale,
-          .clearButtonEnabled = true,
-          .frameVisible = false,
-          .surfaceOpacity = panelCardOpacity(),
-          .flexGrow = 1.0F,
-          .onChange =
-              [this](const std::string& text) {
-                onInputChanged(text);
-                if (m_input == nullptr) {
-                  return;
-                }
-                const std::string preview = singleLinePreview(text);
-                if (preview != text) {
-                  m_input->setValue(preview);
-                }
-              },
-          .onSubmit = [this](const std::string& /*text*/) { activateSelected(); },
-          .onKeyEvent = [this](std::uint32_t sym, std::uint32_t modifiers) { return handleKeyEvent(sym, modifiers); },
-      })
-  ));
+  container->addChild(
+      ui::row(
+          {
+              .align = FlexAlign::Center,
+              .gap = Style::spaceSm * scale,
+              .paddingH = Style::spaceSm * scale,
+          },
+          ui::glyph({
+              .glyph = "search",
+              .glyphSize = Style::fontSizeTitle * scale,
+              .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+          }),
+          ui::input({
+              .out = &m_input,
+              .placeholder =
+                  m_scopedPlaceholder.empty() ? i18n::tr("launcher.search-placeholder") : m_scopedPlaceholder,
+              .fontSize = Style::fontSizeTitle * 1.125F * scale,
+              .controlHeight = kSpotlightSearchHeight * scale,
+              .horizontalPadding = Style::spaceXs * scale,
+              .clearButtonEnabled = true,
+              .frameVisible = false,
+              .surfaceOpacity = panelCardOpacity(),
+              .flexGrow = 1.0F,
+              .onChange =
+                  [this](const std::string& text) {
+                    onInputChanged(text);
+                    if (m_input == nullptr) {
+                      return;
+                    }
+                    const std::string preview = singleLinePreview(text);
+                    if (preview != text) {
+                      m_input->setValue(preview);
+                    }
+                  },
+              .onSubmit = [this](const std::string& /*text*/) { activateSelected(); },
+              .onKeyEvent =
+                  [this](std::uint32_t sym, std::uint32_t modifiers) { return handleKeyEvent(sym, modifiers); },
+          })
+      )
+  );
 
-  container->addChild(ui::separator({
-      .out = &m_searchDivider,
-      .color = colorSpecFromRole(ColorRole::Outline),
-      .visible = !m_collapsed,
-      .participatesInLayout = !m_collapsed,
-  }));
+  container->addChild(
+      ui::separator({
+          .out = &m_searchDivider,
+          .color = colorSpecFromRole(ColorRole::Outline),
+          .visible = !m_collapsed,
+          .participatesInLayout = !m_collapsed,
+      })
+  );
 
   container->addChild(
       ui::segmented({
@@ -2005,8 +2013,8 @@ bool LauncherPanel::wantsSectionHeaders() const {
   // App-only results go to the app grid when it is enabled; headers would break that layout.
   const bool appGrid = m_config != nullptr && m_config->config().shell.launcher.appGrid && m_launcherShowIcons;
   return !(appGrid && std::ranges::all_of(m_results, [](const LauncherResult& result) {
-    return result.providerId == kApplicationsProviderId;
-  }));
+             return result.providerId == kApplicationsProviderId;
+           }));
 }
 
 void LauncherPanel::insertSectionHeaders() {
@@ -2067,6 +2075,13 @@ float LauncherPanel::preferredHeight() const {
     return scaled(kSpotlightSearchHeight) + contentScale() * Style::panelPadding * 2.0F;
   }
   return scaled(kSpotlightExpandedHeight);
+}
+
+std::optional<float> LauncherPanel::floatingCornerRadius() const {
+  if (shouldCollapse()) {
+    return preferredHeight() * 0.5F;
+  }
+  return scaled(kSpotlightExpandedRadius);
 }
 
 void LauncherPanel::syncCollapsedState() {

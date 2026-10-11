@@ -3,6 +3,7 @@
 #include "compositors/compositor_platform.h"
 #include "config/config_service.h"
 #include "config/layout_resolver.h"
+#include "core/deferred_call.h"
 #include "core/log.h"
 #include "core/ui_phase.h"
 #include "render/render_context.h"
@@ -37,6 +38,7 @@ namespace {
   constexpr float kDragFollowMax = 10.0F;
   constexpr auto kPeekRelease = std::chrono::milliseconds(1500);
   constexpr auto kPeekWatch = std::chrono::milliseconds(250);
+  constexpr float kCompactThickness = 3.0F; // the line in the gap under a bottom dock
 
 } // namespace
 
@@ -101,9 +103,17 @@ void GestureHandle::onOutputChange() {
 }
 
 void GestureHandle::onWorkspaceChanged() {
-  for (auto& instance : m_instances) {
-    updateVisibility(*instance, true);
+  // Window-title changes arrive here too, in bursts; one visibility pass per burst is enough.
+  if (m_visibilityPassQueued) {
+    return;
   }
+  m_visibilityPassQueued = true;
+  DeferredCall::callLater([this]() {
+    m_visibilityPassQueued = false;
+    for (auto& instance : m_instances) {
+      updateVisibility(*instance, true);
+    }
+  });
 }
 
 void GestureHandle::syncInstances() {
@@ -123,11 +133,29 @@ void GestureHandle::syncInstances() {
 
 void GestureHandle::createInstance(const WaylandOutput& output) {
   const HandleConfig& config = *m_handleConfig;
-  const auto width = static_cast<std::uint32_t>(std::max(config.width, 8) + (2 * kHitPad));
-  const auto height =
-      static_cast<std::uint32_t>(std::max(config.marginBottom - kEdgeGap, 0) + std::max(config.thickness, 1) + kHitPad);
-
   auto instance = std::make_unique<Instance>();
+  const int lineWidth = std::max(config.width, 8);
+  const DockConfig& dock = m_config->config().dock;
+  if (dock.enabled && dock.position == DockEdge::Bottom && dock.marginEdge >= noctalia::config::kHandleCompactMinGap) {
+    // A dock at the bottom: the line sits in the gap under it, like the home indicator under the iPad dock. Its
+    // hit strip stays below the dock; with an edge-revealed dock the bottom pixels stay free for that reveal.
+    const int freeBottom = dock.autoHide ? kEdgeGap : 0;
+    instance->marginBottom = freeBottom;
+    instance->surfaceHeight = std::max(dock.marginEdge - 1 - freeBottom, 4);
+    instance->lineThickness = kCompactThickness;
+    instance->lineY = std::floor((static_cast<float>(instance->surfaceHeight) - kCompactThickness) * 0.5F);
+  } else {
+    const int thickness = std::max(config.thickness, 1);
+    instance->marginBottom = std::min(kEdgeGap, std::max(config.marginBottom, 0));
+    instance->surfaceHeight = std::max(config.marginBottom - kEdgeGap, 0) + thickness + kHitPad;
+    instance->lineThickness = static_cast<float>(thickness);
+    instance->lineY = static_cast<float>(kHitPad);
+  }
+  instance->surfaceWidth = lineWidth + (2 * kHitPad);
+  instance->lineX = static_cast<float>(kHitPad);
+  const auto width = static_cast<std::uint32_t>(instance->surfaceWidth);
+  const auto height = static_cast<std::uint32_t>(instance->surfaceHeight);
+
   instance->outputName = output.name;
   instance->output = output.output;
   instance->recognizer.configure(
@@ -142,7 +170,7 @@ void GestureHandle::createInstance(const WaylandOutput& output) {
       .height = height,
       // On the physical bottom edge, not pushed up by a bar's or the dock's exclusive zone.
       .exclusiveZone = -1,
-      .marginBottom = std::min(kEdgeGap, std::max(config.marginBottom, 0)),
+      .marginBottom = instance->marginBottom,
       .defaultWidth = width,
       .defaultHeight = height,
   };
@@ -172,7 +200,7 @@ void GestureHandle::destroyInstances() {
     instance->peekReleaseTimer.stop();
     instance->peekWatchTimer.stop();
     if (instance->peeking && m_bar != nullptr) {
-      m_bar->setBarPeek(instance->output, m_revealBarName, false);
+      m_bar->setBarPeek(instance->output, instance->peekedBar, false);
     }
     instance->animations.cancelAll();
   }
@@ -218,14 +246,12 @@ void GestureHandle::applyLineGeometry(Instance& instance) {
   }
   const HandleConfig& config = *m_handleConfig;
   const auto length = static_cast<float>(std::max(config.width, 8));
-  const auto thickness = static_cast<float>(std::max(config.thickness, 1));
+  const float thickness = instance.lineThickness;
   // Tahoe/iOS home indicator: a neutral pill that reads on light and dark wallpapers alike.
   instance.line->setFill(colorSpecFromRole(ColorRole::OnSurface, isResolvedLightTheme() ? 0.55F : 0.7F));
   instance.line->setRadius(thickness * 0.5F);
   instance.line->setSize(length, thickness);
-  instance.line->setPosition(
-      static_cast<float>(kHitPad) + instance.dragOffsetX, static_cast<float>(kHitPad) + instance.dragOffsetY
-  );
+  instance.line->setPosition(instance.lineX + instance.dragOffsetX, instance.lineY + instance.dragOffsetY);
   instance.line->setOpacity(instance.visibility);
 }
 
@@ -233,18 +259,20 @@ void GestureHandle::updateVisibility(Instance& instance, bool animate) {
   if (m_platform == nullptr || instance.surface == nullptr) {
     return;
   }
-  instance.occupied = shell::activeWorkspaceHasWindows(*m_platform, instance.output);
-  const bool atHome = shell::showsHome(*m_platform, instance.output);
-  const bool shown = !instance.peeking && !(m_hideAtHome && atHome);
+  const bool atHome = m_hideAtHome && shell::showsHome(*m_platform, instance.output);
+  const bool shown = !instance.peeking && !atHome;
   const float target = shown ? 1.0F : 0.0F;
 
-  if (shown) {
-    instance.surface->setInputRegion(
-        {InputRect{0, 0, static_cast<int>(instance.surface->width()), static_cast<int>(instance.surface->height())}}
-    );
-  } else {
-    instance.dwellTimer.stop();
-    instance.surface->setInputRegion({});
+  if (instance.shownApplied != shown) {
+    instance.shownApplied = shown;
+    if (shown) {
+      instance.surface->setInputRegion({InputRect{0, 0, instance.surfaceWidth, instance.surfaceHeight}});
+    } else {
+      instance.dwellTimer.stop();
+      instance.surface->setInputRegion({});
+    }
+    // The region takes effect with the next commit.
+    instance.surface->requestRedraw();
   }
 
   if (std::abs(instance.visibility - target) < 1.0e-3F) {
@@ -292,11 +320,19 @@ bool GestureHandle::onPointerEvent(const PointerEvent& event) {
     });
     return true;
   }
-  case PointerEvent::Type::Leave:
+  case PointerEvent::Type::Leave: {
     instance->pointerInside = false;
     instance->dwellTimer.stop();
+    // A leave normally follows the release; one during a press means the release was lost (focus change, popup):
+    // forget the press instead of letting later plain motion finish a swipe.
+    const auto phase = instance->recognizer.phase();
+    if (phase != shell::gesture_handle::Phase::Hovering && phase != shell::gesture_handle::Phase::Idle) {
+      instance->recognizer.cancel();
+      settleLine(*instance);
+    }
     instance->recognizer.leave();
     return true;
+  }
   case PointerEvent::Type::Motion: {
     const auto phase = instance->recognizer.phase();
     if (phase == shell::gesture_handle::Phase::Hovering || phase == shell::gesture_handle::Phase::Idle) {
@@ -363,17 +399,20 @@ void GestureHandle::reveal(Instance& instance) {
   }
   m_bar->setBarPeek(instance.output, m_revealBarName, true);
   instance.peeking = true;
+  instance.peekedBar = m_revealBarName;
   updateVisibility(instance, true);
 
   Instance* instancePtr = &instance;
   // The peek holds the bar until the pointer has used it; if the pointer never gets there, let it go.
   instance.peekReleaseTimer.start(kPeekRelease, [this, instancePtr]() {
     if (m_bar != nullptr) {
-      m_bar->setBarPeek(instancePtr->output, m_revealBarName, false);
+      m_bar->setBarPeek(instancePtr->output, instancePtr->peekedBar, false);
     }
   });
   instance.peekWatchTimer.startRepeating(kPeekWatch, [this, instancePtr]() {
-    if (m_bar != nullptr && m_bar->isBarShown(instancePtr->output, m_revealBarName)) {
+    // At home the bar stays pinned and the line stays hidden anyway: stop watching.
+    const bool atHome = m_platform != nullptr && shell::showsHome(*m_platform, instancePtr->output);
+    if (!atHome && m_bar != nullptr && m_bar->isBarShown(instancePtr->output, instancePtr->peekedBar)) {
       return;
     }
     instancePtr->peekWatchTimer.stop();
@@ -463,11 +502,11 @@ std::vector<InputRect> GestureHandle::surfaceRectsForOutput(wl_output* output) c
     if (it == outputs.end()) {
       continue;
     }
-    const int outputW = it->logicalWidth > 0 ? it->logicalWidth : it->width;
-    const int outputH = it->logicalHeight > 0 ? it->logicalHeight : it->height;
-    const auto w = static_cast<int>(instance->surface->width());
-    const auto h = static_cast<int>(instance->surface->height());
-    out.push_back(InputRect{(outputW - w) / 2, outputH - kEdgeGap - h, w, h});
+    const int outputW = it->effectiveLogicalWidth();
+    const int outputH = it->effectiveLogicalHeight();
+    const int w = instance->surfaceWidth;
+    const int h = instance->surfaceHeight;
+    out.push_back(InputRect{(outputW - w) / 2, outputH - instance->marginBottom - h, w, h});
   }
   return out;
 }

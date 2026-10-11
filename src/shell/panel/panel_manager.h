@@ -186,6 +186,10 @@ private:
   [[nodiscard]] std::string effectivePanelPosition() const;
   // Screen-edge drawers close when the pointer leaves them, unless a popup or a focused text field holds them.
   [[nodiscard]] bool dismissesOnPointerLeave() const;
+  // The leave-dismiss conditions apart from "the pointer was inside": no popup in use, no focused text field.
+  [[nodiscard]] bool leaveMayDismiss() const;
+  // The open floating panel's corner radius: its own (Spotlight's capsule) or the shell's panel radius.
+  [[nodiscard]] float floatingPanelRadius() const;
   static PanelManager* s_instance;
 
   void buildScene(std::uint32_t width, std::uint32_t height);
@@ -290,6 +294,7 @@ private:
   // Opened with PanelOpenRequest::dismissOnPointerLeave; armed once the pointer has entered the panel.
   bool m_dismissOnPointerLeave = false;
   bool m_pointerEnteredSinceOpen = false;
+  Timer m_unvisitedDrawerTimer; // closes a leave-dismiss drawer the pointer never entered
   // PanelOpenRequest::screenPosition of the open panel (screen-edge drawers); empty when it uses its own.
   std::string m_screenPositionOverride;
   bool m_inTransition = false;

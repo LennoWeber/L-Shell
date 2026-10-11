@@ -2174,7 +2174,14 @@ void Bar::setAttachedPanelGeometry(
 void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
   assert(!barName.empty() && "a peek names the bar it holds");
   BarInstance* instance = instanceForBar(output, barName);
-  if (instance == nullptr || instance->surface == nullptr || !barSupportsSlideBehavior(instance->barConfig)) {
+  if (instance == nullptr || instance->surface == nullptr) {
+    return;
+  }
+  if (!active) {
+    // Released even if the bar stopped sliding meanwhile (bar-auto-hide-set off), so no stale hold remains.
+    instance->peeked = false;
+  }
+  if (!barSupportsSlideBehavior(instance->barConfig)) {
     return;
   }
   instance->peeked = active;
@@ -4025,6 +4032,8 @@ std::string Bar::setBarAutoHideIpc(std::string_view args) {
 
     instance.ipcLayoutReleased = false;
     instance.autoHideDisablePending = false;
+    // A peek only holds a sliding bar; the new mode starts without one (the handle's watch notices the bar).
+    instance.peeked = false;
     instance.animations.cancelForOwner(instance.slideRoot);
 
     instance.barConfig.autoHide = enabled;

@@ -46,6 +46,8 @@ namespace {
 
   constexpr Logger kLog("panel");
   constexpr auto kKeyboardRelaxDelay = std::chrono::milliseconds(100);
+  // A screen-edge drawer the pointer never reaches (it brushed the edge and moved on) closes after this.
+  constexpr auto kUnvisitedDrawerTimeout = std::chrono::milliseconds(1500);
 
   // Layer-shell keyboard interactivity for a panel surface: `initial` is applied at
   // map time, `relaxed` (when set) shortly after by m_keyboardRelaxTimer.
@@ -261,7 +263,8 @@ namespace {
   // does not keep surfaces clear of them: panels pinned to the top open below them, like macOS menus.
   [[nodiscard]] std::int32_t
   floatingTopBarInset(const ConfigService* configService, CompositorPlatform* platform, wl_output* output) {
-    if (configService == nullptr) {
+    // Classic keeps Noctalia's own [bar.*] behavior: panels there may overlap a floating bar, as upstream.
+    if (configService == nullptr || configService->config().layout.mode == LayoutMode::Classic) {
       return 0;
     }
     const WaylandOutput* wlOutput =
@@ -570,7 +573,14 @@ void PanelManager::unregisterPanel(const std::string& id) {
 }
 
 bool PanelManager::dismissesOnPointerLeave() const {
-  if (!m_dismissOnPointerLeave || !m_pointerEnteredSinceOpen || m_activePanel == nullptr) {
+  if (!m_pointerEnteredSinceOpen) {
+    return false;
+  }
+  return leaveMayDismiss();
+}
+
+bool PanelManager::leaveMayDismiss() const {
+  if (!m_dismissOnPointerLeave || m_activePanel == nullptr) {
     return false;
   }
   // Moving into a context menu or a dropdown of the panel leaves its surface; that is still using the panel.
@@ -580,6 +590,14 @@ bool PanelManager::dismissesOnPointerLeave() const {
   // A focused text field (the launcher's search) keeps the panel: typing must not depend on where the pointer is.
   const InputArea* focused = m_inputDispatcher.focusedArea();
   return focused == nullptr || focused->textInputClient() == nullptr;
+}
+
+float PanelManager::floatingPanelRadius() const {
+  assert(m_activePanel != nullptr && "radius of a panel that is not open");
+  if (m_activePanel == nullptr) {
+    return Style::scaledRadiusXl();
+  }
+  return m_activePanel->floatingCornerRadius().value_or(Style::scaledRadiusXl(m_activePanel->contentScale()));
 }
 
 std::string PanelManager::effectivePanelPosition() const {
@@ -678,6 +696,14 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   m_screenPositionOverride = std::string(request.screenPosition);
   m_dismissOnPointerLeave = request.dismissOnPointerLeave;
   m_pointerEnteredSinceOpen = false;
+  m_unvisitedDrawerTimer.stop();
+  if (m_dismissOnPointerLeave) {
+    m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
+      if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
+        closePanel();
+      }
+    });
+  }
   m_activePanel->setContentScale(shell::panel_surface::contentScale(m_config));
   m_pendingOpenContext = std::string(request.context);
   m_activePanel->setPendingOpenContext(request.context);
@@ -1509,6 +1535,7 @@ void PanelManager::closePanel(bool animateClose) {
   // Drop the outside-click handlers as soon as close starts.
   // During the close animation we want clicks on apps to behave normally.
   deactivateOutsideClickHandlers();
+  m_unvisitedDrawerTimer.stop();
 
   // Disable input during close animation
   m_inputDispatcher.setSceneRoot(nullptr);
@@ -2414,7 +2441,7 @@ void PanelManager::applyPanelCompositorBlur(
     return;
   }
 
-  const float radius = Style::scaledRadiusXl(m_activePanel->contentScale());
+  const float radius = m_attachedToBar ? Style::scaledRadiusXl(m_activePanel->contentScale()) : floatingPanelRadius();
   const CornerShapes corners = m_attachedToBar ? attached_panel::cornerShapes(m_attachedBarPosition) : CornerShapes{};
   const RectInsets logicalInset =
       m_attachedToBar ? attached_panel::logicalInset(m_attachedBarPosition, radius) : RectInsets{};
@@ -2562,7 +2589,7 @@ void PanelManager::onConfigReloaded() {
         m_config->config().shell.panel.shadow && shell::surface_shadow::enabled(true, shadowConfig);
     m_panelShadowNode->setVisible(panelShadow);
     if (!m_attachedToBar && panelShadow) {
-      const float shadowRadius = Style::scaledRadiusXl(m_activePanel->contentScale());
+      const float shadowRadius = floatingPanelRadius();
       m_panelShadowNode->setStyle(
           shell::surface_shadow::style(
               shadowConfig, panelBackgroundOpacity,
@@ -2798,7 +2825,7 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
     m_panelShadowNode->setPosition(bgX + shadowOffsetX, bgY + shadowOffsetY);
     m_panelShadowNode->setSize(bgW, bgH);
     if (!m_attachedToBar && panelShadow) {
-      const float shadowRadius = Style::scaledRadiusXl(m_activePanel->contentScale());
+      const float shadowRadius = floatingPanelRadius();
       const float panelBackgroundOpacity = shell::panel_surface::backgroundOpacity(m_config);
       m_panelShadowNode->setStyle(
           shell::surface_shadow::style(
@@ -2812,9 +2839,12 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
   if (m_bgNode != nullptr) {
     m_bgNode->setPosition(bgX, bgY);
     m_bgNode->setSize(bgW, bgH);
+    if (!m_attachedToBar) {
+      static_cast<Box*>(m_bgNode)->setRadius(floatingPanelRadius());
+    }
   }
   if (m_glassSheenNode != nullptr) {
-    const float radius = Style::scaledRadiusXl(m_activePanel->contentScale());
+    const float radius = floatingPanelRadius();
     m_glassSheenNode->setStyle(shell::glass::sheenStyle({.radius = Radii{radius, radius, radius, radius}}));
     m_glassSheenNode->setPosition(bgX, bgY);
     m_glassSheenNode->setSize(bgW, bgH);

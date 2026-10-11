@@ -2,6 +2,7 @@
 
 #include "config/config_types.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -37,6 +38,10 @@ namespace noctalia::config {
   inline constexpr std::string_view kMinimalBarName = "minimal";
   inline constexpr std::string_view kHandleBarName = "handle";
   inline constexpr std::string_view kFlowBarName = "flow";
+
+  // A bottom dock floating at least this far (logical px) above the edge leaves the handle line room in the gap
+  // under it, like the home indicator under the iPad dock; a tighter always-visible dock leaves no room at all.
+  inline constexpr std::int32_t kHandleCompactMinGap = 5;
 
   // A full BarConfig for a mode bar: the [bar.*] defaults (the macOS menu bar) with the mode's own settings on top.
   // `smartHide` hides it while the active workspace has windows (smart bar, flow's home bar, the handle's bar).

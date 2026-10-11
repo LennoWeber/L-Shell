@@ -716,6 +716,9 @@ void Application::initPanelManagerAndPanels() {
     m_overviewLauncherCapture.sync();
     m_bar.scheduleSmartAutoHideReevaluation();
     m_dock.scheduleSmartAutoHideReevaluation();
+    // The overview counts as home: Flow's island and the home line follow it like the home bar does.
+    m_island.onWorkspaceChanged();
+    m_gestureHandle.onWorkspaceChanged();
   });
   m_panelManager.setPanelOpenedCallback([this]() {
     m_overviewLauncherCapture.sync();
@@ -1244,14 +1247,21 @@ void Application::initWidgetControllersAndCallbacks() {
   m_osdOverlay.setRedirect([this](const OsdContent& content) { return m_island.takeOsdContent(content); });
   m_configService.addReloadCallback(
       [this]() {
-        // The dock decides whether Flow has a handle (an always-visible bottom dock owns that spot).
+        // The dock decides where the handle line sits (in the gap under a bottom dock) and whether there is room.
         const auto& changed = m_configService.lastChange();
-        if (!changed.layout && !changed.dock) {
+        if (!changed.layout && !changed.dock && !changed.bars) {
           return;
         }
         m_island.reload();
         m_gestureHandle.reload();
         m_screenEdges.reload();
+        if (changed.bars || changed.dock) {
+          // Bar and dock surfaces this reload rebuilt now stack above the chrome (same layer, the newer surface on
+          // top). Recreating the chrome after them restores the order of reconcileOutputSurfaces().
+          m_island.onOutputChange();
+          m_gestureHandle.onOutputChange();
+          m_screenEdges.onOutputChange();
+        }
       },
       "layout"
   );

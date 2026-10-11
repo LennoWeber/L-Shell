@@ -1931,7 +1931,9 @@ void ConfigService::registerIpc(IpcService& ipc) {
     if (!mode.has_value()) {
       return "error: unknown layout mode (expected classic, smart_bar, minimal_bar, island, edges, handle or flow)\n";
     }
-    setLayoutMode(*mode);
+    if (!setLayoutMode(*mode)) {
+      return "error: could not save the layout mode (see the log)\n";
+    }
     return "ok\n";
   });
 }

@@ -92,14 +92,15 @@ void ScreenEdges::syncInstances() {
   };
 
   for (const auto& out : m_platform->outputs()) {
-    if (!out.done || out.connectorName.empty() || out.output == nullptr) {
+    // Strips are cut from the logical size; an output without one yet gets them on its next change.
+    if (!out.done || out.connectorName.empty() || out.output == nullptr || !out.hasUsableGeometry()) {
       continue;
     }
     auto instance = std::make_unique<OutputInstance>();
     instance->outputName = out.name;
     instance->output = out.output;
-    instance->logicalWidth = out.logicalWidth > 0 ? out.logicalWidth : out.width;
-    instance->logicalHeight = out.logicalHeight > 0 ? out.logicalHeight : out.height;
+    instance->logicalWidth = out.effectiveLogicalWidth();
+    instance->logicalHeight = out.effectiveLogicalHeight();
     for (const auto& spec : specs) {
       auto parsed = noctalia::bar::parseWidgetAction(*spec.value);
       if (!parsed.has_value()) {

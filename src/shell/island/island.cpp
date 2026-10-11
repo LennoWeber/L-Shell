@@ -2,6 +2,7 @@
 
 #include "compositors/compositor_platform.h"
 #include "config/config_service.h"
+#include "core/deferred_call.h"
 #include "core/log.h"
 #include "core/ui_phase.h"
 #include "dbus/mpris/mpris_service.h"
@@ -54,7 +55,8 @@ namespace {
   constexpr float kHideLift = 10.0F;
   constexpr float kLowBattery = 20.0F;
   constexpr float kCriticalBattery = 10.0F;
-  constexpr const char* kClockFormat = "%a %-d %b  %H:%M";
+  // The menu-bar clock: weekday and date, then the time in the shell's own format (12 or 24 hours).
+  constexpr const char* kClockDateFormat = "%a %-d %b";
 
   [[nodiscard]] float lerp(float a, float b, float t) noexcept { return a + ((b - a) * t); }
 
@@ -89,7 +91,15 @@ namespace {
   }
 
   [[nodiscard]] std::string percentText(double percent) {
-    return std::format("{} %", static_cast<int>(std::lround(std::clamp(percent, 0.0, 100.0))));
+    return std::format("{}%", static_cast<int>(std::lround(std::clamp(percent, 0.0, 100.0))));
+  }
+
+  [[nodiscard]] std::string timeText(const ConfigService* config) {
+    return formatLocalTime(config != nullptr ? config->config().shell.timeFormat.c_str() : "%H:%M");
+  }
+
+  [[nodiscard]] std::string clockText(const ConfigService* config) {
+    return formatLocalTime(kClockDateFormat) + "  " + timeText(config);
   }
 
 } // namespace
@@ -177,12 +187,26 @@ void Island::onOutputChange() {
 }
 
 void Island::onWorkspaceChanged() {
-  for (auto& instance : m_instances) {
-    animateVisibility(*instance);
+  // Window-title changes arrive here too, in bursts; one visibility pass per burst is enough.
+  if (m_visibilityPassQueued) {
+    return;
   }
+  m_visibilityPassQueued = true;
+  DeferredCall::callLater([this]() {
+    m_visibilityPassQueued = false;
+    for (auto& instance : m_instances) {
+      animateVisibility(*instance);
+    }
+  });
 }
 
 void Island::onSecondTick() {
+  // The island shows minutes: repaint when the minute turns, not every second.
+  std::string clock = clockText(m_config);
+  if (clock == m_clockText) {
+    return;
+  }
+  m_clockText = std::move(clock);
   for (auto& instance : m_instances) {
     if (instance->surface != nullptr && instance->visibility > 0.0F) {
       instance->surface->requestUpdate();
@@ -273,6 +297,9 @@ void Island::destroyInstances() {
     instance->animations.cancelAll();
   }
   m_instances.clear();
+  // A capsule destroyed under the pointer never sends its leave: let the tracker's hold go with it.
+  m_activities.setHovered(false);
+  scheduleActivityTimer();
 }
 
 void Island::prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout) {
@@ -298,6 +325,7 @@ void Island::prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout
   }
   if (rebuild) {
     // Building the scene cancelled any fade that started before the first configure; start it again.
+    instance.shownTarget.reset();
     animateVisibility(instance);
   }
 }
@@ -324,7 +352,7 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
 
   instance.clock = static_cast<Label*>(instance.capsule->addChild(
       ui::label({
-          .text = formatLocalTime(kClockFormat),
+          .text = clockText(m_config),
           .fontSize = Style::fontSizeBody * s,
           .fontWeight = FontWeight::Medium,
           .color = text,
@@ -419,7 +447,7 @@ void Island::updateContent(Instance& instance) {
   if (instance.clock == nullptr || !m_islandConfig.has_value()) {
     return;
   }
-  instance.clock->setText(formatLocalTime(kClockFormat));
+  instance.clock->setText(clockText(m_config));
 
   const auto& state = m_activities.state();
   const Activity* shown = state.transient.has_value() ? &*state.transient
@@ -443,7 +471,7 @@ void Island::updateContent(Instance& instance) {
   // Hovered with nothing going on: the date, the time and the battery, like a glance at the lock screen.
   instance.activityGlyph->setGlyph("calendar");
   instance.activityTitle->setText(formatLocalTime("%A, %-d %B"));
-  std::string subtitle = formatLocalTime("%H:%M");
+  std::string subtitle = timeText(m_config);
   if (m_upower != nullptr && m_upower->state().isPresent) {
     subtitle += "  ·  " + percentText(m_upower->state().percentage);
   }
@@ -616,8 +644,12 @@ void Island::animateVisibility(Instance& instance) {
   if (instance.surface == nullptr) {
     return;
   }
-  instance.occupied = m_platform != nullptr && shell::activeWorkspaceHasWindows(*m_platform, instance.output);
-  const float target = shownOn(instance) ? 1.0F : 0.0F;
+  const bool shown = shownOn(instance);
+  if (instance.shownTarget == shown) {
+    return; // already there, or on the way
+  }
+  instance.shownTarget = shown;
+  const float target = shown ? 1.0F : 0.0F;
   if (instance.visibilityAnim != 0) {
     instance.animations.cancel(instance.visibilityAnim);
     instance.visibilityAnim = 0;
@@ -646,16 +678,17 @@ void Island::refreshAll() {
   }
 }
 
-void Island::post(Activity activity) {
+bool Island::post(Activity activity) {
   // Nothing to show (a nameless notification, an OSD event without text or level): leave the island alone.
   if (!m_islandConfig.has_value() || (activity.title.empty() && !activity.level.has_value())) {
-    return;
+    return false;
   }
   if (!m_activities.post(std::move(activity))) {
-    return;
+    return false;
   }
   scheduleActivityTimer();
   refreshAll();
+  return true;
 }
 
 void Island::scheduleActivityTimer() {
@@ -702,9 +735,9 @@ bool Island::takeOsdContent(const OsdContent& content) {
   if (content.showProgress) {
     activity.level = std::max(content.progress, 0.0F);
   }
-  const bool enabled = m_activities.enabled(activity.kind);
-  post(std::move(activity));
-  return enabled && m_islandConfig->suppressOsd;
+  // The OSD stays away only when the island really shows the change; refused (kind off, a more important activity
+  // showing), the regular OSD has to.
+  return post(std::move(activity)) && m_islandConfig->suppressOsd;
 }
 
 void Island::onPowerChanged(const UPowerChange& /*change*/) {
@@ -881,7 +914,7 @@ std::vector<InputRect> Island::surfaceRectsForOutput(wl_output* output) const {
     if (it == outputs.end() || instance->sceneRoot == nullptr) {
       continue;
     }
-    const int outputW = it->logicalWidth > 0 ? it->logicalWidth : it->width;
+    const int outputW = it->effectiveLogicalWidth();
     const int surfaceX = (outputW - static_cast<int>(instance->sceneRoot->width())) / 2;
     out.push_back(
         InputRect{

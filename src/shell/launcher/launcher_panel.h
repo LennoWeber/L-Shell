@@ -57,6 +57,7 @@ public:
   [[nodiscard]] float preferredWidth() const override { return scaled(540.0F); }
   // Spotlight style: only the search row until there is something to show.
   [[nodiscard]] float preferredHeight() const override;
+  [[nodiscard]] std::optional<float> floatingCornerRadius() const override;
   [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }
   [[nodiscard]] InputArea* initialFocusArea() const override;
   [[nodiscard]] bool handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, bool pressed, bool preedit) override;

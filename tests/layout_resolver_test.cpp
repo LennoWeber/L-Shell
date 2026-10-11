@@ -39,11 +39,14 @@ int main() {
   auto edges = resolveLayout(config);
   TEST_CHECK(edges.bars.empty() && edges.edges.has_value() && !edges.island.has_value());
 
-  // Handle: an always-visible bottom dock owns the bottom center, so there is no handle line.
+  // Handle: the line sits in the gap under a floating bottom dock; a dock flush with the edge leaves no room.
   config.layout.mode = LayoutMode::Handle;
   config.dock.enabled = true;
   config.dock.position = DockEdge::Bottom;
   config.dock.smartAutoHide = false;
+  config.dock.marginEdge = noctalia::config::kHandleCompactMinGap;
+  TEST_CHECK(resolveLayout(config).handle.has_value());
+  config.dock.marginEdge = 0;
   TEST_CHECK(!resolveLayout(config).handle.has_value());
   // With the dock hiding, the overlay reveal needs no bar; the bar reveal adds the hidden handle bar.
   config.dock.smartAutoHide = true;
@@ -55,11 +58,12 @@ int main() {
   TEST_CHECK(handleBar.bars.size() == 1 && handleBar.handleBarName == noctalia::config::kHandleBarName);
   TEST_CHECK(handleBar.bars[0].position == "bottom" && handleBar.bars[0].smartAutoHide);
 
-  // Flow: bar at home, island while working, edges and the handle (only if no dock always sits at the bottom).
+  // Flow: bar at home, island while working, edges and the handle (unless a flush, always-visible dock covers it).
   config.layout.mode = LayoutMode::Flow;
   config.dock.smartAutoHide = false;
   TEST_CHECK(!resolveLayout(config).handle.has_value());
   config.dock.smartAutoHide = true;
+  config.dock.marginEdge = 8;
   auto flow = resolveLayout(config);
   TEST_CHECK(flow.bars.size() == 1 && flow.bars[0].name == noctalia::config::kFlowBarName);
   TEST_CHECK(flow.bars[0].smartAutoHide);

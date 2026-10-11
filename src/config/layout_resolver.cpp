@@ -71,12 +71,15 @@ namespace noctalia::config {
     ResolvedLayout out;
     out.mode = layout.mode;
 
-    // An always-visible dock at the bottom owns the bottom center; a handle line would sit on top of it.
+    // The handle line sits in the gap under a bottom dock; an always-visible dock flush with the edge leaves none.
     const DockConfig& dock = config.dock;
-    const bool dockAlwaysAtBottom =
-        dock.enabled && dock.position == DockEdge::Bottom && !dock.autoHide && !dock.smartAutoHide;
-    const auto addHandle = [&out, dockAlwaysAtBottom](const HandleConfig& handle) {
-      if (dockAlwaysAtBottom) {
+    const bool dockCoversHandle = dock.enabled
+        && dock.position == DockEdge::Bottom
+        && !dock.autoHide
+        && !dock.smartAutoHide
+        && dock.marginEdge < kHandleCompactMinGap;
+    const auto addHandle = [&out, dockCoversHandle](const HandleConfig& handle) {
+      if (dockCoversHandle) {
         return;
       }
       out.handle = handle;

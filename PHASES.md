@@ -12,8 +12,8 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 | 3 Signatures | done, reviewed |
 | 4 TODO markers | done, reviewed; backfilled after the trial |
 | 5 Trial implementation (discarded) | done (worktree, built, tests green, screenshots) |
-| 6 Invariants | done, in review |
-| 7 Implementation | done, in review (build + 150/151 tests green, screenshots) |
+| 6 Invariants | done, reviewed (findings fixed in the phase 7 review round) |
+| 7 Implementation | done, reviewed, review fixes in (build + 150/151 tests green, screenshots) |
 
 ## Environment
 
@@ -413,11 +413,58 @@ overlay, island/minimal/handle/classic modes, Layout settings page, Tahoe Contro
 
 Found while trying it, fixed in this phase:
 - The island's glyphs were centered before being measured (drawn at the top).
-- An always-visible bottom dock collides with the handle line in every mode, not only Flow: the resolver leaves
-  the handle out then, and the Handle setting explains it.
+- An always-visible bottom dock collides with the handle line in every mode, not only Flow. First solved by
+  leaving the handle out; after the review the line instead slims down into the gap under a floating bottom dock
+  (iPad style), and only a dock flush with the edge (`margin_edge` < 5) leaves it out.
 - Panels pinned to the top opened over a bar without an exclusive zone (Flow, Smart Bar): they open below it.
 - Settings rows: in a narrow window a wide control covered the row title. Descriptions now run full width under
   the row, and the title/control line wraps when both do not fit.
+
+### Phase 6 and 7 — reviews (fresh sub-agents, adversarial)
+
+Phase 6 findings, fixed:
+- A reload released the bar peek with the new (possibly empty) handle-bar name, tripping `setBarPeek`'s assert:
+  the instance now keeps `peekedBar` and releases exactly that one.
+- `bar-auto-hide-set off` during a peek left `peeked` set, so `reevaluateAutoHide`'s invariant fired: the IPC
+  clears the peek, and a release clears it even when the bar no longer slides.
+- Edge strips were cut from the physical size when the logical one was not known yet (and could be 0, tripping
+  `stripRect`'s assert): outputs without usable geometry are skipped, sizes use `effectiveLogical*`.
+Phase 6 findings, rejected or deferred: more postcondition asserts (resolver, tracker, recognizer) are worth having
+but are test material — the resolver cases went into `layout_resolver_test`; the backfill-bookkeeping remarks are
+historical (the keys and markers exist since phase 7).
+
+Phase 7 findings, fixed:
+- HIGH: the handle's input region was committed as 0×0 before the first configure and never again. Geometry is
+  now fixed at creation, the region is applied once per visibility change and committed with a redraw.
+- HIGH: with the default (always-visible, floating) dock there was no handle in Flow or Handle → compact line in
+  the gap under the dock (see above); resolver rule narrowed to flush docks, tests and docs updated.
+- The island suppressed the OSD even when it refused the activity (kind off, a more important one showing):
+  `Island::post` now reports whether it showed it, and only then is the OSD suppressed.
+- Overview open/close did not reach the island or the handle (the overview counts as home): wired.
+- Window-title bursts re-ran the island's and the handle's visibility pass per event (and restarted fades):
+  coalesced into one deferred pass; a pass that changes nothing costs nothing (`shownTarget`/`shownApplied`).
+- The island repainted every second for a minutes clock: it repaints when the clock text changes.
+- An edge drawer the pointer never entered stayed open: it closes after 1.5 s (`m_unvisitedDrawerTimer`).
+- Bar or dock surfaces rebuilt by a reload stacked above the island, the line and the edge strips: those are
+  recreated after them, keeping `reconcileOutputSurfaces()`'s order.
+- Classic changed: panels and banners moved below a floating top bar there too. The inset now applies only to the
+  layout modes; Classic places them as upstream.
+- A lost button release (leave during a press) let later plain motion finish a swipe: the press is cancelled.
+- The peek watch kept polling at home: it stops there.
+- The island's hover hold survived a rebuild under the pointer (no leave arrives): released on destroy.
+- `layout-mode-set` answered `ok` when saving failed: `setLayoutMode` returns whether it saved; the IPC reports
+  an error otherwise.
+- The island clock was fixed to 24 hours: it follows `[shell].time_format`; percentages read "80%".
+Phase 7 findings, rejected:
+- "The launcher opened from an edge never closes on leave": by design. A focused search field keeps the panel
+  (typing must not depend on the pointer), as Spotlight closes on Escape or a click outside.
+- "The handle shows at home in Handle mode with the overlay reveal": the line is that mode's only chrome and the
+  way to the overview; it hides at home only where a home bar takes over (Flow, reveal = bar).
+- "The OSD redirect outlives the island": both are members of `Application`, the redirect only runs from the
+  main loop, which has stopped before members are destroyed.
+- Recreate flicker on reload (the island fades in again): accepted, reloads that change bars or layout are rare.
+Signature changes made in this round (not foreseen by phase 3): `bool Island::post`, `bool
+ConfigService::setLayoutMode`, `PanelManager::leaveMayDismiss()`; constant `kHandleCompactMinGap`.
 
 ### Phase 5 (trial) — what the trial taught
 

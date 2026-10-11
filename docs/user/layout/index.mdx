@@ -89,9 +89,10 @@ Flow is built around "nothing on screen while you work":
 - **Home line:** hover or pull up the line at the bottom for the full-screen status overview; drag it sideways to
   change workspace.
 
-The home line leaves the bottom two pixels free, so a dock's or bar's edge reveal keeps working underneath it. A
-dock that is always visible at the bottom owns that spot, so the home line is left out (in Flow and in Handle);
-set the dock to smart hide (or move it) to get the line back.
+The home line leaves the bottom two pixels free, so a dock's or bar's edge reveal keeps working underneath it. With
+a dock at the bottom, the line slims down and sits in the gap under the dock, like the home indicator under the
+iPad dock. Only a dock that is always visible and flush with the screen edge (`margin_edge` below 5) leaves no room;
+then the home line is left out (in Flow and in Handle).
 
 ## Status overview
 

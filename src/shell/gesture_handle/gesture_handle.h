@@ -79,6 +79,16 @@ private:
     std::unique_ptr<Node> sceneRoot;
     Box* line = nullptr;
     float uiScale = 1.0F;
+    // Surface and line geometry, fixed at creation (logical px): known before the first configure, so the input
+    // region is right from the first commit.
+    int surfaceWidth = 0;
+    int surfaceHeight = 0;
+    int marginBottom = 0;
+    float lineX = 0.0F;
+    float lineY = 0.0F;
+    float lineThickness = 0.0F;
+    // Applied visibility (nullopt before the first pass), so repeated workspace/window events cost nothing.
+    std::optional<bool> shownApplied;
     shell::gesture_handle::GestureRecognizer recognizer;
     Timer dwellTimer; // hover dwell before a reveal, HandleConfig::hoverDelayMs
     // 0 = hidden (empty workspace), 1 = shown; animated.
@@ -88,10 +98,11 @@ private:
     float dragOffsetX = 0.0F;
     float dragOffsetY = 0.0F;
     AnimationManager::Id dragSettleAnim = 0; // springs the line back after a drag
-    bool occupied = false;                   // active workspace on this output has windows
     bool pointerInside = false;
-    // reveal = "bar": the line hides while its bar is peeked and comes back once the bar slid away.
+    // reveal = "bar": the line hides while its bar is peeked and comes back once the bar slid away. The bar's name
+    // is kept with the peek, so a reload that renames or drops the bar still releases the right one.
     bool peeking = false;
+    std::string peekedBar;
     Timer peekReleaseTimer; // ends the bar peek if the pointer never reaches the bar
     Timer peekWatchTimer;   // polls the bar until it is hidden again
   };
@@ -105,6 +116,7 @@ private:
   std::optional<HandleConfig> m_handleConfig; // nullopt when the active layout has no handle
   std::string m_revealBarName;                // synthesized bar to peek on reveal = "bar"
   bool m_hideAtHome = false;                  // flow, or reveal = "bar": the line yields to the home bar/dock
+  bool m_visibilityPassQueued = false;        // coalesces bursts of workspace/window events into one pass
   bool m_suppressed = false;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

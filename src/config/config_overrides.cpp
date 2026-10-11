@@ -1067,20 +1067,21 @@ void ConfigService::setThemeMode(ThemeMode mode) {
   fireReloadCallbacks();
 }
 
-void ConfigService::setLayoutMode(LayoutMode mode) {
+bool ConfigService::setLayoutMode(LayoutMode mode) {
   assert(!enumToKey(kLayoutModes, mode).empty() && "layout mode outside kLayoutModes");
   if (m_overridesPath.empty()) {
-    return;
+    return false;
   }
   auto* layoutTbl = ensureTable(m_overridesTable, "layout");
   layoutTbl->insert_or_assign("mode", std::string(enumToKey(kLayoutModes, mode)));
   if (!writeOverridesToFile()) {
     kLog.warn("failed to write {}", m_overridesPath);
-    return;
+    return false;
   }
   m_ownOverridesWritePending = true;
   loadAll();
   fireReloadCallbacks();
+  return true;
 }
 
 bool ConfigService::setThemeColorScheme(PaletteSource source, std::string_view valueRaw) {

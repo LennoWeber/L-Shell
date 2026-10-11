@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -78,6 +79,9 @@ public:
   // panels resolve through shell.panel.*_position in PanelManager.
   [[nodiscard]] virtual std::string panelScreenPosition() const { return "auto"; }
   [[nodiscard]] virtual bool panelOpenNearClick() const { return false; }
+  // Corner radius of the floating panel in surface px (background, glass, shadow and blur follow it); nullopt
+  // keeps the shell's panel radius. Spotlight is a capsule while it is only its search field.
+  [[nodiscard]] virtual std::optional<float> floatingCornerRadius() const { return std::nullopt; }
   // For attached panels: which bar edge to attach to when more than one bar exists on
   // the target output. Returned value must outlive the call (use a string literal).
   [[nodiscard]] virtual std::string_view preferredAttachedBarPosition() const noexcept { return "top"; }
