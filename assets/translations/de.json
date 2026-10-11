@@ -177,7 +177,8 @@
       "auto": "Auto",
       "custom": "Benutzerdefiniert",
       "inherit": "Erben",
-      "off": "Aus"
+      "off": "Aus",
+      "on": "Ein"
     }
   },
   "control-center": {
@@ -251,7 +252,8 @@
         "playing": "Wiedergabe läuft",
         "unavailable": "Nicht verfügbar",
         "unknown-artist": "Unbekannter Künstler",
-        "unknown-track": "Unbekannter Titel"
+        "unknown-track": "Unbekannter Titel",
+        "not-playing": "Keine Wiedergabe"
       },
       "select-avatar": "Avatar auswählen",
       "unknown": "unbekannt",
@@ -259,7 +261,13 @@
       "weather": {
         "data-unavailable": "Wetterdaten nicht verfügbar.",
         "fetching": "Vorhersage wird abgerufen…"
-      }
+      },
+      "title": "Kontrollzentrum",
+      "focus": "Fokus",
+      "do-not-disturb": "Nicht stören",
+      "display": "Display",
+      "sound": "Ton",
+      "vpn": "VPN"
     },
     "media": {
       "active-player": "Aktiver Player",
@@ -373,7 +381,8 @@
       "system": "System",
       "wallpaper": "Hintergrundbild",
       "weather": "Wetter",
-      "wifi": "WLAN"
+      "wifi": "WLAN",
+      "settings": "Einstellungen"
     },
     "system": {
       "labels": {

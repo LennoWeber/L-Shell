@@ -97,7 +97,7 @@ public:
   [[nodiscard]] bool deferExternalRefresh() const override;
   [[nodiscard]] bool deferPointerRelayout() const override;
   [[nodiscard]] float preferredWidth() const override;
-  [[nodiscard]] float preferredHeight() const override { return scaled(520.0F); }
+  [[nodiscard]] float preferredHeight() const override;
   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override;
   [[nodiscard]] bool showsSidebar() const noexcept { return m_showSidebar; }
 
@@ -146,6 +146,14 @@ private:
   }};
 
   void selectTab(TabId tab, bool animated = false);
+  // Home is the bare macOS module grid: no tab rail and no header. Every other tab gets the rail
+  // (per config) and a header with a back chevron to Home.
+  void applyHomeChrome(bool home);
+  // Floating panels resize with the view: the compact module grid on Home, the configured width on
+  // other tabs. An attached panel cannot change size once open, so it keeps one size for both.
+  [[nodiscard]] bool resizesWithTab() const noexcept;
+  [[nodiscard]] TabId sizingTab() const;
+  void scheduleSizeSync();
   void selectAdjacentVisibleTab(int direction);
   void wireSidebarScroll(InputArea* area);
   void scrollFocusedInputIntoView(InputArea* area) override;
@@ -173,6 +181,7 @@ private:
 
   // Tab instances (long-lived, survive panel open/close cycles)
   std::array<std::unique_ptr<Tab>, kTabCount> m_tabs;
+  HomeTab* m_homeTab = nullptr;
 
   // Panel UI structure (rebuilt each create(), nulled in onClose())
   Flex* m_rootLayout = nullptr;
@@ -185,6 +194,7 @@ private:
   InputArea* m_contentDismissArea = nullptr;
   Flex* m_contentHeader = nullptr;
   Flex* m_contentHeaderActions = nullptr;
+  Button* m_backButton = nullptr;
   Label* m_contentTitle = nullptr;
   Button* m_closeButton = nullptr;
   Flex* m_tabBodies = nullptr;
@@ -201,6 +211,7 @@ private:
   bool m_showSidebar = true;
   bool m_hasPowerServices = false;
   bool m_mprisRefreshScheduled = false;
+  bool m_sizeSyncScheduled = false;
   std::chrono::steady_clock::time_point m_lastMprisRefreshAt;
   AnimationManager::Id m_tabTransitionAnimId = 0;
   TabId m_tabTransitionOutgoing = TabId::Home;

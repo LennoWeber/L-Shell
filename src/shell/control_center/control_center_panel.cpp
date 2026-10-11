@@ -37,6 +37,9 @@ namespace {
   constexpr auto kMprisRefreshMinInterval = std::chrono::milliseconds(750);
   // Full-height cards need room for rounded-rect AA before the tab viewport clips them.
   constexpr float kTabViewportClipInset = 1.0F;
+  // macOS Control Center width for the Home module grid (logical px before content scale).
+  constexpr float kHomeWidth = 360.0F;
+  constexpr float kDetailHeight = 520.0F;
 
   float tabContentHeight(float viewportHeight) {
     return std::max(1.0F, std::floor(viewportHeight - kTabViewportClipInset));
@@ -51,7 +54,18 @@ ControlCenterPanel::ControlCenterPanel(const ControlCenterServices& services) {
   m_mpris = services.mpris;
   m_notificationManager = services.notifications;
   m_dependencies = services.dependencies;
-  m_tabs[tabIndex(TabId::Home)] = std::make_unique<HomeTab>(services);
+  auto home = std::make_unique<HomeTab>(services);
+  m_homeTab = home.get();
+  m_homeTab->setNavigateCallback([this](std::string_view key) {
+    selectTab(tabFromContext(key), true);
+    PanelManager::instance().refresh();
+  });
+  m_homeTab->setNaturalHeightChangedCallback([this]() {
+    if (m_activeTab == TabId::Home) {
+      scheduleSizeSync();
+    }
+  });
+  m_tabs[tabIndex(TabId::Home)] = std::move(home);
   m_tabs[tabIndex(TabId::Media)] = std::make_unique<MediaTab>(
       services.mpris, services.httpClient, services.spectrum, services.config, wayland,
       PanelManager::instance().renderContext()
@@ -77,6 +91,9 @@ ControlCenterPanel::ControlCenterPanel(const ControlCenterServices& services) {
 }
 
 float ControlCenterPanel::preferredWidth() const {
+  if (resizesWithTab() && sizingTab() == TabId::Home) {
+    return kHomeWidth * m_contentScale;
+  }
   const float fullSize = m_config != nullptr ? static_cast<float>(m_config->config().controlCenter.width)
                                              : static_cast<float>(ControlCenterConfig::kDefaultWidth);
   switch (sidebarModeForOpen(pendingOpenContext())) {
@@ -88,6 +105,39 @@ float ControlCenterPanel::preferredWidth() const {
   case ControlCenterSidebarMode::Compact:
     return fullSize * 0.85F * m_contentScale;
   }
+}
+
+float ControlCenterPanel::preferredHeight() const {
+  const float detailHeight = scaled(kDetailHeight);
+  const float homeHeight = m_homeTab != nullptr
+      ? std::ceil(m_homeTab->naturalHeight(m_contentScale) + 2.0F * scaled(Style::panelPadding) + kTabViewportClipInset)
+          + 1.0F
+      : detailHeight;
+  if (!resizesWithTab()) {
+    return std::max(detailHeight, homeHeight);
+  }
+  return sizingTab() == TabId::Home ? homeHeight : detailHeight;
+}
+
+bool ControlCenterPanel::resizesWithTab() const noexcept { return panelPlacement() == PanelPlacement::Floating; }
+
+ControlCenterPanel::TabId ControlCenterPanel::sizingTab() const {
+  // Before the scene exists (sizing the surface for an open) the requested context decides.
+  return m_rootLayout != nullptr ? m_activeTab : tabFromContext(pendingOpenContext());
+}
+
+void ControlCenterPanel::scheduleSizeSync() {
+  if (!resizesWithTab() || m_sizeSyncScheduled) {
+    return;
+  }
+  m_sizeSyncScheduled = true;
+  // Resizing re-enters layout, so it must not run inside the current update/layout pass.
+  DeferredCall::callLater([this]() {
+    m_sizeSyncScheduled = false;
+    if (PanelManager::instance().isOpenPanel("control-center")) {
+      PanelManager::instance().relayoutActivePanelPreferredSize();
+    }
+  });
 }
 
 PanelPlacement ControlCenterPanel::panelPlacement() const noexcept {
@@ -248,12 +298,39 @@ void ControlCenterPanel::create() {
   });
 
   header->addChild(
+      ui::button({
+          .out = &m_backButton,
+          .text = i18n::tr("control-center.home.title"),
+          .glyph = "chevron-left",
+          .glyphSize = Style::fontSizeTitle * scale,
+          .variant = ButtonVariant::Ghost,
+          .minHeight = Style::controlHeightSm * scale,
+          .paddingV = Style::spaceXs * scale,
+          .paddingH = Style::spaceSm * scale,
+          .gap = Style::spaceXs * 0.5F * scale,
+          .radius = Style::scaledRadiusMd(scale),
+          .onClick =
+              [this]() {
+                selectTab(TabId::Home, true);
+                PanelManager::instance().refresh();
+              },
+          .configure =
+              [scale](Button& button) {
+                if (button.label() != nullptr) {
+                  button.label()->setFontSize(Style::fontSizeBody * scale);
+                }
+              },
+      })
+  );
+
+  // Neutral, not accent: the accent only marks state and selection.
+  header->addChild(
       ui::label({
           .out = &m_contentTitle,
           .text = i18n::tr("control-center.tabs.home"),
           .fontSize = Style::fontSizeTitle * scale,
           .fontWeight = FontWeight::Bold,
-          .color = colorSpecFromRole(ColorRole::Primary),
+          .color = colorSpecFromRole(ColorRole::OnSurface),
           .flexGrow = 1.0F,
       })
   );
@@ -333,7 +410,7 @@ void ControlCenterPanel::doLayout(Renderer& renderer, float width, float height)
     return;
   }
 
-  if (!m_compact && m_showSidebar) {
+  if (!m_compact && m_showSidebar && m_activeTab != TabId::Home) {
     layoutFullSidebarWidth(renderer);
   }
 
@@ -362,8 +439,9 @@ void ControlCenterPanel::doLayout(Renderer& renderer, float width, float height)
 
   if (m_contentTitle != nullptr) {
     const float actionsWidth = m_contentHeaderActions != nullptr ? m_contentHeaderActions->width() : 0.0F;
+    const float backWidth = m_backButton != nullptr ? m_backButton->width() : 0.0F;
     const float headerGap = m_contentHeader != nullptr ? m_contentHeader->gap() : 0.0F;
-    const float titleWidth = std::max(0.0F, contentInnerWidth - actionsWidth - headerGap);
+    const float titleWidth = std::max(0.0F, contentInnerWidth - actionsWidth - backWidth - headerGap * 2.0F);
     m_contentTitle->setMaxWidth(titleWidth);
   }
 
@@ -415,6 +493,9 @@ void ControlCenterPanel::onOpen(std::string_view context) {
   const bool animateTabSwitch = !m_firstOpenAfterCreate;
   m_firstOpenAfterCreate = false;
   selectTab(tabFromContext(context), animateTabSwitch);
+  // The surface was sized from the open context; a fallback tab or a re-open onto another view
+  // may need a different size.
+  scheduleSizeSync();
 }
 
 bool ControlCenterPanel::isContextActive(std::string_view context) const {
@@ -422,7 +503,11 @@ bool ControlCenterPanel::isContextActive(std::string_view context) const {
 }
 
 bool ControlCenterPanel::handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, bool pressed, bool preedit) {
-  if (!m_showSidebar || m_sidebarNav == nullptr || m_sidebarScrollView == nullptr || m_content == nullptr) {
+  if (!m_showSidebar
+      || m_activeTab == TabId::Home
+      || m_sidebarNav == nullptr
+      || m_sidebarScrollView == nullptr
+      || m_content == nullptr) {
     return false;
   }
 
@@ -459,6 +544,7 @@ void ControlCenterPanel::onClose() {
   m_contentDismissArea = nullptr;
   m_contentHeader = nullptr;
   m_contentHeaderActions = nullptr;
+  m_backButton = nullptr;
   m_contentTitle = nullptr;
   m_closeButton = nullptr;
   m_tabBodies = nullptr;
@@ -469,6 +555,9 @@ void ControlCenterPanel::onClose() {
 }
 
 bool ControlCenterPanel::deferExternalRefresh() const {
+  if (m_activeTab == TabId::Home) {
+    return m_homeTab != nullptr && m_homeTab->dragging();
+  }
   if (m_activeTab != TabId::Audio) {
     return false;
   }
@@ -608,8 +697,18 @@ void ControlCenterPanel::updateTabChrome(TabId tab) {
   if (m_contentHeaderActions != nullptr) {
     m_contentHeaderActions->setVisible(true);
   }
+  applyHomeChrome(tab == TabId::Home);
   if (m_sidebarNav != nullptr) {
     m_sidebarNav->notifyExternalSelectionChanged();
+  }
+}
+
+void ControlCenterPanel::applyHomeChrome(bool home) {
+  for (Flex* node : {m_sidebar, m_contentHeader}) {
+    if (node != nullptr) {
+      node->setVisible(!home);
+      node->setParticipatesInLayout(!home);
+    }
   }
 }
 
@@ -804,7 +903,14 @@ void ControlCenterPanel::selectTab(TabId tab, bool animated) {
 
   updateTabChrome(tab);
 
-  if (tabChanged && animated && m_animations != nullptr && m_tabBodies != nullptr) {
+  // Entering or leaving Home resizes a floating panel; a slide on top of the resize reads as a glitch.
+  const bool homeChanged = (previousTab == TabId::Home) != (tab == TabId::Home);
+  if (homeChanged && m_rootLayout != nullptr) {
+    scheduleSizeSync();
+  }
+  const bool slide = animated && !(homeChanged && resizesWithTab());
+
+  if (tabChanged && slide && m_animations != nullptr && m_tabBodies != nullptr) {
     startTabTransition(previousTab, tab);
   } else {
     m_tabTransitionActive = false;

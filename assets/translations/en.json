@@ -303,7 +303,8 @@
         "playing": "Playing",
         "unavailable": "Unavailable",
         "unknown-artist": "Unknown artist",
-        "unknown-track": "Unknown track"
+        "unknown-track": "Unknown track",
+        "not-playing": "Not Playing"
       },
       "select-avatar": "Select Avatar",
       "unknown": "unknown",
@@ -311,7 +312,13 @@
       "weather": {
         "data-unavailable": "Weather data unavailable.",
         "fetching": "Fetching forecast…"
-      }
+      },
+      "title": "Control Center",
+      "focus": "Focus",
+      "do-not-disturb": "Do Not Disturb",
+      "display": "Display",
+      "sound": "Sound",
+      "vpn": "VPN"
     },
     "media": {
       "active-player": "Active player",
@@ -449,7 +456,8 @@
       "system": "System",
       "wallpaper": "Wallpaper",
       "weather": "Weather",
-      "wifi": "Wi-Fi"
+      "wifi": "Wi-Fi",
+      "settings": "Settings"
     },
     "system": {
       "labels": {
