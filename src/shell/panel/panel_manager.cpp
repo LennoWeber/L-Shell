@@ -17,6 +17,7 @@
 #include "shell/panel/panel.h"
 #include "shell/panel/panel_surface_style.h"
 #include "shell/screen_position.h"
+#include "shell/surface/glass.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "ui/builders.h"
@@ -255,13 +256,6 @@ namespace {
     return false;
   }
 
-  [[nodiscard]] float panelRevealContentOpacity(float reveal) {
-    const float v = std::clamp(reveal, 0.0F, 1.0F);
-    if (v <= 0.15F) {
-      return 0.0F;
-    }
-    return std::clamp((v - 0.15F) / 0.85F, 0.0F, 1.0F);
-  }
 
   [[nodiscard]] AttachedRevealDirection
   detachedRevealDirection(std::string_view panelPosition, std::string_view barPosition) {
@@ -284,6 +278,23 @@ namespace {
       return AttachedRevealDirection::Down;
     }
     return attached_panel::revealDirection(barPosition);
+  }
+
+  // Floating panels open and close quickly, like macOS popovers and Spotlight.
+  constexpr float kDetachedOpenMs = 140.0F;
+  constexpr float kDetachedCloseMs = 100.0F;
+  constexpr float kDetachedRevealScale = 0.96F;
+
+  [[nodiscard]] bool glassPanels(const ConfigService* config) {
+    return config != nullptr && config->config().shell.panel.transparencyMode == PanelTransparencyMode::Glass;
+  }
+
+  // Liquid Glass chrome for floating panels: a hairline rim instead of the outline border.
+  void applyGlassChrome(Box& background, const ConfigService* config) {
+    if (!glassPanels(config) || !config->config().shell.panel.borders) {
+      return;
+    }
+    background.setBorder(shell::glass::rimColor({}, isResolvedLightTheme()), Style::borderWidth);
   }
 
   // Floating screen position for a built-in panel (one of kPanelPositions).
@@ -1461,7 +1472,7 @@ void PanelManager::closePanel(bool animateClose) {
     } else {
       m_animations.cancelForOwner(m_sceneRoot.get());
       m_animations.animate(
-          m_detachedRevealProgress, 0.0F, Style::animNormal, Easing::EaseInQuad,
+          m_detachedRevealProgress, 0.0F, kDetachedCloseMs, Easing::EaseInQuad,
           [this](float v) { applyDetachedReveal(v); },
           [this, gen]() {
             DeferredCall::callLater([this, gen]() {
@@ -1509,6 +1520,7 @@ void PanelManager::destroyPanel() {
   m_attachedRevealClipNode = nullptr;
   m_attachedRevealContentNode = nullptr;
   m_panelShadowNode = nullptr;
+  m_glassSheenNode = nullptr;
   m_panelContactShadowNode = nullptr;
   m_selectPopup.reset();
   m_sceneRoot.reset();
@@ -2188,32 +2200,24 @@ void PanelManager::applyDetachedReveal(float progress) {
   float clipW = surfaceW;
   float clipH = surfaceH;
 
-  switch (m_detachedRevealDirection) {
-  case AttachedRevealDirection::Down:
-    clipH = std::round(surfaceH * m_detachedRevealProgress);
-    break;
-  case AttachedRevealDirection::Up:
-    clipH = std::round(surfaceH * m_detachedRevealProgress);
-    clipY = surfaceH - clipH;
-    break;
-  case AttachedRevealDirection::Right:
-    clipW = std::round(surfaceW * m_detachedRevealProgress);
-    break;
-  case AttachedRevealDirection::Left:
-    clipW = std::round(surfaceW * m_detachedRevealProgress);
-    clipX = surfaceW - clipW;
-    break;
-  }
-
+  // macOS-style: the whole floating panel fades in while growing slightly from its center,
+  // fast enough to feel instant (no edge wipe).
   if (m_detachedRevealClipNode != nullptr && m_detachedRevealContentNode != nullptr) {
-    m_detachedRevealClipNode->setPosition(clipX, clipY);
-    m_detachedRevealClipNode->setFrameSize(clipW, clipH);
-    m_detachedRevealContentNode->setPosition(-clipX, -clipY);
+    m_detachedRevealClipNode->setPosition(0.0F, 0.0F);
+    m_detachedRevealClipNode->setFrameSize(surfaceW, surfaceH);
+    m_detachedRevealContentNode->setPosition(0.0F, 0.0F);
     m_detachedRevealContentNode->setFrameSize(surfaceW, surfaceH);
+    m_detachedRevealContentNode->setOpacity(m_detachedRevealProgress);
+    m_detachedRevealContentNode->setScale(kDetachedRevealScale + (1.0F - kDetachedRevealScale) * m_detachedRevealProgress);
   }
 
   if (m_contentNode != nullptr) {
-    m_contentNode->setOpacity(panelRevealContentOpacity(m_detachedRevealProgress));
+    m_contentNode->setOpacity(1.0F);
+  }
+  // Blur only once the panel is visible, so no empty frosted rectangle flashes ahead of it.
+  if (m_detachedRevealProgress < 0.2F) {
+    clipW = 0.0F;
+    clipH = 0.0F;
   }
   applyPanelCompositorBlur(
       m_panelInsetX, m_panelInsetY, static_cast<int>(m_panelVisualWidth), static_cast<int>(m_panelVisualHeight),
@@ -2481,6 +2485,7 @@ void PanelManager::onConfigReloaded() {
           shell::panel_surface::borderWidth(m_config)
       );
     }
+    applyGlassChrome(*bg, m_config);
   }
   if (m_panelShadowNode != nullptr) {
     const auto& shadowConfig = m_config->config().shell.shadow;
@@ -2600,8 +2605,13 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
               shell::panel_surface::borderWidth(m_config)
           );
         }
+        applyGlassChrome(*bg, m_config);
       }
       m_bgNode = sceneParent->addChild(std::move(bg));
+      if (!m_attachedToBar && glassPanels(m_config)) {
+        auto sheen = ui::box({});
+        m_glassSheenNode = static_cast<Box*>(sceneParent->addChild(std::move(sheen)));
+      }
     }
 
     if (hasDecoration && m_attachedToBar && m_attachedContactShadow) {
@@ -2647,7 +2657,7 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
     } else {
       applyDetachedReveal(0.0F);
       m_animations.animate(
-          0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic, [this](float v) { applyDetachedReveal(v); }, {},
+          0.0F, 1.0F, kDetachedOpenMs, Easing::EaseOutCubic, [this](float v) { applyDetachedReveal(v); }, {},
           m_sceneRoot.get()
       );
     }
@@ -2733,6 +2743,12 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
   if (m_bgNode != nullptr) {
     m_bgNode->setPosition(bgX, bgY);
     m_bgNode->setSize(bgW, bgH);
+  }
+  if (m_glassSheenNode != nullptr) {
+    const float radius = Style::scaledRadiusXl(m_activePanel->contentScale());
+    m_glassSheenNode->setStyle(shell::glass::sheenStyle({.radius = Radii{radius, radius, radius, radius}}));
+    m_glassSheenNode->setPosition(bgX, bgY);
+    m_glassSheenNode->setSize(bgW, bgH);
   }
 
   if (m_panelContactShadowNode != nullptr) {

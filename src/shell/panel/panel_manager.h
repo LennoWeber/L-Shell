@@ -248,6 +248,7 @@ private:
   Node* m_attachedRevealClipNode = nullptr;
   Node* m_attachedRevealContentNode = nullptr;
   Box* m_panelShadowNode = nullptr;
+  Box* m_glassSheenNode = nullptr; // Liquid Glass sheen over floating glass panels
   Box* m_panelContactShadowNode = nullptr;
   InputDispatcher m_inputDispatcher;
 

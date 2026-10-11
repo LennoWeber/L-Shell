@@ -38,7 +38,7 @@ namespace {
   constexpr std::size_t kRowOverscan = 3;
   // Minimum trimmed query length before prefixed opt-in providers join the global search.
   constexpr std::size_t kGlobalOptInMinChars = 2;
-  constexpr float kIconSizeDefault = 40.0F;
+  constexpr float kIconSizeDefault = 32.0F;
   constexpr float kIconSizeCompact = 28.0F;
   constexpr std::size_t kAppGridColumns = 5;
   constexpr std::string_view kApplicationsProviderId = "Applications";
@@ -48,8 +48,8 @@ namespace {
   constexpr std::string_view kProviderOverviewResultPrefix = "provider:";
   // Pseudo-results that render as Spotlight-style group headers; never selectable.
   constexpr std::string_view kSectionHeaderProviderId = "__launcher_section__";
-  constexpr float kSpotlightSearchHeight = 48.0F;
-  constexpr float kSpotlightExpandedHeight = 460.0F;
+  constexpr float kSpotlightSearchHeight = 42.0F;
+  constexpr float kSpotlightExpandedHeight = 400.0F;
 
   [[nodiscard]] bool isSectionHeader(const LauncherResult& result) {
     return result.providerId == kSectionHeaderProviderId;
@@ -1109,13 +1109,13 @@ void LauncherPanel::create() {
       },
       ui::glyph({
           .glyph = "search",
-          .glyphSize = Style::fontSizeHeader * scale,
+          .glyphSize = Style::fontSizeTitle * scale,
           .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
       }),
       ui::input({
           .out = &m_input,
           .placeholder = m_scopedPlaceholder.empty() ? i18n::tr("launcher.search-placeholder") : m_scopedPlaceholder,
-          .fontSize = Style::fontSizeHeader * scale,
+          .fontSize = Style::fontSizeTitle * 1.125F * scale,
           .controlHeight = kSpotlightSearchHeight * scale,
           .horizontalPadding = Style::spaceXs * scale,
           .clearButtonEnabled = true,

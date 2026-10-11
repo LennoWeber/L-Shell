@@ -37,4 +37,9 @@ namespace shell::glass {
     Box* rim = nullptr;
   };
 
+  // Specular sheen over a glass body: white fading out from the top edge to `sheenExtent` of the height.
+  [[nodiscard]] RoundedRectStyle sheenStyle(const GlassStyle& style);
+  // Hairline rim color: a light edge on a dark theme, a dark edge on a light theme.
+  [[nodiscard]] Color rimColor(const GlassStyle& style, bool lightTheme);
+
 } // namespace shell::glass

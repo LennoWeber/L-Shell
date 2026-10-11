@@ -54,7 +54,7 @@ public:
   // supports auto-paste. The host schedules virtual-keyboard paste (clipboard path).
   void setCopiedActivationCallback(std::function<void()> callback) { m_onCopiedActivation = std::move(callback); }
 
-  [[nodiscard]] float preferredWidth() const override { return scaled(680.0F); }
+  [[nodiscard]] float preferredWidth() const override { return scaled(580.0F); }
   // Spotlight style: only the search row until there is something to show.
   [[nodiscard]] float preferredHeight() const override;
   [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }

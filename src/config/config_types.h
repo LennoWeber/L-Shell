@@ -1076,17 +1076,17 @@ struct ShellConfig {
     std::string floatingLayer = "overlay"; // top | overlay; attached panels follow their bar
     PanelPlacement launcherPlacement = PanelPlacement::Floating;
     PanelPlacement clipboardPlacement = PanelPlacement::Floating;
-    PanelPlacement controlCenterPlacement = PanelPlacement::Attached;
+    PanelPlacement controlCenterPlacement = PanelPlacement::Floating; // macOS Control Center: glass, top right
     PanelPlacement wallpaperPlacement = PanelPlacement::Attached;
-    PanelPlacement sessionPlacement = PanelPlacement::Attached;
+    PanelPlacement sessionPlacement = PanelPlacement::Floating; // shut down / restart menu, centered
     PanelPlacement polkitPlacement = PanelPlacement::Floating;
     // Floating screen position per panel (one of kPanelPositions). "auto" = bar-relative.
     // Launcher/clipboard default to "center" (the historical center-screen behavior).
     std::string launcherPosition = "spotlight";
     std::string clipboardPosition = "center";
-    std::string controlCenterPosition = "auto";
+    std::string controlCenterPosition = "top_right";
     std::string wallpaperPosition = "auto";
-    std::string sessionPosition = "auto";
+    std::string sessionPosition = "center";
     std::string polkitPosition = "center";
     std::int32_t floatingOffset = 8; // logical px gap between a floating/detached panel and the bar edge
     bool openNearClickControlCenter = false;
