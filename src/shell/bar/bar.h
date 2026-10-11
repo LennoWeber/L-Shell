@@ -115,6 +115,8 @@ public:
   // Holds an auto-hiding bar revealed while `active` (the layout handle's hover or pull), even with windows open;
   // releasing it lets the bar's own auto-hide decide again. No-op for bars that do not auto-hide.
   void setBarPeek(wl_output* output, std::string_view barName, bool active);
+  // True while the bar's content is on screen (not fully slid away).
+  [[nodiscard]] bool isBarShown(wl_output* output, std::string_view barName) const noexcept;
   void beginAttachedPopup(wl_surface* surface);
   void endAttachedPopup(wl_surface* surface);
 
@@ -152,6 +154,8 @@ private:
   [[nodiscard]] bool shouldReserveExclusiveZone(const BarInstance& instance) const noexcept;
   [[nodiscard]] bool barContentVisuallyShown(const BarInstance& instance) const noexcept;
   void revealAutoHideBar(BarInstance& instance);
+  // BarConfig::glass: the top sheen always, the lit rim only on floating bars (where every edge shows).
+  static void applyGlassChrome(BarInstance& instance, const Radii& radius);
   [[nodiscard]] bool isWorkspacePeekActive() const noexcept;
   void applyPendingWorkspaceReveal();
   void reevaluateSmartAutoHide();

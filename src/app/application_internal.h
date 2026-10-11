@@ -39,7 +39,7 @@ inline bool barMayRender(const BarConfig& bar) {
   });
 }
 
-inline bool configHasLockKeysWidget(const Config& config) {
+inline bool configHasLockKeysWidget(const ConfigService& service) {
   // TODO(phase): needs the bars on screen (ConfigService::activeBars()), not [bar.*].
   return std::ranges::any_of(config.bars, [&config](const BarConfig& bar) {
     return barMayRender(bar)
@@ -49,7 +49,7 @@ inline bool configHasLockKeysWidget(const Config& config) {
   });
 }
 
-inline bool lockKeysConsumersEnabled(const Config& config) {
+inline bool lockKeysConsumersEnabled(const ConfigService& service) {
   return config.osd.kinds.lockKeys || configHasLockKeysWidget(config);
 }
 

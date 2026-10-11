@@ -54,6 +54,8 @@ public:
   [[nodiscard]] bool fillsHeight() const noexcept override { return true; }
   [[nodiscard]] bool hasDecoration() const override { return false; }
   [[nodiscard]] LayerShellLayer layer() const override { return LayerShellLayer::Overlay; }
+  // Full screen like Mission Control: it takes the keyboard so Escape always closes it.
+  [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }
   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override { return PanelPlacement::Floating; }
   [[nodiscard]] std::string panelScreenPosition() const override { return "center"; }
 
@@ -77,8 +79,12 @@ private:
   void onPanelCardOpacityChanged(float opacity) override;
   void buildTiles(float scale);
   void buildTile(Tile& tile, float scale);
-  void refreshTile(Tile& tile);
-  void refreshClock();
+  // The refresh functions return true when something visible changed, i.e. a relayout is due.
+  [[nodiscard]] bool refreshTile(Tile& tile);
+  [[nodiscard]] bool refreshClock();
+  [[nodiscard]] bool refreshAll();
+  // Scrim fill and tile glass for the current card opacity and light/dark theme.
+  void applyChrome();
 
   StatusOverlayServices m_services;
   Box* m_scrim = nullptr;

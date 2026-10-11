@@ -552,6 +552,14 @@ void PanelManager::unregisterPanel(const std::string& id) {
   m_panels.erase(it);
 }
 
+std::string PanelManager::effectivePanelPosition() const {
+  throw std::logic_error("PanelManager::effectivePanelPosition: not implemented");
+}
+
+bool PanelManager::dismissesOnPointerLeave() const {
+  throw std::logic_error("PanelManager::dismissesOnPointerLeave: not implemented");
+}
+
 // TODO(phase): store request.dismissOnPointerLeave (m_dismissOnPointerLeave, reset m_pointerEnteredSinceOpen).
 void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest request) {
   if (m_inTransition) {

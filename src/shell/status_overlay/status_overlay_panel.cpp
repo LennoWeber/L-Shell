@@ -57,9 +57,13 @@ void StatusOverlayPanel::buildTile(Tile& tile, float scale) {
   throw std::logic_error("StatusOverlayPanel::buildTile: not implemented");
 }
 
-void StatusOverlayPanel::refreshTile(Tile& tile) {
+bool StatusOverlayPanel::refreshTile(Tile& tile) {
   (void)tile;
   throw std::logic_error("StatusOverlayPanel::refreshTile: not implemented");
 }
 
-void StatusOverlayPanel::refreshClock() { throw std::logic_error("StatusOverlayPanel::refreshClock: not implemented"); }
+bool StatusOverlayPanel::refreshClock() { throw std::logic_error("StatusOverlayPanel::refreshClock: not implemented"); }
+
+bool StatusOverlayPanel::refreshAll() { throw std::logic_error("StatusOverlayPanel::refreshAll: not implemented"); }
+
+void StatusOverlayPanel::applyChrome() { throw std::logic_error("StatusOverlayPanel::applyChrome: not implemented"); }

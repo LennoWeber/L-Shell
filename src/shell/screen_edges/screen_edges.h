@@ -40,6 +40,8 @@ public:
   );
   void reload();
   void onOutputChange();
+  // Hidden while the lock-screen widget editor owns the screen, like the bar and the dock.
+  void setSuppressed(bool suppressed);
   bool onPointerEvent(const PointerEvent& event);
   // For the panel focus-grab whitelist and the click shield's exclusions, so an edge stays live under a panel.
   [[nodiscard]] std::vector<wl_surface*> surfaces() const;

@@ -791,6 +791,11 @@ void Application::initStyleThemeAndWayland() {
   });
 }
 
+bool Application::osdKindWanted(bool kindEnabled) const noexcept {
+  (void)kindEnabled;
+  std::abort(); // not implemented
+}
+
 void Application::reconcileOutputSurfaces() {
   // Canonical bottom-to-top (re)creation order for per-output layer surfaces.
   // This is the ONLY place this order is defined: it runs once after initUi()

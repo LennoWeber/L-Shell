@@ -182,6 +182,10 @@ public:
   void registerIpc(IpcService& ipc);
 
 private:
+  // The open panel's floating position: a screen-edge override, a plugin panel's own, or the configured one.
+  [[nodiscard]] std::string effectivePanelPosition() const;
+  // Screen-edge drawers close when the pointer leaves them, unless a popup or a focused text field holds them.
+  [[nodiscard]] bool dismissesOnPointerLeave() const;
   static PanelManager* s_instance;
 
   void buildScene(std::uint32_t width, std::uint32_t height);

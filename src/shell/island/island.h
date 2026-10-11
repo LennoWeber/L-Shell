@@ -64,6 +64,8 @@ public:
   // Re-reads the resolved layout: creates, retunes or removes the island.
   void reload();
   void onOutputChange();
+  // Hidden while the lock-screen widget editor owns the screen, like the bar and the dock.
+  void setSuppressed(bool suppressed);
   // Workspace, window or overview change: re-evaluates whether each output shows home.
   void onWorkspaceChanged();
   void onSecondTick();
@@ -84,6 +86,8 @@ public:
 private:
   struct Instance;
 
+  // Reads the resolved layout; true when the island appeared, vanished or changed.
+  [[nodiscard]] bool applyConfig();
   void syncInstances();
   void createInstance(const WaylandOutput& output);
   void destroyInstances();
@@ -101,6 +105,10 @@ private:
   void scheduleActivityTimer();
   void onActivityTimer();
   void activateClick(Instance& instance);
+  // Animates every output's capsule to the tracker's presentation.
+  void refreshAll();
+  // False in flow while the output shows home (the menu bar is pinned there).
+  [[nodiscard]] bool shownOn(const Instance& instance) const;
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
   [[nodiscard]] float capsuleHeight(const Instance& instance) const noexcept;

@@ -2216,6 +2216,12 @@ void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
   throw std::logic_error("Bar::setBarPeek: not implemented");
 }
 
+bool Bar::isBarShown(wl_output* output, std::string_view barName) const noexcept {
+  (void)output;
+  (void)barName;
+  std::abort(); // not implemented
+}
+
 void Bar::beginAttachedPopup(wl_surface* surface) {
   auto* instance = instanceForSurface(surface);
   if (instance == nullptr) {
@@ -3106,6 +3112,12 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
 }
 
 // TODO(phase): honor autoHideEdgeReveal here, and keep a peeked bar (setBarPeek) fully interactive.
+void Bar::applyGlassChrome(BarInstance& instance, const Radii& radius) {
+  (void)instance;
+  (void)radius;
+  throw std::logic_error("Bar::applyGlassChrome: not implemented");
+}
+
 void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
   if (instance.surface == nullptr) {
     return;

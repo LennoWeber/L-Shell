@@ -43,6 +43,8 @@ public:
   );
   void reload();
   void onOutputChange();
+  // Hidden while the lock-screen widget editor owns the screen, like the bar and the dock.
+  void setSuppressed(bool suppressed);
   void onWorkspaceChanged();
   bool onPointerEvent(const PointerEvent& event);
   void requestLayout();
@@ -53,6 +55,8 @@ public:
 private:
   struct Instance;
 
+  // Reads the resolved layout; true when the handle appeared, vanished or changed.
+  [[nodiscard]] bool applyConfig();
   void syncInstances();
   void createInstance(const WaylandOutput& output);
   void destroyInstances();
@@ -62,6 +66,9 @@ private:
   void reveal(Instance& instance);
   void switchWorkspace(Instance& instance, int direction);
   void settleLine(Instance& instance);
+  // Line size, position (with the drag offset), color and fade.
+  void applyLineGeometry(Instance& instance);
+  void prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout);
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
 
   struct Instance {

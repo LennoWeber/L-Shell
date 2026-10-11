@@ -27,6 +27,11 @@ void ScreenEdges::reload() { throw std::logic_error("ScreenEdges::reload: not im
 
 void ScreenEdges::onOutputChange() { throw std::logic_error("ScreenEdges::onOutputChange: not implemented"); }
 
+void ScreenEdges::setSuppressed(bool suppressed) {
+  (void)suppressed;
+  throw std::logic_error("ScreenEdges::setSuppressed: not implemented");
+}
+
 bool ScreenEdges::onPointerEvent(const PointerEvent& event) {
   (void)event;
   throw std::logic_error("ScreenEdges::onPointerEvent: not implemented");

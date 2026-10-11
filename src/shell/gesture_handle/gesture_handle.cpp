@@ -28,6 +28,25 @@ void GestureHandle::reload() { throw std::logic_error("GestureHandle::reload: no
 
 void GestureHandle::onOutputChange() { throw std::logic_error("GestureHandle::onOutputChange: not implemented"); }
 
+void GestureHandle::setSuppressed(bool suppressed) {
+  (void)suppressed;
+  throw std::logic_error("GestureHandle::setSuppressed: not implemented");
+}
+
+bool GestureHandle::applyConfig() { throw std::logic_error("GestureHandle::applyConfig: not implemented"); }
+
+void GestureHandle::applyLineGeometry(Instance& instance) {
+  (void)instance;
+  throw std::logic_error("GestureHandle::applyLineGeometry: not implemented");
+}
+
+void GestureHandle::prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout) {
+  (void)instance;
+  (void)needsUpdate;
+  (void)needsLayout;
+  throw std::logic_error("GestureHandle::prepareFrame: not implemented");
+}
+
 void GestureHandle::onWorkspaceChanged() {
   throw std::logic_error("GestureHandle::onWorkspaceChanged: not implemented");
 }

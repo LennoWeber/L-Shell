@@ -24,6 +24,20 @@ void Island::reload() { throw std::logic_error("Island::reload: not implemented"
 
 void Island::onOutputChange() { throw std::logic_error("Island::onOutputChange: not implemented"); }
 
+void Island::setSuppressed(bool suppressed) {
+  (void)suppressed;
+  throw std::logic_error("Island::setSuppressed: not implemented");
+}
+
+bool Island::applyConfig() { throw std::logic_error("Island::applyConfig: not implemented"); }
+
+void Island::refreshAll() { throw std::logic_error("Island::refreshAll: not implemented"); }
+
+bool Island::shownOn(const Instance& instance) const {
+  (void)instance;
+  throw std::logic_error("Island::shownOn: not implemented");
+}
+
 void Island::onWorkspaceChanged() { throw std::logic_error("Island::onWorkspaceChanged: not implemented"); }
 
 void Island::onSecondTick() { throw std::logic_error("Island::onSecondTick: not implemented"); }
