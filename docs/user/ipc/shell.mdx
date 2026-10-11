@@ -1,13 +1,13 @@
 ---
 title: Shell
-description: IPC commands for shell status, logging, config reload, settings, window switcher, and session actions.
+description: IPC commands for shell status, logging, config reload, settings, window switcher, overview, expo, and session actions.
 sidebar:
   order: 1
 ---
 
 import IpcCommand from '../../../../components/IpcCommand.astro';
 
-These commands control shell state, logging, settings windows, the window switcher, and session actions.
+These commands control shell state, logging, settings windows, the window switcher, the overview and expo, and session actions.
 
 ## General
 
@@ -56,6 +56,34 @@ Modifier releases generated while an input method hands keyboard focus to the sw
 The switcher refreshes while the overlay stays open (new windows, closed windows, and title changes such as Discord channel switches). Selection stays on the same window when its title updates.
 
 Snapshots are intentionally frozen for each switcher session rather than streamed. The selected window is captured first; remaining windows are captured one at a time and downsampled before display to keep the overlay responsive and memory-bounded. Compositors that do not advertise `ext_foreign_toplevel_image_capture_source_manager_v1` retain the same navigation and controls with icon-based cards.
+
+## Overview and Expo
+
+Two Mission-Control-style overlays on the focused monitor, over a frosted, dimmed desktop. The **overview** shows the current workspace's windows as a grid with a workspace bar on top. The **expo** shows every workspace of every monitor at once (like Hyprland's hyprexpo plugin, but built in): one miniature desktop per workspace with its wallpaper and its windows at their real positions and sizes, grouped by monitor (left to right, with a small header per monitor when there is more than one). Workspaces without windows are left out, except the one each monitor currently shows, which is outlined. Windows show a live snapshot where the compositor supports foreign-toplevel image capture, otherwise their app icon; compositors that report no window geometry get a tidy grid inside each desktop instead.
+
+| Action | Command | Description |
+|--------|---------|-------------|
+| Toggle overview | <IpcCommand command="overview" /> | Open or close the overview. `toggle` is the default action. |
+| Close overview | <IpcCommand command="overview close" /> | Close the overview if it is open. |
+| Toggle expo | <IpcCommand command="expo" /> | Open or close the expo. `toggle` is the default action. |
+| Close expo | <IpcCommand command="expo close" /> | Close the expo if it is open. |
+
+Example Hyprland bind:
+
+```ini
+hl.bind("SUPER + O", hl.dsp.exec_cmd("l-shell-msg expo"))
+# hyprland.conf: bind = SUPER, O, exec, l-shell msg expo
+```
+
+In the expo:
+
+- **Pointer** - hover a window to highlight it and see its title; click it to focus it (the compositor switches to its workspace and monitor); click elsewhere on a desktop to switch to that workspace; click the backdrop to close
+- **Arrow keys** - move between windows (and empty desktops) by position, across desktops and monitors
+- **Tab** / **Shift+Tab** - next / previous desktop
+- **Enter** - focus the highlighted window, or switch to the highlighted desktop
+- **Escape** or **Super+O** - close
+
+The expo surface uses the layer namespace `noctalia-expo`; add it to your compositor's blur rule (see [Hyprland](/noctalia/compositor-settings/hyprland/#blur)) for the frosted backdrop.
 
 ## Session
 
