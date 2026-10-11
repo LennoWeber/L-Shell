@@ -934,7 +934,9 @@ void SettingsWindow::refreshPluginListIfNeeded() {
       m_pluginList = std::move(plugins);
       m_pluginListDirty = false;
       if (isOpen() && m_selectedSection == "plugins") {
-        requestContentRebuild();
+        requestContentRebuild(
+            /*refreshRegistry=*/false, /*refreshFilterRow=*/false, /*rebuildEditorSheet=*/m_pluginStoreSheetOpen
+        );
       }
     });
   }).detach();

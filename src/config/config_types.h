@@ -1212,6 +1212,7 @@ struct ShellConfig {
   bool popupBorders = true;
   bool popupShadows = true;
   bool cardBorders = false;
+  bool showCloseButtons = false; // macOS popovers and panels dismiss without a close button
   std::string fontFamily = "Inter Variable";
   std::string lang; // empty = auto-detect from $LC_ALL/$LC_MESSAGES/$LANG
   std::string timeFormat = "{:%H:%M}";

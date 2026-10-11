@@ -56,6 +56,10 @@ struct PointerEvent;
 struct wl_output;
 struct wl_surface;
 
+namespace scripting {
+  class PluginRecommendations;
+}
+
 namespace settings {
   class SettingsDialogPresenter;
   struct SettingsContentContext;
@@ -109,6 +113,9 @@ public:
     m_openLockscreenWidgetEditor = std::move(callback);
   }
   void setOpenWallpaperPanel(std::function<void()> callback) { m_openWallpaperPanel = std::move(callback); }
+  void setPluginRecommendations(scripting::PluginRecommendations* recommendations) {
+    m_pluginRecommendations = recommendations;
+  }
   void setPluginManager(scripting::PluginManager* manager) { m_pluginManager = manager; }
   void setSyncGreeterAppearance(std::function<void()> callback) { m_syncGreeterAppearance = std::move(callback); }
   void setResetLauncherUsage(std::function<void()> callback) { m_resetLauncherUsage = std::move(callback); }
@@ -244,6 +251,7 @@ private:
   IdleManager* m_idleManager = nullptr;
   ConfigService* m_config = nullptr;
   scripting::PluginManager* m_pluginManager = nullptr;
+  scripting::PluginRecommendations* m_pluginRecommendations = nullptr;
   // Cached PluginManager::list() — discovery can spawn git, so refresh it off the UI path.
   std::vector<scripting::PluginStatus> m_pluginList;
   bool m_pluginListDirty = true;

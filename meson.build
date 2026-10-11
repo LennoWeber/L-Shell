@@ -601,6 +601,7 @@ _noctalia_sources = files(
   'src/scripting/plugin_ipc.cpp',
   'src/scripting/plugin_lint.cpp',
   'src/scripting/plugin_manager.cpp',
+  'src/scripting/plugin_recommendations.cpp',
   'src/scripting/plugin_manifest.cpp',
   'src/scripting/plugin_panel_shell.cpp',
   'src/scripting/plugin_registry.cpp',
@@ -1268,6 +1269,7 @@ if build_tests
     'plugin_lifecycle',
     'plugin_manifest',
     'plugin_process',
+    'plugin_recommendations',
     'plugin_source_locks',
     'plugin_source_paths',
     'process',
@@ -1326,6 +1328,17 @@ if build_tests
       test_args = [meson.project_source_root() / 'assets' / 'translations']
     endif
     test(test_name, test_exe, args: test_args)
+    if test_name == 'plugin_recommendations' and git_program.found()
+      recommendations_python = find_program('python3', required: false)
+      recommendations_openssl = find_program('openssl', required: false)
+      if recommendations_python.found() and recommendations_openssl.found()
+        test('plugin_recommendations_http', recommendations_python,
+          args: [files('tests/plugin_recommendations_http_test.py'), test_exe],
+          workdir: meson.project_source_root(),
+          timeout: 90,
+        )
+      endif
+    endif
   endforeach
 
   screencopy_connection_isolation_exe = executable('screencopy_connection_isolation_test',
