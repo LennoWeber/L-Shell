@@ -39,8 +39,16 @@ Brand assets live in [`assets/branding/`](assets/branding) and are rendered by
   frosted backdrop, with a workspace bar on top. Click to focus, Esc to leave.
 - **Liquid Glass.** Floating panels, Control Center, the session menu and the dock are translucent glass with a
   specular sheen and a hairline rim, and they appear with a quick fade-and-zoom instead of sliding in.
-- **Menu bar and dock.** A slim translucent menu bar (logo menu, bold app name, status icons, Spotlight, Control
-  Center, clock) and a floating glass dock with running-app dots and magnification.
+- **Menu bar and dock.** A transparent menu bar like Tahoe's (logo menu, status icons, Spotlight, Control Center,
+  clock) over a soft scrim that keeps it legible on any wallpaper, and a floating glass dock with running-app dots
+  and magnification.
+- **Notification Center.** Click the clock: the latest notifications as cards with app icons and relative times,
+  a month widget and a weather widget on a sky gradient.
+- **Apple menu.** The logo opens a compact menu: Sleep, Restart, Shut Down, Lock Screen, Log Out.
+- **Command-Tab.** Alt+Tab shows one large icon per app on a glass panel, most recently used first, without
+  capturing window snapshots.
+- **Lock screen like Tahoe.** Date and a large clock at the top, the avatar, your name and a glass password pill at
+  the bottom, session buttons in the corner.
 - **Neutral by default.** The built-in *L-Shell* palette is mostly dark greys with a single system-blue accent; color
   appears only where it carries meaning. Common apps (GTK, Qt, KDE, terminals, btop) follow the same palette.
 - **Inter** as the UI font, bundled.
@@ -51,7 +59,7 @@ Brand assets live in [`assets/branding/`](assets/branding) and are rendered by
   - *Classic* (your `[bar.*]` bars, as upstream), *Smart Bar*, *Minimal Bar*, *Island*, *Edges* and *Handle*, each
     with its own settings. See [docs/user/layout](docs/user/layout/index.mdx).
 - **Control Center like Tahoe.** A compact grid of glass modules: Wi-Fi/Bluetooth/VPN, Focus, Caffeine, Night Light,
-  Display and Sound sliders, Now Playing, and round shortcuts.
+  Display and Sound sliders, Now Playing, and round shortcuts; modules open on their own with a back button.
 - **System Settings like Tahoe.** Floating glass sidebar with colored squircle icons, grouped rows, neutral segmented
   controls and pop-up buttons, accent colors (blue, purple, pink, red, orange, yellow, green, graphite, or taken
   from the wallpaper).
