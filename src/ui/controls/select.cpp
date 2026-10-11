@@ -20,7 +20,6 @@
 #include <cmath>
 #include <linux/input-event-codes.h>
 #include <memory>
-#include <numbers>
 
 namespace {
 
@@ -53,7 +52,8 @@ Select::Select() {
 
   auto triggerGlyph = std::make_unique<Glyph>();
   m_triggerGlyph = static_cast<Glyph*>(addChild(std::move(triggerGlyph)));
-  m_triggerGlyph->setGlyph("chevron-down");
+  // macOS pop-up buttons show the up/down selector, which does not turn when the menu opens.
+  m_triggerGlyph->setGlyph("selector");
   m_triggerGlyph->setGlyphSize(m_glyphSize);
 
   auto triggerArea = std::make_unique<InputArea>();
@@ -340,7 +340,10 @@ void Select::applyVisualState() {
   const bool triggerPressed = m_triggerArea != nullptr && m_triggerArea->pressed();
   const bool triggerFocused = m_triggerArea != nullptr && m_triggerArea->focused();
 
-  Color triggerBg = resolved(ColorRole::SurfaceVariant, m_surfaceOpacity);
+  // macOS pop-up button: white on light, a translucent lighter grey on dark.
+  const bool light = isResolvedLightTheme();
+  Color triggerBg = light ? resolved(ColorRole::SurfaceVariant, m_surfaceOpacity)
+                          : resolved(ColorRole::OnSurface, 0.1F * m_surfaceOpacity);
   Color triggerBorder = resolved(ColorRole::Outline);
   ColorSpec triggerText = selectedText().empty() ? colorSpecFromRole(ColorRole::OnSurfaceVariant, kPlaceholderAlpha)
                                                  : colorSpecFromRole(ColorRole::OnSurface);
@@ -350,7 +353,8 @@ void Select::applyVisualState() {
     triggerBorder = resolved(ColorRole::Outline, Style::disabledOutlineAlpha);
     triggerText = colorSpecFromRole(ColorRole::OnSurface, 0.55F);
   } else if (triggerHovered || triggerPressed) {
-    triggerBg = resolved(ColorRole::SurfaceVariant, m_surfaceOpacity);
+    triggerBg = light ? resolved(ColorRole::SurfaceVariant, m_surfaceOpacity)
+                      : resolved(ColorRole::OnSurface, 0.15F * m_surfaceOpacity);
     triggerBorder = resolved(ColorRole::Hover);
   } else if (triggerFocused) {
     triggerBorder = resolveColorSpec(focusRingColorSpec());
@@ -358,7 +362,6 @@ void Select::applyVisualState() {
 
   m_triggerLabel->setColor(triggerText);
   m_triggerGlyph->setColor(triggerText);
-  m_triggerGlyph->setRotation(m_caretProgress * std::numbers::pi_v<float>);
 
   float resolvedBorderWidth = 0.0F;
   if (triggerFocused) {

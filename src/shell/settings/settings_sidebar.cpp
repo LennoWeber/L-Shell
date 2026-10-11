@@ -199,7 +199,7 @@ namespace settings {
           .gap = kPrimaryNavGap * scale,
           .radius = kSidebarRowRadius * scale,
           .onClick = std::move(onClick),
-          .configure = [](Button& button) { button.setTabStop(false); },
+          .configure = [](Button& b) { b.setTabStop(false); },
       });
       button->setCustomPalette(sidebarRowPalette(selected));
       button->insertChildAt(0, makeSquircle(style.glyph, style.color, scale));

@@ -17,6 +17,7 @@
 #include "render/render_target.h"
 #include "render/scene/input_area.h"
 #include "shell/surface/edge_inset.h"
+#include "shell/surface/glass.h"
 #include "ui/builders.h"
 #include "ui/palette.h"
 #include "ui/style.h"
@@ -2802,6 +2803,11 @@ InputArea* NotificationToast::buildCard(
             box.setRadius(Style::scaledRadiusXl(scale));
             box.setFill(colorSpecFromRole(ColorRole::Surface, bgAlpha));
             box.setBorder(borderColor, borderWidth);
+            // macOS banners are Liquid Glass: the default outline becomes the lit rim. Critical toasts keep their
+            // red border.
+            if (borderWidth > 0.0F && borderColor == colorSpecFromRole(ColorRole::Outline)) {
+              shell::glass::applyRim(box, {}, isResolvedLightTheme(), scale);
+            }
           },
       })
   );

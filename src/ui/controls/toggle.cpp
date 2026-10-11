@@ -191,7 +191,9 @@ void Toggle::applyAnimatedState(float t) {
   }
 
   setFill(trackColor);
-  setBorder(borderColor, m_inputArea != nullptr && m_inputArea->focused() ? Style::focusRingWidth : Style::borderWidth);
+  // macOS switches have no outline; only keyboard focus draws a ring.
+  const bool focused = m_inputArea != nullptr && m_inputArea->focused();
+  setBorder(borderColor, focused ? Style::focusRingWidth : 0.0F);
   m_thumb->setPosition(thumbX, m_inset);
 
   auto thumbStyle = m_thumb->style();

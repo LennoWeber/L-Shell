@@ -32,21 +32,28 @@ hl.config({
   },
 
   decoration = {
-    rounding = 20,
-    rounding_power = 2,
+    -- macOS Tahoe windows: generous continuous corners and a wide, soft drop shadow.
+    rounding = 16,
+    rounding_power = 2.4,
 
     shadow = {
       enabled = true,
-      range = 4,
-      render_power = 3,
-      color = 0xee1a1a1a,
+      range = 32,
+      render_power = 2,
+      color = 0x55000000,
     },
 
+    -- Liquid Glass: a clear, bright blur with boosted colour behind L-Shell's glass surfaces.
     blur = {
       enabled = true,
-      size = 3,
-      passes = 2,
-      vibrancy = 0.1696,
+      size = 7,
+      passes = 3,
+      noise = 0.012,
+      contrast = 1.0,
+      brightness = 1.05,
+      vibrancy = 0.3,
+      vibrancy_darkness = 0.2,
+      popups = true,
     },
   },
 })
@@ -72,7 +79,8 @@ Add these binds to your `hyprland.lua`:
 
 ```lua
 local mainMod = "SUPER"
-local ipc = "noctalia msg "
+-- l-shell-msg is the libc-only IPC client: no shell start-up per key press, so Spotlight opens instantly.
+local ipc = "l-shell-msg "
 
 -- Core binds
 hl.bind(mainMod .. "+Space", hl.dsp.exec_cmd(ipc .. "panel-toggle launcher"))
@@ -87,7 +95,7 @@ hl.bind("XF86AudioMute", hl.dsp.exec_cmd(ipc .. "volume-mute"))
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(ipc .. "brightness-up"))
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(ipc .. "brightness-down"))
 
--- Noctalia Settings
+-- L-Shell System Settings
 hl.window_rule({
     match = { class = "dev.lshell.LShell" },
     float = true,
@@ -106,8 +114,7 @@ We also disable Hyprland's built-in layer animations for Noctalia so they do not
 hl.layer_rule({
   name = "noctalia",
   match = {
-    -- TODO(phase): add the island and handle namespaces to the blur rule.
-    namespace = "^noctalia-(bar-.+|notification|dock|panel|attached-panel|osd|window-switcher)$",
+    namespace = "^noctalia-(bar-.+|notification|dock|panel|attached-panel|osd|window-switcher|island)$",
   },
   no_anim = true,
   ignore_alpha = 0.5,

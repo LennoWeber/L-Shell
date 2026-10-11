@@ -9,6 +9,7 @@
 #include "render/scene/node.h"
 #include "shell/dock/dock_geometry.h"
 #include "shell/dock/dock_items.h"
+#include "shell/surface/glass.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "ui/builders.h"
@@ -421,6 +422,11 @@ namespace shell::dock {
     const float opacity = cfg.backgroundOpacity;
     instance.panel->setFill(colorSpecFromRole(ColorRole::Surface, opacity));
     instance.panel->setBorder(cfg.border, cfg.borderWidth);
+    // The default outline becomes the Liquid Glass rim, re-lit on every palette change (light/dark).
+    static const ColorSpec kDefaultBorder = DockConfig{}.border;
+    if (cfg.borderWidth > 0.0F && cfg.border == kDefaultBorder) {
+      shell::glass::applyRim(*instance.panel, {}, isResolvedLightTheme());
+    }
   }
 
   void resizeSurface(DockInstance& instance, const DockConfig& cfg, const ShellConfig::ShadowConfig& shadowConfig) {

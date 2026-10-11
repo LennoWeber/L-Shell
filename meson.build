@@ -1157,6 +1157,13 @@ noctalia_exe = executable(app_name,
   install: true,
 )
 
+# Tiny IPC client for key bindings: links only libc, so a bound key does not pay the shell's start-up cost.
+executable(app_name + '-msg',
+  'src/ipc/msg_client.c',
+  c_args: ['-DNOCTALIA_APP_NAME="' + app_name + '"'],
+  install: true,
+)
+
 install_subdir('assets',
   install_dir: get_option('datadir') / app_name,
   exclude_files: ['dev.lshell.LShell.desktop'],

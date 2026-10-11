@@ -812,7 +812,7 @@ struct OsdKindsConfig {
 
 struct OsdConfig {
   bool enabled = true; // master gate for all OSD popups
-  std::string position = "top_center";
+  std::string position = "top_right"; // under the menu bar's status area, like the macOS Tahoe volume HUD
   std::string positionVertical = "top_center";
   std::string orientation = "horizontal";
   std::int32_t hideDelayMs = 1400;
