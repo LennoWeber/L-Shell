@@ -31,6 +31,8 @@ public:
   void setLogicalInset(const RectInsets& inset);
   void setSoftness(float softness);
   void setNoAa(bool noAa);
+  // Liquid Glass edge light on the border (see RoundedRectStyle::rimLight); needs a border to show.
+  void setRimLight(float rimLight);
 
   // Presets
   void setFlatStyle();

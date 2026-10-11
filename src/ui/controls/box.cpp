@@ -78,6 +78,11 @@ void Box::setNoAa(bool noAa) {
   syncStyle();
 }
 
+void Box::setRimLight(float rimLight) {
+  m_style.rimLight = rimLight;
+  syncStyle();
+}
+
 void Box::setSize(float w, float h) {
   Node::setSize(w, h);
   m_rect->setFrameSize(w, h);

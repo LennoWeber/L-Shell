@@ -1454,6 +1454,17 @@
           "community": "Community",
           "custom": "Benutzerdefiniert",
           "wallpaper": "Hintergrundbild"
+        },
+        "accent": {
+          "wallpaper": "Hintergrundbild",
+          "blue": "Blau",
+          "purple": "Lila",
+          "pink": "Pink",
+          "red": "Rot",
+          "orange": "Orange",
+          "yellow": "Gelb",
+          "green": "Grün",
+          "graphite": "Graphit"
         }
       },
       "theme-role": {
@@ -1680,6 +1691,10 @@
         "wallpaper-generation-scheme": {
           "description": "Lege fest, wie aus den Hintergrundbildfarben eine Farbpalette erzeugt wird",
           "label": "Hintergrundbild-Generierungsschema"
+        },
+        "accent": {
+          "label": "Akzentfarbe",
+          "description": "Farbe für Schalter, Auswahl und Fokus. Hintergrundbild übernimmt den Farbton deines Hintergrundbilds; alles andere bleibt neutral."
         }
       },
       "backdrop": {

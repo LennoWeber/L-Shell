@@ -156,6 +156,8 @@ builtin = "L-Shell"                 # Ayu | Catppuccin | Dracula | Eldritch | Gr
 # wallpaper_scheme  = "m3-content"  # m3-tonal-spot | m3-content | m3-fruit-salad |
                                     # m3-rainbow | m3-monochrome | vibrant | faithful |
                                     # dysfunctional | muted
+accent = "wallpaper"                # wallpaper | blue | purple | pink | red | orange | yellow |
+                                    # green | graphite (macOS accent; neutrals stay neutral)
 pure_black_dark = false             # anchor dark surfaces to true black (OLED); applies to
                                     # every palette source, not just wallpaper-generated ones
 

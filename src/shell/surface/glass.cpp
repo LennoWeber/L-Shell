@@ -1,5 +1,7 @@
 #include "shell/surface/glass.h"
 
+#include "ui/controls/box.h"
+
 #include <algorithm>
 
 namespace shell::glass {
@@ -22,6 +24,11 @@ namespace shell::glass {
 
   Color rimColor(const GlassStyle& style, bool lightTheme) {
     return lightTheme ? rgba(0.0F, 0.0F, 0.0F, style.rimOpacity * 0.6F) : rgba(1.0F, 1.0F, 1.0F, style.rimOpacity);
+  }
+
+  void applyRim(Box& box, const GlassStyle& style, bool lightTheme, float scale) {
+    box.setBorder(rimColor(style, lightTheme), style.rimWidth * scale);
+    box.setRimLight(lightTheme ? 0.0F : style.rimLight);
   }
 
 } // namespace shell::glass

@@ -294,7 +294,7 @@ namespace {
     if (!glassPanels(config) || !config->config().shell.panel.borders) {
       return;
     }
-    background.setBorder(shell::glass::rimColor({}, isResolvedLightTheme()), Style::borderWidth);
+    shell::glass::applyRim(background, {}, isResolvedLightTheme());
   }
 
   // Floating screen position for a built-in panel (one of kPanelPositions).

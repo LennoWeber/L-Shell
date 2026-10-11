@@ -1605,6 +1605,17 @@
           "community": "Community",
           "custom": "Custom",
           "wallpaper": "Wallpaper"
+        },
+        "accent": {
+          "wallpaper": "Wallpaper",
+          "blue": "Blue",
+          "purple": "Purple",
+          "pink": "Pink",
+          "red": "Red",
+          "orange": "Orange",
+          "yellow": "Yellow",
+          "green": "Green",
+          "graphite": "Graphite"
         }
       },
       "theme-role": {
@@ -1859,6 +1870,10 @@
         "wallpaper-generation-scheme": {
           "description": "Choose how wallpaper colors are converted into a palette",
           "label": "Wallpaper Generation Scheme"
+        },
+        "accent": {
+          "label": "Accent Color",
+          "description": "Color of switches, selections and focus. Wallpaper takes the hue of your wallpaper; everything else stays neutral."
         }
       },
       "backdrop": {

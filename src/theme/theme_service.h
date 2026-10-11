@@ -3,6 +3,7 @@
 #include "config/config_types.h"
 #include "core/timer_manager.h"
 #include "render/animation/animation_manager.h"
+#include "theme/palette_transform.h"
 #include "theme/palette.h"
 #include "theme/scheme.h"
 #include "ui/palette.h"
@@ -81,6 +82,11 @@ namespace noctalia::theme {
     };
 
     void resolveAndSet(bool animate);
+    // The accent to apply over the resolved palette, or nullopt to keep the source's own (the wallpaper source
+    // with the wallpaper accent, or a wallpaper accent still being generated).
+    [[nodiscard]] std::optional<AccentArgb> resolveAccent(const ThemeConfig& cfg, bool animate);
+    // True when wallpaper changes recolor the shell: the wallpaper source, or the wallpaper accent.
+    [[nodiscard]] static bool followsWallpaper(const ThemeConfig& cfg) noexcept;
     [[nodiscard]] std::optional<WallpaperPaletteKey>
     wallpaperPaletteKey(const ThemeConfig& cfg, const std::string& wallpaperPath) const;
     [[nodiscard]] bool wallpaperCacheMatches(const WallpaperPaletteKey& key) const;
@@ -107,6 +113,8 @@ namespace noctalia::theme {
 
     // Memoized wallpaper palette (see resolveWallpaperGenerated); any key mismatch re-decodes.
     std::optional<GeneratedPalette> m_wallpaperCacheGenerated;
+    // Last wallpaper accent, kept while a new wallpaper's palette is still being generated.
+    std::optional<AccentArgb> m_lastWallpaperAccent;
     WallpaperPaletteKey m_wallpaperCacheKey;
 
     // Main thread: the decode whose result is still wanted, and the last key that failed so a

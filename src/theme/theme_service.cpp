@@ -229,6 +229,31 @@ namespace noctalia::theme {
       };
     }
 
+    // macOS's accent colors (controlAccentColor), dark then light.
+    [[nodiscard]] std::optional<AccentArgb> systemAccent(AccentColor accent) {
+      switch (accent) {
+      case AccentColor::Wallpaper:
+        return std::nullopt;
+      case AccentColor::Blue:
+        return AccentArgb{.dark = 0xff0a84ffU, .light = 0xff007affU};
+      case AccentColor::Purple:
+        return AccentArgb{.dark = 0xffa550a7U, .light = 0xff953d96U};
+      case AccentColor::Pink:
+        return AccentArgb{.dark = 0xfff74f9eU, .light = 0xfff74f9eU};
+      case AccentColor::Red:
+        return AccentArgb{.dark = 0xffff5257U, .light = 0xffe0383eU};
+      case AccentColor::Orange:
+        return AccentArgb{.dark = 0xfff7821bU, .light = 0xfff7821bU};
+      case AccentColor::Yellow:
+        return AccentArgb{.dark = 0xffffc600U, .light = 0xffffc600U};
+      case AccentColor::Green:
+        return AccentArgb{.dark = 0xff62ba46U, .light = 0xff62ba46U};
+      case AccentColor::Graphite:
+        return AccentArgb{.dark = 0xff8c8c8cU, .light = 0xff989898U};
+      }
+      return std::nullopt;
+    }
+
     std::string colorSchemeValue(const ThemeConfig& theme) {
       switch (theme.source) {
       case PaletteSource::Builtin:
@@ -306,8 +331,34 @@ namespace noctalia::theme {
 
   void ThemeService::onConfigReload() { resolveAndSet(/*animate=*/true); }
 
+  bool ThemeService::followsWallpaper(const ThemeConfig& cfg) noexcept {
+    return cfg.source == PaletteSource::Wallpaper || cfg.accent == AccentColor::Wallpaper;
+  }
+
+  std::optional<AccentArgb> ThemeService::resolveAccent(const ThemeConfig& cfg, bool animate) {
+    if (cfg.accent != AccentColor::Wallpaper) {
+      return systemAccent(cfg.accent);
+    }
+    if (cfg.source == PaletteSource::Wallpaper) {
+      return std::nullopt;
+    }
+    const std::string wallpaperPath = m_config.getPaletteWallpaperPath();
+    if (wallpaperPath.empty()) {
+      return systemAccent(AccentColor::Blue);
+    }
+    // Same cache and worker as the wallpaper source: the first frame decodes synchronously, later changes
+    // keep the current accent until the background decode lands (onWallpaperPaletteDecoded re-resolves).
+    const WallpaperLookup lookup = animate ? lookupWallpaperGenerated(cfg, wallpaperPath)
+                                           : WallpaperLookup{.generated = resolveWallpaperGenerated(cfg, wallpaperPath)};
+    if (!lookup.generated) {
+      return lookup.pending ? m_lastWallpaperAccent : systemAccent(AccentColor::Blue);
+    }
+    m_lastWallpaperAccent = wallpaperAccent(*lookup.generated);
+    return m_lastWallpaperAccent;
+  }
+
   void ThemeService::onWallpaperChange() {
-    if (m_config.config().theme.source == PaletteSource::Wallpaper) {
+    if (followsWallpaper(m_config.config().theme)) {
       resolveAndSet(/*animate=*/true);
     }
   }
@@ -551,7 +602,7 @@ namespace noctalia::theme {
     } else {
       m_wallpaperFailed = key;
     }
-    if (m_config.config().theme.source == PaletteSource::Wallpaper) {
+    if (followsWallpaper(m_config.config().theme)) {
       resolveAndSet(/*animate=*/true);
     }
   }
@@ -633,6 +684,10 @@ namespace noctalia::theme {
     // Every source funnels through here, so the transform covers wallpaper-generated,
     // builtin, community and custom palettes alike. It runs after the wallpaper cache,
     // which keeps storing the untransformed palette, so toggling this cannot serve a stale one.
+    const std::optional<AccentArgb> accent = resolveAccent(cfg, animate);
+    if (accent) {
+      applyAccentColor(resolved->generated, *accent);
+    }
     if (cfg.pureBlackDark) {
       applyPureBlackDark(resolved->generated);
     }
@@ -640,7 +695,7 @@ namespace noctalia::theme {
       applyHighContrast(resolved->generated);
     }
 
-    if (cfg.pureBlackDark || m_config.config().accessibility.highContrast) {
+    if (accent || cfg.pureBlackDark || m_config.config().accessibility.highContrast) {
       if (resolved->shellMode != "light") {
         resolved->palette = mapGeneratedPaletteMode(resolved->generated.dark);
       } else {

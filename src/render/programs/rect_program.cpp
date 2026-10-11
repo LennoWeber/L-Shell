@@ -2,6 +2,7 @@
 
 #include "render/core/render_styles.h"
 
+#include <algorithm>
 #include <array>
 #include <stdexcept>
 
@@ -52,6 +53,7 @@ uniform float u_softness;
 uniform int u_no_aa;
 uniform int u_invert_fill;
 uniform float u_border_width;
+uniform float u_rim_light;
 uniform int u_outer_shadow;
 uniform vec2 u_shadow_cutout_offset;
 uniform int u_shadow_exclusion;
@@ -246,6 +248,24 @@ float coverage_for(float distance) {
     return clamp(0.5 - distance / pixel_width, 0.0, 1.0);
 }
 
+// Liquid Glass edge light: how strongly the edge at this pixel catches a light from slightly left of straight
+// above. The outward normal is the screen-space gradient of the shape distance, so corners light along their
+// curve. Top-facing edges get the full specular rim, side edges a little, bottom edges a faint counter-rim
+// (light refracted through the glass), which is what reads as thickness.
+float rim_light_intensity(float distance) {
+    vec2 g = vec2(dFdx(distance), dFdy(distance));
+    float len = length(g);
+    if (len < 1e-5) {
+        return 0.5;
+    }
+    vec2 n = g / len;
+    vec2 light_dir = normalize(vec2(-0.35, -1.0));
+    float facing = dot(n, light_dir);
+    float top = pow(max(facing, 0.0), 1.4);
+    float bottom = pow(max(-facing, 0.0), 2.2) * 0.42;
+    return 0.22 + 0.78 * top + bottom;
+}
+
 float gradient_segment_t(float position, float start, float end) {
     return clamp((position - start) / max(end - start, 0.0001), 0.0, 1.0);
 }
@@ -334,6 +354,15 @@ void main() {
     if (fill_base.a <= 0.0) {
         float ring_coverage = outer_coverage * (1.0 - inner_coverage);
         float out_alpha = u_border_color.a * ring_coverage;
+        if (u_rim_light > 0.0) {
+            float lit = rim_light_intensity(outer_distance);
+            // The ring itself, lit by facing; then a glow inside the edge that fades over a few pixels.
+            float ring_alpha = out_alpha * mix(1.0, lit * 1.35, u_rim_light);
+            float depth = max(-outer_distance - u_border_width, 0.0);
+            float glow = exp(-depth / 3.5) * inner_coverage * outer_coverage;
+            float glow_alpha = u_border_color.a * u_rim_light * 0.32 * glow * lit;
+            out_alpha = clamp(ring_alpha + glow_alpha * (1.0 - ring_alpha), 0.0, 1.0);
+        }
         if (out_alpha <= 0.0) {
             discard;
         }
@@ -345,11 +374,15 @@ void main() {
     // inner_coverage == 1, the border ring lives where inner_coverage == 0.
     // Mix between them so a translucent fill never sits on top of a
     // full-area border backplane (which would mask its opacity).
-    vec3 border_pm = u_border_color.rgb * u_border_color.a;
+    float border_alpha = u_border_color.a;
+    if (u_rim_light > 0.0) {
+        border_alpha = clamp(border_alpha * mix(1.0, rim_light_intensity(outer_distance) * 1.35, u_rim_light), 0.0, 1.0);
+    }
+    vec3 border_pm = u_border_color.rgb * border_alpha;
     vec3 fill_pm = fill_base.rgb * fill_base.a;
 
     vec3 interior_rgb = mix(border_pm, fill_pm, inner_coverage);
-    float interior_a = mix(u_border_color.a, fill_base.a, inner_coverage);
+    float interior_a = mix(border_alpha, fill_base.a, inner_coverage);
 
     // Apply outer shape mask
     float out_alpha = interior_a * outer_coverage;
@@ -391,6 +424,7 @@ void RectProgram::ensureInitialized() {
   m_noAaLocation = glGetUniformLocation(m_program.id(), "u_no_aa");
   m_invertFillLocation = glGetUniformLocation(m_program.id(), "u_invert_fill");
   m_borderWidthLocation = glGetUniformLocation(m_program.id(), "u_border_width");
+  m_rimLightLocation = glGetUniformLocation(m_program.id(), "u_rim_light");
   m_outerShadowLocation = glGetUniformLocation(m_program.id(), "u_outer_shadow");
   m_shadowCutoutOffsetLocation = glGetUniformLocation(m_program.id(), "u_shadow_cutout_offset");
   m_shadowExclusionLocation = glGetUniformLocation(m_program.id(), "u_shadow_exclusion");
@@ -422,6 +456,7 @@ void RectProgram::ensureInitialized() {
       || m_cornerShapesLocation < 0
       || m_logicalInsetLocation < 0
       || m_borderWidthLocation < 0
+      || m_rimLightLocation < 0
       || m_outerShadowLocation < 0
       || m_shadowCutoutOffsetLocation < 0
       || m_shadowExclusionLocation < 0
@@ -458,6 +493,7 @@ void RectProgram::destroy() {
   m_noAaLocation = -1;
   m_invertFillLocation = -1;
   m_borderWidthLocation = -1;
+  m_rimLightLocation = -1;
   m_outerShadowLocation = -1;
   m_shadowCutoutOffsetLocation = -1;
   m_shadowExclusionLocation = -1;
@@ -530,6 +566,7 @@ void RectProgram::draw(
   glUniform1i(m_noAaLocation, style.noAa ? 1 : 0);
   glUniform1i(m_invertFillLocation, style.invertFill ? 1 : 0);
   glUniform1f(m_borderWidthLocation, style.borderWidth);
+  glUniform1f(m_rimLightLocation, std::clamp(style.rimLight, 0.0F, 1.0F));
   glUniform1i(m_outerShadowLocation, style.outerShadow ? 1 : 0);
   glUniform2f(m_shadowCutoutOffsetLocation, style.shadowCutoutOffsetX, style.shadowCutoutOffsetY);
   glUniform1i(m_shadowExclusionLocation, style.shadowExclusion ? 1 : 0);

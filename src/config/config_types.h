@@ -1622,6 +1622,33 @@ constexpr EnumOption<ShellThemeMode> kShellThemeModes[] = {
     {ShellThemeMode::Auto, "auto", "common.states.auto"},
 };
 
+// macOS-style accent color. Every source keeps its own neutrals; the accent recolors only the primary and
+// secondary families. `wallpaper` takes the hue of the current wallpaper (a no-op for the wallpaper source,
+// whose palette already comes from it).
+enum class AccentColor : std::uint8_t {
+  Wallpaper = 0,
+  Blue = 1,
+  Purple = 2,
+  Pink = 3,
+  Red = 4,
+  Orange = 5,
+  Yellow = 6,
+  Green = 7,
+  Graphite = 8,
+};
+
+constexpr EnumOption<AccentColor> kAccentColors[] = {
+    {AccentColor::Wallpaper, "wallpaper", "settings.options.theme.accent.wallpaper"},
+    {AccentColor::Blue, "blue", "settings.options.theme.accent.blue"},
+    {AccentColor::Purple, "purple", "settings.options.theme.accent.purple"},
+    {AccentColor::Pink, "pink", "settings.options.theme.accent.pink"},
+    {AccentColor::Red, "red", "settings.options.theme.accent.red"},
+    {AccentColor::Orange, "orange", "settings.options.theme.accent.orange"},
+    {AccentColor::Yellow, "yellow", "settings.options.theme.accent.yellow"},
+    {AccentColor::Green, "green", "settings.options.theme.accent.green"},
+    {AccentColor::Graphite, "graphite", "settings.options.theme.accent.graphite"},
+};
+
 struct WallpaperFavorite {
   std::string path;
   std::optional<ThemeMode> themeMode;
@@ -1708,6 +1735,7 @@ struct ThemeConfig {
   std::string wallpaperScheme = "m3-content";
   ThemeMode mode = ThemeMode::Dark;
   ShellThemeMode shellMode = ShellThemeMode::Follow;
+  AccentColor accent = AccentColor::Wallpaper;
   bool pureBlackDark = false;
   TemplatesConfig templates;
 

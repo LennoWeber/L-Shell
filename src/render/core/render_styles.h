@@ -96,6 +96,10 @@ struct RoundedRectStyle {
   bool noAa = false;
   bool invertFill = false;
   float borderWidth = 0.0F;
+  // Liquid Glass edge light, 0..1. Lights the border by the direction its edge faces (bright along the top,
+  // faint along the bottom, light from slightly left of straight above) and adds a soft inner glow that fades
+  // in from the edge. 0 draws the border flat.
+  float rimLight = 0.0F;
   bool outerShadow = false;
   float shadowCutoutOffsetX = 0.0F;
   float shadowCutoutOffsetY = 0.0F;
@@ -122,6 +126,7 @@ constexpr bool operator==(const RoundedRectStyle& lhs, const RoundedRectStyle& r
       && lhs.noAa == rhs.noAa
       && lhs.invertFill == rhs.invertFill
       && lhs.borderWidth == rhs.borderWidth
+      && lhs.rimLight == rhs.rimLight
       && lhs.outerShadow == rhs.outerShadow
       && lhs.shadowCutoutOffsetX == rhs.shadowCutoutOffsetX
       && lhs.shadowCutoutOffsetY == rhs.shadowCutoutOffsetY

@@ -512,6 +512,11 @@ namespace settings {
         "dark light auto follow shell apps templates colors"
     ));
     entries.push_back(makeEntry(
+        SettingsSection::Appearance, "theme", tr("settings.schema.appearance.accent.label"),
+        tr("settings.schema.appearance.accent.description"), {"theme", "accent"},
+        enumSelect(kAccentColors, cfg.theme.accent), "accent highlight color tint wallpaper blue purple pink red orange yellow green graphite"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Appearance, "theme", tr("settings.schema.appearance.palette-source.label"),
         tr("settings.schema.appearance.palette-source.description"), {"theme", "source"},
         asSegmented(enumSelect(kPaletteSources, cfg.theme.source)), "palette colors"
