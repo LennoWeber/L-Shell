@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -51,13 +52,14 @@ public:
 private:
   struct Card {
     std::uint32_t id = 0;
-    bool active = false;
     std::string iconPath;
     bool iconBound = false;
     Box* slot = nullptr; // a soft square behind the fallback glyph, clear behind a real app icon
     Image* icon = nullptr;
     Glyph* fallback = nullptr;
     Button* close = nullptr;
+    bool areaHovered = false;
+    bool closeHovered = false;
   };
 
   void doLayout(Renderer& renderer, float width, float height) override;
@@ -67,12 +69,15 @@ private:
   [[nodiscard]] std::size_t shownCount() const;
   [[nodiscard]] std::size_t hiddenCount() const;
   void rebuildNotifications();
-  void buildCard(const Notification& notification, bool active);
+  // `active`: still on screen as a live notification; `pending`: expired with actions, still answerable.
+  void buildCard(const Notification& notification, bool active, bool pending);
   void rebuildCalendar();
   void rebuildWeather();
-  void activate(std::uint32_t id, bool active);
+  void activate(std::uint32_t id, bool active, bool pending);
   void dismiss(std::uint32_t id, bool active);
   void clearAll();
+  // The × shows while the pointer is over the card or the × itself (the dispatcher hovers only the deepest area).
+  void setCardHover(std::size_t index, std::optional<bool> area, std::optional<bool> close);
   // Rebuilds the cards and resizes the panel on the next loop iteration (history changed while open).
   void queueRefresh();
   [[nodiscard]] std::string resolveIconPath(const Notification& notification);

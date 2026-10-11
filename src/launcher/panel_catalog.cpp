@@ -26,6 +26,9 @@ namespace panel_catalog {
         BuiltinPanelMeta{"clipboard", "launcher.providers.panel.builtin.clipboard", "clipboard"},
         BuiltinPanelMeta{"control-center", "launcher.providers.panel.builtin.control-center", "adjustments"},
         BuiltinPanelMeta{"launcher", "launcher.providers.panel.builtin.launcher", "search"},
+        BuiltinPanelMeta{
+            "notification-center", "launcher.providers.panel.builtin.notification-center", "layout-sidebar-right"
+        },
         BuiltinPanelMeta{"polkit", "launcher.providers.panel.builtin.polkit", "shield-lock"},
         BuiltinPanelMeta{"session", "launcher.providers.panel.builtin.session", "power"},
         BuiltinPanelMeta{"setup-wizard", "launcher.providers.panel.builtin.setup-wizard", "wand"},

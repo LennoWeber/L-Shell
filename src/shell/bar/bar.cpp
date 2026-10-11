@@ -692,7 +692,7 @@ namespace {
     if (barConfig.reserveSpace) {
       spec.exclusiveZone = reservedBarExclusiveZone(barConfig, shadowConfig);
     } else {
-      spec.exclusiveZone = barConfig.ignoreOtherZones ? -1 : 0;
+      spec.exclusiveZone = barConfig.ignoreOtherZones && barConfig.isAutoHideEnabled() ? -1 : 0;
     }
     return spec;
   }
@@ -735,6 +735,9 @@ namespace {
         && a.marginEnds == b.marginEnds
         && a.marginEdge == b.marginEdge
         && a.shadow == b.shadow
+        // The scrim box exists only when the surface's scene was built with it.
+        && a.legibilityScrim == b.legibilityScrim
+        && a.ignoreOtherZones == b.ignoreOtherZones
         && sameShadowSurface
         && a.monitorOverrides == b.monitorOverrides;
   }
@@ -1977,8 +1980,10 @@ void Bar::syncBarExclusiveZone(BarInstance& instance) {
   std::int32_t zone = 0;
   if (shouldReserveExclusiveZone(instance)) {
     zone = reservedBarExclusiveZone(instance.barConfig, m_config->config().shell.shadow);
-  } else if (instance.barConfig.ignoreOtherZones && !instance.barConfig.reserveSpace) {
-    zone = -1; // a layout-mode bar without its own zone stays on the screen edge (see BarConfig)
+  } else if (instance.barConfig.ignoreOtherZones && instance.barConfig.isAutoHideEnabled()) {
+    // On the screen edge while it only shows at home (see BarConfig); kept visible (bar-auto-hide-set off) it
+    // hangs below the island's strip again instead of covering the island.
+    zone = -1;
   }
   instance.surface->setExclusiveZone(zone);
 }

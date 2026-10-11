@@ -154,7 +154,7 @@ struct BarConfig {
   // Set by layout modes with a transparent background, off for [bar.*].
   bool legibilityScrim = false;
   // Without a zone of its own, sit on the screen edge over other surfaces' zones (exclusive zone -1) instead of
-  // after them. Layout modes set it, so Flow's home bar stays at the top edge above the island's reserved strip.
+  // after them, while it auto-hides. Set for Flow's home bar, so it takes the top edge over the island's strip.
   bool ignoreOtherZones = false;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);

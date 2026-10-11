@@ -720,7 +720,8 @@
       },
       "panel": {
         "builtin": {
-          "status-overlay": "Statusübersicht"
+          "status-overlay": "Statusübersicht",
+          "notification-center": "Mitteilungszentrale"
         }
       }
     },

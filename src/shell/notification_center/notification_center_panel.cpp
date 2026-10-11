@@ -100,9 +100,35 @@ namespace {
     return text.substr(0, std::min(length, text.size()));
   }
 
-  [[nodiscard]] std::string upperAscii(std::string text) {
+  // The month on its own (nominative: "октябрь", not the genitive "октября" of a date).
+  [[nodiscard]] std::string monthName(int month0) {
+    std::tm value{};
+    value.tm_mon = month0;
+    value.tm_mday = 1;
+#ifdef __GLIBC__
+    return formatStrftime("%OB", value);
+#else
+    return formatStrftime("%B", value);
+#endif
+  }
+
+  // macOS sets the month in small caps-like capitals; only plain ASCII names are safe to uppercase byte-wise
+  // ("März" or Cyrillic names stay as the locale writes them).
+  [[nodiscard]] std::string capsIfAscii(std::string text) {
+    if (std::ranges::any_of(text, [](char c) { return static_cast<unsigned char>(c) >= 0x80U; })) {
+      return text;
+    }
     std::ranges::transform(text, text.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
     return text;
+  }
+
+  // Today's date where the weather is (the forecast's first day can be yesterday's after midnight on a cache).
+  [[nodiscard]] std::string todayIso(std::int32_t utcOffsetSeconds) {
+    const auto now = std::chrono::system_clock::now() + std::chrono::seconds{utcOffsetSeconds};
+    const std::time_t time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+    gmtime_r(&time, &tm);
+    return formatStrftime("%Y-%m-%d", tm);
   }
 
   [[nodiscard]] std::tm localNow() {
@@ -376,7 +402,7 @@ void NotificationCenterPanel::rebuildNotifications() {
     if (shown == kMaxCards) {
       break;
     }
-    buildCard(entry.notification, entry.active && m_services.notifications->hasPendingDBusClose(entry.notification.id));
+    buildCard(entry.notification, entry.active, m_services.notifications->hasPendingDBusClose(entry.notification.id));
     ++shown;
   }
   if (const std::size_t hidden = history.size() - shown; hidden > 0) {
@@ -398,7 +424,7 @@ void NotificationCenterPanel::rebuildNotifications() {
   }
 }
 
-void NotificationCenterPanel::buildCard(const Notification& notification, bool active) {
+void NotificationCenterPanel::buildCard(const Notification& notification, bool active, bool pending) {
   const float scale = contentScale();
   const float width = kContentWidth * scale;
   const float height = kCardHeight * scale;
@@ -411,27 +437,14 @@ void NotificationCenterPanel::buildCard(const Notification& notification, bool a
 
   Card& card = m_cards.emplace_back();
   card.id = id;
-  card.active = active;
   card.iconPath = resolveIconPath(notification);
 
   auto area = ui::inputArea({
       .width = width,
       .height = height,
-      .onEnter =
-          [this, index](const InputArea::PointerData& /*data*/) {
-            if (index < m_cards.size() && m_cards[index].close != nullptr) {
-              m_cards[index].close->setVisible(true);
-              PanelManager::instance().refresh();
-            }
-          },
-      .onLeave =
-          [this, index]() {
-            if (index < m_cards.size() && m_cards[index].close != nullptr) {
-              m_cards[index].close->setVisible(false);
-              PanelManager::instance().refresh();
-            }
-          },
-      .onClick = [this, id, active](const InputArea::PointerData& /*data*/) { activate(id, active); },
+      .onEnter = [this, index](const InputArea::PointerData& /*data*/) { setCardHover(index, true, std::nullopt); },
+      .onLeave = [this, index]() { setCardHover(index, false, std::nullopt); },
+      .onClick = [this, id, active, pending](const InputArea::PointerData& /*data*/) { activate(id, active, pending); },
   });
 
   auto iconSlot = ui::box({
@@ -512,8 +525,11 @@ void NotificationCenterPanel::buildCard(const Notification& notification, bool a
       .radius = close * 0.5F,
       .width = close,
       .height = close,
-      .visible = false,
+      // Hidden by opacity, not visibility: the button stays hit-testable, so moving onto it never flickers.
+      .opacity = 0.0F,
       .onClick = [this, id, active]() { dismiss(id, active); },
+      .onEnter = [this, index]() { setCardHover(index, std::nullopt, true); },
+      .onLeave = [this, index]() { setCardHover(index, std::nullopt, false); },
   });
 
   auto row = ui::row(
@@ -559,7 +575,7 @@ void NotificationCenterPanel::rebuildCalendar() {
 
   m_calendar->addChild(
       ui::label({
-          .text = upperAscii(formatLocalTime("%B")),
+          .text = capsIfAscii(monthName(month)),
           .fontSize = Style::fontSizeCaption * scale,
           .fontWeight = FontWeight::Bold,
           .color = colorSpecFromRole(ColorRole::Primary),
@@ -571,13 +587,14 @@ void NotificationCenterPanel::rebuildCalendar() {
   // Weekday initials, starting on the locale's first day; 4 Jan 1970 was a Sunday.
   auto weekdays = ui::row({.align = FlexAlign::Center, .gap = 0.0F, .height = rowHeight});
   for (int i = 0; i < 7; ++i) {
-    const std::int64_t sunday = 3 * 86400;
-    const std::int64_t stamp = sunday + (static_cast<std::int64_t>((weekStart + i) % 7) * 86400) + 43200;
+    std::tm weekday{};
+    weekday.tm_wday = (weekStart + i) % 7;
+    weekday.tm_mday = 1;
     weekdays->addChild(
         ui::row(
             {.align = FlexAlign::Center, .justify = FlexJustify::Center, .width = cell, .height = rowHeight},
             ui::label({
-                .text = firstCharacter(formatLocalUnixTime(stamp, "%a")),
+                .text = firstCharacter(formatStrftime("%a", weekday)),
                 .fontSize = dayFont,
                 .fontWeight = FontWeight::SemiBold,
                 .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
@@ -655,10 +672,12 @@ void NotificationCenterPanel::rebuildWeather() {
     temperature = degrees(snapshot.current.temperatureC);
     glyph = WeatherService::glyphForCode(snapshot.current.weatherCode, snapshot.current.isDay);
     condition = WeatherService::shortDescriptionForCode(snapshot.current.weatherCode);
-    if (!snapshot.forecastDays.empty()) {
-      const auto& today = snapshot.forecastDays.front();
+    const auto today =
+        std::ranges::find(snapshot.forecastDays, todayIso(snapshot.utcOffsetSeconds), &WeatherForecastDay::dateIso);
+    if (today != snapshot.forecastDays.end()) {
       highLow = i18n::tr(
-          "notification-center.high-low", "high", degrees(today.temperatureMaxC), "low", degrees(today.temperatureMinC)
+          "notification-center.high-low", "high", degrees(today->temperatureMaxC), "low",
+          degrees(today->temperatureMinC)
       );
     }
   }
@@ -741,19 +760,33 @@ void NotificationCenterPanel::doLayout(Renderer& renderer, float width, float he
 
 void NotificationCenterPanel::doUpdate(Renderer& /*renderer*/) {}
 
-void NotificationCenterPanel::activate(std::uint32_t id, bool active) {
+void NotificationCenterPanel::setCardHover(std::size_t index, std::optional<bool> area, std::optional<bool> close) {
+  if (index >= m_cards.size() || m_cards[index].close == nullptr) {
+    return;
+  }
+  Card& card = m_cards[index];
+  card.areaHovered = area.value_or(card.areaHovered);
+  card.closeHovered = close.value_or(card.closeHovered);
+  card.close->setOpacity(card.areaHovered || card.closeHovered ? 1.0F : 0.0F);
+  PanelManager::instance().refresh();
+}
+
+void NotificationCenterPanel::activate(std::uint32_t id, bool active, bool pending) {
   NotificationManager* notifications = m_services.notifications;
   if (notifications == nullptr) {
     return;
   }
-  // Like macOS: a click opens the app (its default action) and the notification is done.
-  if (active && notifications->hasPendingDBusClose(id)) {
+  // Like macOS: a click opens the app (its default action) and the notification is done. Live notifications and
+  // expired ones that still carry actions can both be answered.
+  if (active || pending) {
     const std::string token = m_services.platform != nullptr
         ? m_services.platform->requestActivationToken(m_services.platform->lastPointerSurface())
         : std::string{};
     if (!notifications->invokeAction(id, "default", token, true)) {
       kLog.debug("notification #{} has no default action", id);
-      (void)notifications->close(id, CloseReason::Dismissed);
+      if (active) {
+        (void)notifications->close(id, CloseReason::Dismissed);
+      }
     }
   }
   notifications->removeHistoryEntry(id);

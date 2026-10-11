@@ -24,6 +24,7 @@ int main() {
   TEST_CHECK(smart.bars.size() == 1);
   TEST_CHECK(smart.bars[0].name == noctalia::config::kSmartBarName);
   TEST_CHECK(smart.bars[0].smartAutoHide && !smart.bars[0].autoHide);
+  TEST_CHECK(!smart.bars[0].ignoreOtherZones); // it can reveal over windows, so it keeps after other zones
 
   // Minimal bar: always shown.
   config.layout.mode = LayoutMode::MinimalBar;

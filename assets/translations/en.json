@@ -794,7 +794,8 @@
           "test": "Test Panel",
           "tray-drawer": "Tray Drawer",
           "wallpaper": "Wallpaper",
-          "status-overlay": "Status Overview"
+          "status-overlay": "Status Overview",
+          "notification-center": "Notification Center"
         },
         "title": "Panels"
       },

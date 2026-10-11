@@ -283,6 +283,17 @@ namespace {
     return std::max(0, inset - reserved);
   }
 
+  // A top bar that sits on the screen edge over other zones (Flow's home bar, BarConfig::ignoreOtherZones) is not
+  // pushed down by the island's reserved strip, but panels placed relative to it are: take that strip back off.
+  [[nodiscard]] std::int32_t zoneSkippedByBar(const ConfigService* configService, const BarConfig& bar) {
+    if (configService == nullptr || bar.reserveSpace || !bar.ignoreOtherZones || bar.position != "top") {
+      return 0;
+    }
+    return noctalia::config::islandReservedZone(
+        configService->resolvedLayout(), configService->config().accessibility.uiScale
+    );
+  }
+
   [[nodiscard]] AttachedRevealDirection
   detachedRevealDirection(std::string_view panelPosition, std::string_view barPosition) {
     if (panelPosition == "top_left"
@@ -348,9 +359,10 @@ namespace {
     if (panelId == "polkit") {
       return pc.polkitPosition;
     }
-    // Notification Center hangs from the right end of the menu bar, like on macOS.
+    // Notification Center hangs from the right end of the menu bar, like on macOS; Classic's [bar.*] bars can sit
+    // on any edge, so there it opens next to the clock that was clicked.
     if (panelId == "notification-center") {
-      return "top_right";
+      return configService->config().layout.mode == LayoutMode::Classic ? "auto" : "top_right";
     }
     return "auto";
   }
@@ -918,8 +930,9 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   // Reproduces the prior absolute placement when nothing else reserves space.
   const bool useBarRelativeDetached = !useCenterScreenLayout && !useScreenPosition && !useReservedEdgePlacement;
   if (useBarRelativeDetached) {
-    const std::int32_t barReserved =
-        barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, m_config->config().shell.shadow) : 0;
+    const std::int32_t barReserved = barConfig.reserveSpace
+        ? reservedBarEdgeDistance(barConfig, m_config->config().shell.shadow)
+        : zoneSkippedByBar(m_config, barConfig);
     const auto sw = static_cast<std::int32_t>(detachedSurfaceWidth);
     const auto sh = static_cast<std::int32_t>(detachedSurfaceHeight);
     if (isBottom) {
@@ -1223,7 +1236,8 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     // config edge; subtracting the bar's own reservation on the main axis avoids
     // double-counting it. With no other reservation this matches the old absolute
     // placement; it self-corrects by the external reservation when one exists.
-    const std::int32_t barReserved = barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, shadowConfig) : 0;
+    const std::int32_t barReserved = barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, shadowConfig)
+                                                            : zoneSkippedByBar(m_config, barConfig);
     std::uint32_t attachedAnchor = LayerShellAnchor::Top | LayerShellAnchor::Left;
     std::int32_t attachedMarginTop = surfaceY;
     std::int32_t attachedMarginRight = 0;

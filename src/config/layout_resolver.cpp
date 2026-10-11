@@ -59,7 +59,6 @@ namespace noctalia::config {
     bar.concaveEdgeCorners = false;
 
     bar.reserveSpace = mode.reserveSpace;
-    bar.ignoreOtherZones = !mode.reserveSpace;
     bar.autoHide = false;
     bar.smartAutoHide = smartHide;
     bar.autoHideEdgeReveal = mode.revealOnHover;
@@ -115,6 +114,10 @@ namespace noctalia::config {
       break;
     case LayoutMode::Flow:
       out.bars.push_back(synthesizeBar(layout.flow.bar, kFlowBarName, /*smartHide=*/true));
+      // Shown only on an empty workspace, where the island is hidden: the bar takes the top edge over the island's
+      // reserved strip instead of hanging below it.
+      out.bars.back().ignoreOtherZones =
+          !layout.flow.bar.reserveSpace && layout.flow.bar.position == ModeBarPosition::Top;
       out.island = layout.flow.island;
       out.islandVisibility = IslandVisibility::WhileWindowsOpen;
       out.edges = layout.flow.edges;
