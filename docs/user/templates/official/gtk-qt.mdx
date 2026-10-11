@@ -20,9 +20,16 @@ GTK applications include most GNOME apps and many Linux applications. Noctalia c
    # Arch Linux / Manjaro
    paru -S adw-gtk-theme nwg-look
    
+   # Fedora
+   sudo dnf install adw-gtk3-theme nwg-look
+
    # Other distributions
    # Install adw-gtk-theme and nwg-look from your package manager
    ```
+
+   Without `adw-gtk3`, the GTK template falls back to GTK's built-in Adwaita and sets
+   `gtk-application-prefer-dark-theme` in `~/.config/gtk-3.0/settings.ini`, so GTK 3 apps still follow dark
+   and light mode (GTK 3 ignores the `color-scheme` key). That fallback only replaces a stock theme.
 
 2. **Apply the GTK theme:**
    - **Using nwg-look (recommended):**
