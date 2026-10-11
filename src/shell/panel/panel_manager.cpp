@@ -2574,6 +2574,8 @@ void PanelManager::onConfigReloaded() {
   if (!m_attachedToBar && m_bgNode != nullptr) {
     auto* bg = static_cast<Box*>(m_bgNode);
     bg->setPanelStyle(m_config->config().shell.panel.borders);
+    // setPanelStyle() resets the radius; the panel's own (Spotlight's capsule) has to win again.
+    bg->setRadius(floatingPanelRadius());
     bg->setFill(colorSpecFromRole(ColorRole::Surface, panelBackgroundOpacity));
     if (m_config->config().shell.panel.borders) {
       bg->setBorder(

@@ -142,7 +142,10 @@ std::size_t SessionPanel::entryCountForLayout() const {
 
 bool SessionPanel::gridEnabled() const { return m_config != nullptr && m_config->config().shell.session.grid; }
 
-bool SessionPanel::menuStyle() const { return m_config == nullptr || m_config->config().shell.session.menu; }
+// An explicit `grid = true` (a choice made before the menu existed) keeps the tiles.
+bool SessionPanel::menuStyle() const {
+  return m_config == nullptr || (m_config->config().shell.session.menu && !m_config->config().shell.session.grid);
+}
 
 std::size_t SessionPanel::visibleColumnCount() const {
   const std::size_t n = std::max<std::size_t>(1, entryCountForLayout());
@@ -245,6 +248,13 @@ Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, st
             [this, index]() {
               if (index < m_menuHovered.size()) {
                 m_menuHovered[index] = true;
+              }
+              // Like a macOS menu, the pointer moves the one highlight; a running countdown keeps its row.
+              if (!m_pendingCountdown.has_value()) {
+                m_selectedIndex = index;
+                updateSelectionVisuals();
+                PanelManager::instance().refresh();
+              } else {
                 syncMenuShortcut(index);
               }
             },

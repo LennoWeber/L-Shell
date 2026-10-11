@@ -3353,7 +3353,7 @@ namespace settings {
           tr("settings.schema.power.session-grid.description"), {"shell", "session", "grid"},
           ToggleSetting{.checked = cfg.shell.session.grid}, "session panel grid layout rows columns"
       );
-      e.visibleWhen = [](const Config& c) { return !c.shell.session.menu; };
+      e.visibleWhen = [](const Config& c) { return !c.shell.session.menu || c.shell.session.grid; };
       entries.push_back(std::move(e));
     }
     {
@@ -3368,7 +3368,7 @@ namespace settings {
           },
           "session panel grid columns per row"
       );
-      e.visibleWhen = [](const Config& c) { return !c.shell.session.menu && c.shell.session.grid; };
+      e.visibleWhen = [](const Config& c) { return c.shell.session.grid; };
       entries.push_back(std::move(e));
     }
     entries.push_back(makeEntry(

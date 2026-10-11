@@ -27,10 +27,13 @@ Set `sidebar_section` for opens that jump straight to a tab (volume, network, an
 
 Keyboard navigation uses the global [`[keybinds]`](/noctalia/configuration/shell/#keybinds) actions: `tab_next` / `tab_previous` switch between the sidebar and the active tab body; arrow keys move within the focused pane.
 
+L-Shell hides the sidebar by default, like Control Center on macOS: a module opens on its own and its
+"‹ Control Center" button leads back to the grid.
+
 ```toml
 [control_center]
-sidebar = "compact"
-# sidebar_section = "compact"  # optional; defaults to the same as sidebar
+sidebar = "none"
+# sidebar_section = "none"  # optional; defaults to the same as sidebar
 # width = 700  # full-sidebar width in pixels (600–1200)
 # show_shortcut_labels = true  # text under Home shortcut icons
 # show_session_button = true   # session-actions button in the Home header
@@ -39,8 +42,8 @@ sidebar = "compact"
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `sidebar` | string | `"compact"` | Sidebar on Home / general open: `"full"`, `"compact"`, or `"none"` |
-| `sidebar_section` | string | `"compact"` | Sidebar when opening straight to a tab: `"full"`, `"compact"`, or `"none"` |
+| `sidebar` | string | `"none"` | Sidebar on Home / general open: `"full"`, `"compact"`, or `"none"` |
+| `sidebar_section` | string | `"none"` | Sidebar when opening straight to a tab: `"full"`, `"compact"`, or `"none"` |
 | `width` | int | `700` | Control Center width in pixels (`600`–`1200`). This is the full-sidebar width; the compact and no-sidebar modes scale down from it. |
 | `show_shortcut_labels` | bool | `true` | Show text labels under Home shortcut icons. When `false`, shortcuts are icon-only and glyphs scale with cell size. |
 | `show_session_button` | bool | `true` | Show the session-actions button in the Home tab header. |

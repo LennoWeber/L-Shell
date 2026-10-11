@@ -73,6 +73,7 @@ namespace lockscreen_login_box {
     struct OutputSize {
       float width = 1920.0F;
       float height = 1080.0F;
+      bool connected = false; // false: the output is not there, the size is a guess
     };
 
     [[nodiscard]] OutputSize outputSizeFor(const WaylandConnection& wayland, std::string_view outputName) {
@@ -84,6 +85,7 @@ namespace lockscreen_login_box {
           return {
               .width = desktop_widgets::outputLogicalWidth(output),
               .height = desktop_widgets::outputLogicalHeight(output),
+              .connected = true,
           };
         }
       }
@@ -274,6 +276,11 @@ namespace lockscreen_login_box {
       // Keep a pill width and spot the user chose. The old boxed card's are restarted from the defaults; the height
       // always follows the layout.
       if (isLegacyCardBox(widget)) {
+        // Only re-center on a connected output: a guessed size would park the box off-center for good once saved.
+        // A disconnected output's legacy box is placed at render time and migrated when it is back.
+        if (!screen.connected) {
+          continue;
+        }
         defaultPanelCenter(screen.width, screen.height, widget.cx, widget.cy, style.layout);
         widget.boxWidth = defaultPanelWidth();
       } else if (widget.boxWidth <= 0.0F) {

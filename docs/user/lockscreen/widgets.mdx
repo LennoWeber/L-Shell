@@ -29,7 +29,7 @@ rotation   = 0.0
 format = "{:%H:%M}"
 ```
 
-When enabled, widgets render on each lock surface, over the same blurred and tinted wallpaper as the rest of the lock screen. To show a clock on the lock screen, add a **clock** widget.
+When enabled, widgets render on each lock surface, over the same blurred and tinted wallpaper as the rest of the lock screen. L-Shell's lock screen already shows the date and a large clock at the top, like macOS; a **clock** widget on an output replaces that built-in clock there, so the screen never shows two.
 
 Text widgets (clock, weather, media player, label, sysmon) support a per-widget `font_family` setting just like desktop widgets - empty inherits the shell font. See [Desktop widgets - Common settings](/noctalia/desktop/widgets/#common-settings).
 
@@ -60,36 +60,26 @@ Widget IDs generated in the editor use the `lockscreen-widget-` prefix. Login bo
 
 ### Login box settings
 
-The login box uses the same inspector layout as other lockscreen widgets:
+The login box is the macOS Tahoe user block: a round avatar, the display name and a glass password pill with the submit arrow inside it, low and centered. The date and the large clock sit at the top, with the current weather on the date line and a now-playing capsule under the clock. Session actions (Sleep, Restart, Shut Down, Log Out) and the keyboard layout sit as small glass circles in the bottom-right corner. Status messages (a wrong password, fingerprint and PAM prompts, Caps Lock) appear in a small chip under the pill; a wrong password shakes the pill. The editor moves the block and sets the pill width (180–360 px); positions saved for the old boxed card are reset to the default spot.
 
-- **Widget** - layout mode, optional Regular extras, login controls, and password field styling
-- **Background** - outer bar color, opacity, and corner radius (`background_color`, `background_opacity`, `background_radius`)
+`layout` chooses how much the lock screen shows:
 
-`layout` chooses the login panel shape:
-
-- `regular` (default) - v4-style panel with media, weather, and optional session action buttons around the password row
-- `compact` - slim password row (previous default look)
-
-Auth status is a separate fixed-size card outside the login panel (above it by default, flipping below when the panel is near the top of the screen). It does not change the login box size. With `show_unlock_hint = true` (default), the card shows the idle unlock hint and auth prompts (for example fingerprint or “Authenticating…”). With it off, the card stays hidden except for errors and Caps Lock warnings (when `show_caps_lock` is enabled). The editor preview shows a matching ghost for the unlock-hint card that follows the same above/below placement.
-
-The eye button beside the password field shows the typed password as plain text on that monitor only; other monitors keep it masked. It hides again on every lock. While revealed, the field still blocks copy and cut to the clipboard and keeps reporting itself to input methods as a sensitive password field.
+- `regular` (default) - avatar, name and pill, with media, weather and session actions as set below
+- `compact` - the pill alone: no avatar or name, no media, weather or session actions
 
 | Setting | Default | Range | Description |
 | --- | --- | --- | --- |
-| `layout` | `regular` | `compact` \| `regular` | Login panel layout |
-| `show_session_buttons` | `true` | bool | Regular: show session actions from `[shell.session].actions` (lock actions omitted) |
-| `show_media` | `true` | bool | Regular: show media in the info row. Both media and weather may be off (the info strip collapses) |
-| `show_weather` | `true` | bool | Regular: show weather beside media. Alone, weather is centered and shows more forecast days; when unavailable while media is on, media fills the row |
-| `background_color` | `surface_variant` | color role | Outer login bar fill |
-| `background_opacity` | `0.88` | `0.0`–`1.0` | Outer login bar opacity |
-| `background_radius` | `12` | `0`–`32` | Outer login bar corner radius (logical px) |
-| `show_login_button` | `true` | bool | Show the check button beside the password field |
-| `show_unlock_hint` | `true` | bool | Show the status card for the idle unlock hint and auth prompts; errors and Caps Lock still appear when off |
-| `show_caps_lock` | `true` | bool | Show a Caps Lock warning in the status card |
+| `layout` | `regular` | `compact` \| `regular` | How much the lock screen shows |
+| `show_session_buttons` | `true` | bool | Regular: session actions from `[shell.session].actions` in the bottom-right corner (lock actions omitted) |
+| `show_media` | `true` | bool | Regular: the now-playing capsule under the clock |
+| `show_weather` | `true` | bool | Regular: the current weather on the date line |
+| `show_login_button` | `true` | bool | Show the submit arrow inside the pill |
+| `show_unlock_hint` | `true` | bool | Show fingerprint and PAM prompts and "Authenticating…" in the status chip; errors and Caps Lock still appear when off |
+| `show_caps_lock` | `true` | bool | Show the Caps Lock glyph in the pill and a warning in the status chip |
 | `show_keyboard_layout` | `true` | bool | Show the keyboard layout chip (cycles when multiple layouts are available) |
-| `input_opacity` | `1.0` | `0.0`–`1.0` | Password field background opacity |
-| `input_radius` | `6` | `0`–`32` | Password field corner radius (logical px) |
-| `center_password_text` | `false` | bool | Center password dots and placeholder inside the field |
+| `center_password_text` | `false` | bool | Center password dots and placeholder inside the pill |
+
+The settings of the old boxed card (`background_color`, `background_opacity`, `background_radius`, `input_opacity`, `input_radius`) are still accepted in configs but no longer change anything.
 
 ```toml
 [lockscreen_widgets.widget."lockscreen-login-box@DP-1".settings]
@@ -98,9 +88,4 @@ show_session_buttons = true
 show_media = true
 show_weather = true
 show_unlock_hint = true
-background_color = "surface_variant"
-background_opacity = 0.75
-background_radius = 16.0
-input_opacity = 0.9
-input_radius = 8.0
 ```

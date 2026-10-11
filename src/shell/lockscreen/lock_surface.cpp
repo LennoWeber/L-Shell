@@ -63,6 +63,10 @@ namespace {
   constexpr float kDateClockGap = -14.0F;
   // Top of the date line, as a fraction of the output height.
   constexpr float kClockTopInset = 0.06F;
+  // The clock is sized for ~900 logical px of height; shorter outputs (1280x720, 2x HiDPI laptops) shrink it so
+  // it keeps clear of the user block.
+  constexpr float kClockReferenceHeight = 900.0F;
+  constexpr float kClockMinScale = 0.6F;
   constexpr float kNowPlayingArtSize = 28.0F;
   constexpr float kNowPlayingMaxWidth = 360.0F;
   constexpr float kAvatarGlyphSize = login::kAvatarSize * 0.55F;
@@ -136,6 +140,17 @@ namespace {
       }
     }
     return format;
+  }
+
+  // A clock lockscreen widget on this output (the way to get a lock-screen clock before L-Shell drew its own)
+  // replaces the built-in one, so the screen never shows two clocks.
+  [[nodiscard]] bool outputHasClockWidget(const ConfigService* config, std::string_view outputKey) {
+    if (config == nullptr || !config->config().lockscreenWidgets.enabled) {
+      return false;
+    }
+    return std::ranges::any_of(config->config().lockscreenWidgets.widgets, [outputKey](const DesktopWidgetState& w) {
+      return w.enabled && w.type == "clock" && (w.outputName.empty() || w.outputName == outputKey);
+    });
   }
 
   [[nodiscard]] bool formatShowsSeconds(const std::string& format) {
@@ -1158,13 +1173,18 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
   const bool regular = style.layout == lockscreen_login_box::LayoutMode::Regular;
   const float edge = Style::spaceLg;
 
-  // Clock: the date line over the large time, centered at the top.
-  m_clockColumn->setVisible(true);
-  const LayoutSize clockSize = m_clockColumn->measure(renderer, LayoutConstraints::available(sw, sh));
+  // Clock: the date line over the large time, centered at the top (unless a clock widget already shows one).
+  const bool builtInClock = !outputHasClockWidget(m_config, m_outputKey);
+  m_clockLabel->setFontSize(kClockFontSize * std::clamp(sh / kClockReferenceHeight, kClockMinScale, 1.0F));
+  m_clockColumn->setVisible(builtInClock);
   const float clockY = std::round(std::max(edge * 2.0F, sh * kClockTopInset));
-  m_clockColumn->arrange(
-      renderer, LayoutRect{std::round((sw - clockSize.width) * 0.5F), clockY, clockSize.width, clockSize.height}
-  );
+  LayoutSize clockSize{};
+  if (builtInClock) {
+    clockSize = m_clockColumn->measure(renderer, LayoutConstraints::available(sw, sh));
+    m_clockColumn->arrange(
+        renderer, LayoutRect{std::round((sw - clockSize.width) * 0.5F), clockY, clockSize.width, clockSize.height}
+    );
+  }
 
   // Visibility comes from the update pass; layout only places it under the clock.
   if (m_nowPlaying->visible()) {
@@ -1204,6 +1224,10 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
   const float groupX = util::clampOrdered(std::round(cx - groupSize.width * 0.5F), edge, sw - groupSize.width - edge);
   const float groupY = util::clampOrdered(std::round(cy - groupSize.height * 0.5F), edge, sh - groupSize.height - edge);
   m_loginPanel->arrange(renderer, LayoutRect{groupX, groupY, groupSize.width, groupSize.height});
+  // On a short output now-playing gives way to the user block instead of running into it.
+  if (m_nowPlaying->visible() && m_nowPlaying->y() + m_nowPlaying->height() + Style::spaceMd > groupY) {
+    m_nowPlaying->setVisible(false);
+  }
   m_pillRestX = m_pill->x();
   if (m_shakeOffset != 0.0F) {
     m_pill->setPosition(m_pillRestX + m_shakeOffset, m_pill->y());
@@ -1224,10 +1248,12 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
   }
 
   // Session actions and the keyboard layout chip: quiet glass in the bottom-right corner.
-  if (style.showSessionButtons) {
+  // Compact keeps only the pill, as before: no session buttons (the editor hides their switch there too).
+  const bool showSessionButtons = regular && style.showSessionButtons;
+  if (showSessionButtons) {
     rebuildSessionButtons();
   }
-  m_sessionRow->setVisible(style.showSessionButtons && !m_sessionButtons.empty());
+  m_sessionRow->setVisible(showSessionButtons && !m_sessionButtons.empty());
   m_cornerRow->setVisible(m_sessionRow->visible() || m_layoutChip->visible());
   if (m_cornerRow->visible()) {
     const LayoutSize size = m_cornerRow->measure(renderer, LayoutConstraints::available(sw, sh));
@@ -1297,7 +1323,8 @@ void LockSurface::refreshClock() {
   // Same translated long date as the status overlay ("Sunday, 11 October").
   m_dateLabel->setText(formatLocalTime(i18n::tr("status-overlay.date-format").c_str()));
 
-  if (!m_locked || m_blackout) {
+  // Nothing to tick for while the clock is not on screen (unlocked, blacked out, no login box, a clock widget).
+  if (!m_locked || m_blackout || !isLoginBoxEnabled() || outputHasClockWidget(m_config, m_outputKey)) {
     m_clockTimer.stop();
     return;
   }
@@ -1365,7 +1392,9 @@ void LockSurface::rebuildSessionButtons() {
 
 void LockSurface::syncInfoExtras(Renderer& renderer) {
   const lockscreen_login_box::LoginBoxStyle style = resolveLoginStyle();
-  const bool active = m_locked && !m_blackout && isLoginBoxEnabled();
+  // Compact shows no media or weather, as before (its editor hides both switches): a privacy choice for some.
+  const bool active =
+      m_locked && !m_blackout && isLoginBoxEnabled() && style.layout == lockscreen_login_box::LayoutMode::Regular;
 
   // Weather joins the date line as a glyph and the current temperature.
   const bool showWeather =

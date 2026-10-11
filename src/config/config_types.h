@@ -1777,8 +1777,9 @@ struct ControlCenterConfig {
 
   std::vector<ShortcutConfig> shortcuts;
   std::vector<std::string> hiddenTabs; // tab keys (see kTabs) the user has hidden; empty = all available shown
-  ControlCenterSidebarMode sidebarMode = ControlCenterSidebarMode::Compact;
-  ControlCenterSidebarMode sidebarSectionMode = ControlCenterSidebarMode::Compact;
+  // Like macOS: no tab rail; a module opens on its own and "< Control Center" leads back to the grid.
+  ControlCenterSidebarMode sidebarMode = ControlCenterSidebarMode::None;
+  ControlCenterSidebarMode sidebarSectionMode = ControlCenterSidebarMode::None;
   std::int32_t width = kDefaultWidth; // full-sidebar logical width; compact/none modes scale down from this
   bool showShortcutLabels = true;
   bool showSessionButton = true;
@@ -2035,10 +2036,11 @@ struct FlowConfig {
       .startWidgets = {"logo", "workspaces"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
   };
+  // Its strip stays reserved, like the macOS menu bar: windows never slide under the island.
   IslandConfig island{
       .height = 24,
       .marginTop = 2,
-      .reserveSpace = false,
+      .reserveSpace = true,
   };
   EdgesConfig edges{
       .top = "none",

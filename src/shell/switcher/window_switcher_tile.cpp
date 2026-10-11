@@ -225,6 +225,15 @@ void WindowSwitcherTile::setIconOnly(bool iconOnly) {
   markLayoutDirty();
 }
 
+void WindowSwitcherTile::setCaptionBounds(float minX, float maxX) {
+  if (m_captionMinX == minX && m_captionMaxX == maxX) {
+    return;
+  }
+  m_captionMinX = minX;
+  m_captionMaxX = maxX;
+  markLayoutDirty();
+}
+
 void WindowSwitcherTile::bind(
     Renderer& renderer, const WindowSwitcherEntry& entry, WindowSwitcherTileDepth depth, bool showCaption,
     bool wideCaption, WindowSwitcherHorizontalPlacement iconPlacement, WindowSwitcherHorizontalPlacement closePlacement
@@ -384,12 +393,20 @@ void WindowSwitcherTile::layoutIconOnly(Renderer& renderer) {
 
   if (m_captionBadge != nullptr && m_captionVisible && m_showCaption) {
     const float captionH = std::max(0.0F, m_cardHeight - side - Style::spaceXs * m_contentScale);
-    const float captionW = m_cardWidth * kIconOnlyCaptionWidth;
+    const bool bounded = m_captionMaxX > m_captionMinX;
+    float captionW = m_cardWidth * kIconOnlyCaptionWidth;
+    if (bounded) {
+      captionW = std::min(captionW, m_captionMaxX - m_captionMinX);
+    }
+    float captionX = (m_cardWidth - captionW) * 0.5F;
+    if (bounded) {
+      captionX = std::clamp(captionX, m_captionMinX, m_captionMaxX - captionW);
+    }
     m_title->setMaxWidth(captionW);
     m_subtitle->setMaxWidth(captionW);
     m_title->measure(renderer);
     m_subtitle->measure(renderer);
-    m_captionBadge->setPosition(std::round((m_cardWidth - captionW) * 0.5F), m_cardHeight - captionH);
+    m_captionBadge->setPosition(std::round(captionX), m_cardHeight - captionH);
     m_captionBadge->setFrameSize(captionW, captionH);
     m_caption->setPosition(0.0F, 0.0F);
     m_caption->setFrameSize(captionW, captionH);

@@ -389,6 +389,7 @@ mode = "flow"                       # flow | classic | smart_bar | minimal_bar |
 
 [layout.flow.island]
 material        = "glass"           # glass | black
+reserve_space   = true              # windows start below the island, like below the menu bar
 expand_on_hover = true
 suppress_osd    = true              # volume, brightness, … show in the island instead of the OSD
 

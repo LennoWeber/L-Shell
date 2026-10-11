@@ -80,6 +80,10 @@ WindowSwitcherStyleLayout computeWindowSwitcherAppsLayout(const WindowSwitcherSt
     target.opacity = 1.0F;
     target.direction = windowIndex < selected ? -1.0F : (windowIndex > selected ? 1.0F : 0.0F);
     target.zIndex = isSelected ? 2 : 1;
+    // The name may run wider than its icon but stays on the glass, half a padding inside its edges.
+    const float cardLeft = layout.stripX + target.x;
+    target.captionMinX = padding * 0.5F - cardLeft;
+    target.captionMaxX = layout.panelWidth - padding * 0.5F - cardLeft;
   }
   return layout;
 }

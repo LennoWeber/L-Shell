@@ -40,6 +40,10 @@ struct WindowSwitcherCardTarget {
   float opacity = 0.0F;
   float direction = 0.0F;
   std::int32_t zIndex = 0;
+  // Card-local horizontal range the caption may use (icon-only style, where it is wider than the card);
+  // equal values leave it unbounded.
+  float captionMinX = 0.0F;
+  float captionMaxX = 0.0F;
 };
 
 struct WindowSwitcherStyleLayout {

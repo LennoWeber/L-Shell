@@ -170,14 +170,8 @@ namespace desktop_settings {
 
   std::vector<WidgetSettingSpec> commonDesktopWidgetSettingSpecs(std::string_view type) {
     if (type == "login_box") {
-      auto bgColor = colorSpec("background_color", "surface_variant");
-      auto bgRadius = intSpec("background_radius", 12.0, 0.0, 32.0, 1.0);
-      auto bgOpacity = doubleSpec("background_opacity", 0.88, 0.0, 1.0, 0.01);
-      return {
-          std::move(bgColor),
-          std::move(bgOpacity),
-          std::move(bgRadius),
-      };
+      // The Tahoe login block is avatar, name and a glass pill: no card background to style.
+      return {};
     }
 
     if (type == "button") {
@@ -460,8 +454,6 @@ namespace desktop_settings {
       add(boolSpec("show_unlock_hint", true));
       add(boolSpec("show_caps_lock", true));
       add(boolSpec("show_keyboard_layout", true));
-      add(doubleSpec("input_opacity", 1.0, 0.0, 1.0, 0.01));
-      add(intSpec("input_radius", 6.0, 0.0, 32.0, 1.0));
       add(boolSpec("center_password_text", false));
     }
 

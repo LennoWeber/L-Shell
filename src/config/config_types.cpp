@@ -103,28 +103,29 @@ bool isValidPluginSourceName(std::string_view name) {
 }
 
 std::vector<SessionPanelActionConfig> defaultSessionPanelActions() {
-  // The Apple menu's order: Sleep, Restart, Shut Down, then Lock Screen and Log Out.
+  // The Apple menu's order: Sleep, Restart, Shut Down, then Lock Screen and Log Out. Each action keeps the
+  // number key it always had (1 lock … 5 shut down), so muscle memory never powers the machine off by surprise.
   return {
       SessionPanelActionConfig{
           .action = "lock_and_suspend",
-          .shortcut = KeyChord{.sym = XKB_KEY_1},
+          .shortcut = KeyChord{.sym = XKB_KEY_3},
       },
       SessionPanelActionConfig{
           .action = "reboot",
-          .shortcut = KeyChord{.sym = XKB_KEY_2},
+          .shortcut = KeyChord{.sym = XKB_KEY_4},
       },
       SessionPanelActionConfig{
           .action = "shutdown",
           .variant = SessionActionButtonVariant::Destructive,
-          .shortcut = KeyChord{.sym = XKB_KEY_3},
+          .shortcut = KeyChord{.sym = XKB_KEY_5},
       },
       SessionPanelActionConfig{
           .action = "lock",
-          .shortcut = KeyChord{.sym = XKB_KEY_4},
+          .shortcut = KeyChord{.sym = XKB_KEY_1},
       },
       SessionPanelActionConfig{
           .action = "logout",
-          .shortcut = KeyChord{.sym = XKB_KEY_5},
+          .shortcut = KeyChord{.sym = XKB_KEY_2},
       },
   };
 }

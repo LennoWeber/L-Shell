@@ -49,6 +49,13 @@ int main() {
           captions += card.showCaption ? 1U : 0U;
           ok = expect(card.x > lastX, label + ": cards run left to right in window order") && ok;
           ok = expect(card.x + card.width <= layout.stripWidth + 0.5F, label + ": cards stay in the row") && ok;
+          ok = expect(
+                   layout.stripX + card.x + card.captionMinX >= 0.0F
+                       && layout.stripX + card.x + card.captionMaxX <= layout.panelWidth + 0.5F
+                       && card.captionMaxX > card.captionMinX,
+                   label + ": the name stays on the panel"
+               )
+              && ok;
           lastX = card.x;
         }
         if (count > 0) {

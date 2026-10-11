@@ -40,6 +40,7 @@
 #include "wayland/wayland_connection.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <deque>
 #include <limits>
@@ -54,6 +55,9 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace {
+
+  // Logical size the Command-Tab (apps) style draws app icons at; see window_switcher_apps_style.cpp.
+  constexpr float kAppsIconSize = 96.0F;
 
   constexpr Logger kLog("window-switcher");
   constexpr std::size_t kVisibleCards = 5;
@@ -914,13 +918,32 @@ void WindowSwitcher::refreshWindows() {
     }
   }
 
-  const int iconSize = static_cast<int>(std::round((Style::controlHeightLg + Style::spaceLg) * shellUiScale(m_config)));
   const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
+  const bool appsStyle = switcherConfig.style == ShellConfig::WindowSwitcherStyle::Apps;
+  int iconSize = static_cast<int>(std::round((Style::controlHeightLg + Style::spaceLg) * shellUiScale(m_config)));
+  if (appsStyle) {
+    // Command-Tab icons are large: resolve them at their drawn size in buffer pixels, not upscaled.
+    const auto* out = findOutput(*m_wayland, m_output);
+    const int bufferScale = out != nullptr ? std::max(out->scale, 1) : 1;
+    iconSize = static_cast<int>(std::round(kAppsIconSize * shellUiScale(m_config))) * bufferScale;
+  }
   buildWindowEntries(
       *m_platform, *m_wayland, m_iconResolver, iconSize, switcherConfig.showAllOutputs ? nullptr : m_output, m_windows,
       currentFocusedWindowKey(*m_platform), switcherConfig.mru ? &m_mruKeys : nullptr,
       switcherConfig.currentWorkspaceOnly
   );
+  if (appsStyle) {
+    // Command-Tab switches apps: one icon per app, standing for its most recent window (the list is in MRU order).
+    std::unordered_set<std::string> seenApps;
+    std::erase_if(m_windows, [&seenApps](const WindowSwitcherEntry& entry) {
+      if (entry.appId.empty()) {
+        return false;
+      }
+      std::string app = entry.appId;
+      std::ranges::transform(app, app.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+      return !seenApps.insert(std::move(app)).second;
+    });
+  }
 
   for (auto& entry : m_windows) {
     const auto thumbnail = thumbnails.find(identityKeyForEntry(entry));
@@ -1200,6 +1223,7 @@ void WindowSwitcher::syncSelection(bool animate) {
     const bool wasTargetVisible = windowIndex < previousTargets.size() && previousTargets[windowIndex].visible;
 
     if (target.visible) {
+      tile->setCaptionBounds(target.captionMinX, target.captionMaxX);
       tile->bind(
           renderer, m_windows[windowIndex], target.depth, target.showCaption, target.wideCaption, target.iconPlacement,
           target.closePlacement

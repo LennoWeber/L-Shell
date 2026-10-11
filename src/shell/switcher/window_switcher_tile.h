@@ -46,6 +46,8 @@ public:
   void setShowAppIcon(bool show);
   // App icon without a window preview: no card, a soft highlight square when selected (macOS Command-Tab).
   void setIconOnly(bool iconOnly);
+  // Card-local x range the icon-only caption must stay within (WindowSwitcherCardTarget::captionMinX/MaxX).
+  void setCaptionBounds(float minX, float maxX);
   void setAppIconColorizeTint(std::optional<ColorSpec> tint) { m_appIconColorizeTint = tint; }
   void setOnInvalidate(std::function<void()> callback) { m_onInvalidate = std::move(callback); }
   void setOnActivate(std::function<void()> callback) { m_onActivate = std::move(callback); }
@@ -92,6 +94,8 @@ protected:
   bool m_wideCaption = false;
   bool m_showAppIcon = true;
   bool m_iconOnly = false;
+  float m_captionMinX = 0.0F;
+  float m_captionMaxX = 0.0F;
   WindowSwitcherHorizontalPlacement m_iconPlacement = WindowSwitcherHorizontalPlacement::Left;
   WindowSwitcherHorizontalPlacement m_closePlacement = WindowSwitcherHorizontalPlacement::Right;
   WindowSwitcherTileDepth m_depth = WindowSwitcherTileDepth::Far;
