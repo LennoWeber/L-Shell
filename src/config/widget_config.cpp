@@ -1,5 +1,6 @@
 #include "config/widget_config.h"
 
+#include "core/files/resource_paths.h"
 #include "ui/style.h"
 
 #include <optional>
@@ -108,6 +109,9 @@ namespace noctalia::config {
     WidgetConfig logo;
     logo.type = "session";
     logo.settings["glyph"] = std::string("spiral");
+    // The L-Shell mark, tinted like the other bar icons; the glyph is the fallback.
+    logo.settings["custom_image"] = paths::assetPath("branding/l-shell-mark-mono.svg").string();
+    logo.settings["custom_image_colorize"] = true;
     seed("logo", std::move(logo));
 
     WidgetConfig appName;
