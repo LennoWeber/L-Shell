@@ -252,14 +252,14 @@ float coverage_for(float distance) {
 // above. The outward normal is the screen-space gradient of the shape distance, so corners light along their
 // curve. Top-facing edges get the full specular rim, side edges a little, bottom edges a faint counter-rim
 // (light refracted through the glass), which is what reads as thickness.
-// How much the edge at this pixel faces the light (from above, slightly left): 1 = lit, -1 = facing away.
+// How much the edge at this pixel faces the light (from the upper left): 1 = lit, -1 = facing away.
 float rim_facing(float distance) {
     vec2 g = vec2(dFdx(distance), dFdy(distance));
     float len = length(g);
     if (len < 1e-5) {
         return 0.0;
     }
-    return dot(g / len, normalize(vec2(-0.35, -1.0)));
+    return dot(g / len, normalize(vec2(-0.6, -1.0)));
 }
 
 float rim_light_intensity(float distance) {
@@ -271,6 +271,25 @@ float rim_light_intensity(float distance) {
     float top = pow(max(facing, 0.0), 1.4);
     float bottom = pow(max(-facing, 0.0), 2.2) * 0.42;
     return 0.22 + 0.78 * top + bottom;
+}
+
+// The glass slab's bevel, inside the rim: (light added, shade added). Like a height field that eases from the flat
+// top down to the edge over a bezel proportional to the shape (thin on a chip, wider on a panel):
+// - Fresnel: every edge brightens a little where the glass curves away from the viewer;
+// - specular: the lit edges catch the light, a narrower band than the bezel;
+// - counter-highlight: the far edge returns a faint highlight carried through the slab;
+// - shade: past that, the far side bends the light away and darkens without adding colour.
+vec2 glass_bevel(float outer_distance) {
+    float bezel = clamp(min(u_rect_size.x, u_rect_size.y) * 0.05, 3.0, 12.0);
+    float depth = max(-outer_distance - u_border_width, 0.0);
+    float facing = rim_facing(outer_distance);
+    float lit = pow(max(facing, 0.0), 1.4);
+    float away = pow(max(-facing, 0.0), 1.5);
+    float fresnel = 0.10 * pow(max(1.0 - depth / bezel, 0.0), 3.0);
+    float specular = 0.32 * lit * exp(-depth / (bezel * 0.4));
+    float counter = 0.16 * away * exp(-depth / (bezel * 0.25));
+    float shade = 0.13 * away * exp(-depth / bezel) * (1.0 - exp(-depth / (bezel * 0.25)));
+    return vec2(fresnel + specular + counter, shade);
 }
 
 float gradient_segment_t(float position, float start, float end) {
@@ -365,14 +384,10 @@ void main() {
             float lit = rim_light_intensity(outer_distance);
             // The ring itself, lit by facing; then a glow inside the edge that fades over a few pixels.
             float ring_alpha = out_alpha * mix(1.0, lit * 1.35, u_rim_light);
-            float depth = max(-outer_distance - u_border_width, 0.0);
-            float glow = exp(-depth / 3.5) * inner_coverage * outer_coverage;
-            float glow_alpha = u_border_color.a * u_rim_light * 0.32 * glow * lit;
+            vec2 bevel = glass_bevel(outer_distance) * u_rim_light * inner_coverage * outer_coverage;
+            float glow_alpha = min(u_border_color.a * 1.35 * bevel.x, 1.0);
             out_alpha = clamp(ring_alpha + glow_alpha * (1.0 - ring_alpha), 0.0, 1.0);
-            // The glass slab's thickness: a faint shade inside the edges that face away from the light, as if the
-            // edge bent the light away (Liquid Glass lensing). It darkens without adding color.
-            float away = max(-rim_facing(outer_distance), 0.0);
-            float shade = 0.2 * u_rim_light * exp(-depth / 6.0) * inner_coverage * outer_coverage * pow(away, 1.5);
+            float shade = bevel.y;
             float shaded_alpha = clamp(out_alpha + shade * (1.0 - out_alpha), 0.0, 1.0);
             if (shaded_alpha <= 0.0) {
                 discard;
@@ -404,11 +419,9 @@ void main() {
     if (u_rim_light > 0.0 && u_border_width > 0.0) {
         // Liquid Glass edge on a filled pane: a light glow just inside the lit edges and a faint shade inside the
         // edges facing away, so the pane reads as a slab of glass rather than a flat card.
-        float depth = max(-outer_distance - u_border_width, 0.0);
-        float edge = exp(-depth / 4.0) * inner_coverage;
-        float facing = rim_facing(outer_distance);
-        float glow = u_border_color.a * u_rim_light * 0.22 * edge * pow(max(facing, 0.0), 1.4);
-        float shade = 0.16 * u_rim_light * exp(-depth / 6.0) * inner_coverage * pow(max(-facing, 0.0), 1.5);
+        vec2 bevel = glass_bevel(outer_distance) * u_rim_light * inner_coverage;
+        float glow = min(u_border_color.a * bevel.x, 1.0);
+        float shade = bevel.y;
         interior_rgb = interior_rgb * (1.0 - shade) + u_border_color.rgb * glow;
         interior_a = clamp(interior_a + (glow + shade) * (1.0 - interior_a), 0.0, 1.0);
     }
