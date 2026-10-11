@@ -397,6 +397,7 @@ namespace settings {
       }
     }
 
+    // TODO(phase): bar rows and "New bar" only in the classic layout mode.
     for (const auto& barName : ctx.availableBars) {
       const bool barSelected =
           showActiveTab && *selectedSection == "bar" && *selectedBarName == barName && selectedMonitorOverride->empty();

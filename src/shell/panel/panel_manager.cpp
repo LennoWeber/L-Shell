@@ -175,6 +175,7 @@ namespace {
       const std::function<std::optional<BarConfig>(wl_output*, std::string_view)>& barConfigProvider,
       std::string_view barName = {}
   ) {
+    // TODO(phase): attached-panel bar lookup follows activeBars().
     if (configService == nullptr || configService->config().bars.empty()) {
       return BarConfig{};
     }
@@ -243,6 +244,7 @@ namespace {
     }
 
     std::size_t count = 0;
+    // TODO(phase): activeBars().
     for (const auto& bar : configService->config().bars) {
       const BarConfig resolved = wlOutput != nullptr ? ConfigService::resolveForOutput(bar, *wlOutput) : bar;
       if (!resolved.enabled || resolved.position != position) {
@@ -550,6 +552,7 @@ void PanelManager::unregisterPanel(const std::string& id) {
   m_panels.erase(it);
 }
 
+// TODO(phase): store request.dismissOnPointerLeave (m_dismissOnPointerLeave, reset m_pointerEnteredSinceOpen).
 void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest request) {
   if (m_inTransition) {
     return;
@@ -681,6 +684,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   m_panelFillHeight = fillHeight;
   const bool pluginPanel = m_activePanelId.contains(':');
   const std::string panelPosition =
+      // TODO(phase): PanelOpenRequest::screenPosition (screen edges) overrides the position and forces floating placement.
       pluginPanel ? m_activePanel->panelScreenPosition() : resolvePanelPosition(m_config, m_activePanelId);
   const AttachedRevealDirection detachedDirection = detachedRevealDirection(panelPosition, barConfig.position);
   const bool useScreenPosition =
@@ -1659,6 +1663,8 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
     }
     break;
   }
+  // TODO(phase): leaving a panel opened with dismissOnPointerLeave closes it, unless a text input in it has focus
+  //   (the launcher must not close while typing) or it never was entered.
   case PointerEvent::Type::Leave: {
     if (event.surface == m_wlSurface) {
       m_pointerInside = false;

@@ -391,6 +391,7 @@ namespace {
   //   - bars: monitor overrides are resolved + clamped before comparing (barConfigEqual)
   //   - widgets / desktop widgets: settings compared with int/double coercion (widgetMapEqual / desktopWidgetEqual)
   //   - keybinds: an empty configured set and its built-in default set have the same runtime behavior
+  // TODO(phase): compare a.layout == b.layout.
   bool configEqual(const Config& a, const Config& b) {
     return vectorEqual(a.bars, b.bars, barConfigEqual)
         && widgetMapEqual(a.widgets, b.widgets)
@@ -871,6 +872,8 @@ namespace {
 
 } // namespace
 
+// TODO(phase): set .layout = prev.layout != next.layout; the change also marks bars changed when the
+//   active bars differ; ConfigChangeSet::any() (config_types.h) must include layout.
 ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
   return ConfigChangeSet{
       .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual),
@@ -1042,6 +1045,7 @@ void ConfigService::removePluginSource(std::string_view name) {
   fireReloadCallbacks();
 }
 
+// TODO(phase): setLayoutMode follows this pattern (override + persist).
 void ConfigService::setThemeMode(ThemeMode mode) {
   if (m_overridesPath.empty()) {
     return;

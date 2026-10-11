@@ -147,6 +147,7 @@ recursive                  = true    # include subdirectories when picking rando
 
 # ── Theme ─────────────────────────────────────────────────────────────────────
 
+# TODO(phase): add a [layout] example (mode + one table per mode).
 [theme]
 mode   = "dark"                     # dark | light | auto
 source = "builtin"                  # builtin | wallpaper | community

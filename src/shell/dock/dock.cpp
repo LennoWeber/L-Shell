@@ -73,6 +73,7 @@ namespace {
 
   std::vector<std::string> barLayerStackSignature(const Config& config) {
     std::vector<std::string> signature;
+    // TODO(phase): the dock stacks against the bars on screen: activeBars() (needs the ConfigService).
     signature.reserve(config.bars.size());
 
     for (const auto& bar : config.bars) {
@@ -262,6 +263,7 @@ namespace {
     return false;
   }
 
+  // TODO(phase): use shell::activeWorkspaceHasWindows instead of this copy.
   [[nodiscard]] bool activeWorkspaceHasWindows(const CompositorPlatform& platform, wl_output* output) {
     const auto workspaces = platform.workspaces(output);
     const Workspace* active = nullptr;

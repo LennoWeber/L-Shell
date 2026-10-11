@@ -716,6 +716,8 @@ _noctalia_sources = files(
   'src/shell/session/session_ipc.cpp',
   'src/shell/session/session_panel.cpp',
   'src/shell/setup_wizard/setup_wizard_panel.cpp',
+  # TODO(phase): add layout_resolver.cpp, workspace_occupancy.cpp, island/*, screen_edges/*, gesture_handle/*,
+  #   status_overlay/*; tests layout_resolver, handle_gesture, island_activity.
   'src/shell/surface/glass.cpp',
   'src/shell/surface/shadow.cpp',
   'src/system/telemetry_service.cpp',

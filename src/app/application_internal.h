@@ -40,6 +40,7 @@ inline bool barMayRender(const BarConfig& bar) {
 }
 
 inline bool configHasLockKeysWidget(const Config& config) {
+  // TODO(phase): needs the bars on screen (ConfigService::activeBars()), not [bar.*].
   return std::ranges::any_of(config.bars, [&config](const BarConfig& bar) {
     return barMayRender(bar)
         && (widgetListHasLockKeys(bar.startWidgets, config)

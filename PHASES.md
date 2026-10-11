@@ -10,7 +10,7 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 | 1 Understand and plan | done |
 | 2 Structures | done, reviewed |
 | 3 Signatures | done, reviewed |
-| 4 TODO markers | – |
+| 4 TODO markers | done, in review |
 | 5 Trial implementation (discarded) | – |
 | 6 Invariants | – |
 | 7 Implementation | – |
@@ -396,6 +396,12 @@ section, so `[layout]` already parses, exports and validates), its ranges, the b
 `Layout` sidebar descriptor. New sources are not in `meson.build` yet (wiring is phase 4/7). Added beyond the
 list: `layout-mode-set` CLI command definition, `ScreenEdges::StripRect`/`stripRect`/`panelPositionForEdge`,
 `Island::surfaces()` (focus-grab whitelist), `shell::showsHome` next to `activeWorkspaceHasWindows`.
+
+### Phase 4 (TODO markers) — notes
+
+48 `TODO(phase):` markers (C++ `//`, `#` in meson.build/example.toml, `--` in the Hyprland Lua sample, an MDX
+comment in the bar docs). Not markable in place: the translation JSON files (no comments) and the new
+`docs/user/layout/index.mdx` page, both phase 7 work listed under "Places to change".
 
 ### Phase 3 (signatures)
 

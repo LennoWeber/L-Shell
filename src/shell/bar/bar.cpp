@@ -90,6 +90,7 @@ namespace {
     return false;
   }
 
+  // TODO(phase): replace this private copy with shell::activeWorkspaceHasWindows (shell/workspace_occupancy.h).
   [[nodiscard]] bool activeWorkspaceHasWindows(const CompositorPlatform& platform, wl_output* output) {
     const auto workspaces = platform.workspaces(output);
     const Workspace* active = nullptr;
@@ -122,6 +123,7 @@ namespace {
     return !activeWorkspaceHasWindows(platform, output);
   }
 
+  // TODO(phase): BarConfig::autoHideEdgeReveal = false keeps the edge trigger strip out of the input region.
   [[nodiscard]] int barAutoHideEdgeGutter(const BarConfig& cfg) noexcept {
     if (!barConfigUsesSlideSurface(cfg) || cfg.marginEdge <= 0) {
       return 0;
@@ -1469,6 +1471,8 @@ bool Bar::initialize(const BarServices& services) {
 
   m_widgetFactory = std::make_unique<WidgetFactory>(services);
 
+  // TODO(phase): read the resolved bars (ConfigService::activeBars()) and reload on changed.layout too,
+  //   so a layout-mode switch recreates the synthesized bars.
   m_lastBars = m_config->config().bars;
   m_lastWidgets = m_config->config().widgets;
   m_lastShadow = m_config->config().shell.shadow;
@@ -1535,6 +1539,7 @@ void Bar::reload() {
   kLog.info("reloading config");
   const auto previousBars = m_lastBars;
   const auto previousShadow = m_lastShadow;
+  // TODO(phase): compare and store activeBars() instead of [bar.*].
   const bool recreateForOrder = barSurfaceOrderRequiresRecreate(previousBars, m_config->config().bars);
   m_lastBars = m_config->config().bars;
   m_lastWidgets = m_config->config().widgets;
@@ -1695,6 +1700,7 @@ void Bar::scheduleSmartAutoHideReevaluation() {
   });
 }
 
+// TODO(phase): a bar held by setBarPeek stays revealed even while windows are open.
 void Bar::reevaluateSmartAutoHide() {
   if (m_platform == nullptr || m_overlayDisplaySuppressed) {
     return;
@@ -2202,6 +2208,7 @@ void Bar::setAttachedPanelGeometry(
   }
 }
 
+// TODO(phase): implement with a per-instance peek flag on top of revealAutoHideBar.
 void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
   (void)output;
   (void)barName;
@@ -2320,6 +2327,7 @@ void Bar::toggle() {
 
 void Bar::syncInstances() {
   const auto& outputs = m_platform->outputs();
+  // TODO(phase): instances follow activeBars(): the classic [bar.*] list or the mode's synthesized bars.
   const auto& bars = m_config->config().bars;
 
   const auto geometryChanged = [](const BarInstance& instance, const WaylandOutput& output) {
@@ -3085,6 +3093,7 @@ bool Bar::instanceNeedsFrameTick(const BarInstance& instance) {
       || widgetsNeedFrameTick(instance.endWidgets);
 }
 
+// TODO(phase): BarConfig::glass draws the Liquid Glass chrome (sheen + edge-lit rim) over the background.
 void Bar::applyBackgroundPalette(BarInstance& instance) {
   if (instance.bg == nullptr) {
     return;
@@ -3096,6 +3105,7 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
   instance.bg->setStyle(style);
 }
 
+// TODO(phase): honor autoHideEdgeReveal here, and keep a peeked bar (setBarPeek) fully interactive.
 void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
   if (instance.surface == nullptr) {
     return;
@@ -3729,6 +3739,7 @@ std::optional<std::string> Bar::collectBarIpcInstances(
   }
 
   if (barName.has_value()) {
+    // TODO(phase): bar-* IPC addresses the bars on screen: activeBars().
     const bool knownBar = std::ranges::contains(m_config->config().bars, *barName, &BarConfig::name);
     if (!knownBar) {
       if (!monitorSelector.has_value()) {

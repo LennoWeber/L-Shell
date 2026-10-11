@@ -34,6 +34,7 @@ float TrayDrawerPanel::resolvedItemGap() const {
   }
 
   const auto resolved = tray::resolvedTrayOptions(*m_config);
+  // TODO(phase): activeBars() for the tray drawer's spacing and capsule style (three sites in this file).
   if (!m_config->config().bars.empty()) {
     gap = static_cast<float>(m_config->config().bars.front().widgetSpacing);
   }

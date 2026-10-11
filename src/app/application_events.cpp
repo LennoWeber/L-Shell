@@ -102,6 +102,7 @@ void Application::recoverGraphicsAfterReset() {
 void Application::requestAllSurfacesRedraw() {
   DeferredCall::callLater([this]() {
     m_bar.requestRedraw();
+    // TODO(phase): island and gesture handle requestRedraw() (palette/light-dark changes restyle the glass).
     m_dock.requestRedraw();
     m_desktopWidgetsController.requestRedraw();
     m_panelManager.requestRedraw();

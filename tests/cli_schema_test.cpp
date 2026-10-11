@@ -24,6 +24,7 @@ int main() {
   const auto& builtin = child(*colorSchemeSet, "builtin");
   TEST_CHECK(builtin.positionals.size() == 1);
   const auto palettes = noctalia::theme::builtinPalettes();
+  // TODO(phase): pin kMsgLayoutModeSetModeChoices to kLayoutModes keys.
   TEST_CHECK(builtin.positionals.front().choices.size() == palettes.size());
   for (std::size_t i = 0; i < palettes.size(); ++i)
     TEST_CHECK(builtin.positionals.front().choices[i] == palettes[i].name);

@@ -457,6 +457,7 @@ void Application::initInputDispatch() {
       return;
     if (m_panelManager.onPointerEvent(event))
       return;
+    // TODO(phase): route pointer events to the island, screen edges and gesture handle as well.
     if (m_hotCorners.onPointerEvent(event))
       return;
     m_notificationToast.onPointerEvent(event);
@@ -871,6 +872,8 @@ void Application::initBarDockAndLayout() {
   m_trayMenu.initialize(m_wayland, &m_configService, m_trayService.get(), &m_renderContext);
   m_trayMenu.setClosedCallback([this]() { m_bar.reevaluateAutoHideAfterPopup(); });
 
+  // TODO(phase): initialize Island, ScreenEdges and GestureHandle here; register the status-overlay panel;
+  //   set the OSD redirect to the island; reload them on changed.layout.
   m_bar.initialize({
       .platform = m_compositorPlatform,
       .config = m_configService,
@@ -912,9 +915,11 @@ void Application::initBarDockAndLayout() {
         m_bar.setAttachedPanelGeometry(output, barName, geometry);
       }
   );
+  // TODO(phase): exclude island, edge strips and handle too, so they stay live while a panel is open.
   m_panelManager.setClickShieldExcludeRectsProvider([this](wl_output* output) {
     return m_bar.surfaceRectsForOutput(output);
   });
+  // TODO(phase): whitelist the island, edge and handle surfaces as well.
   m_panelManager.setFocusGrabBarSurfacesProvider([this]() { return m_bar.allBarSurfaces(); });
   m_panelManager.setAttachedPanelAvailabilityCallback([this](wl_output* output, std::string_view barName) {
     return m_bar.canAttachPanelToBar(output, barName);
@@ -1061,6 +1066,7 @@ void Application::initWidgetControllersAndCallbacks() {
         text::invalidateFontWeightCatalogCache();
         m_renderContext.setTextFontFamily(newShellFontFamily);
         m_bar.reload();
+        // TODO(phase): island and gesture handle requestLayout() in this fan-out (fonts, RTL, scale).
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1114,6 +1120,7 @@ void Application::initWidgetControllersAndCallbacks() {
     if (m_lockScreen.isActive()) {
       m_lockscreenWidgetsController.onSecondTick();
     } else {
+      // TODO(phase): m_island.onSecondTick() for its clock.
       m_bar.onSecondTick();
       m_desktopWidgetsController.onSecondTick();
       m_lockscreenWidgetsController.onSecondTick();

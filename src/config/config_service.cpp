@@ -1884,6 +1884,8 @@ void ConfigService::parseConfigTable(
     }
   }
 
+  // TODO(phase): after parsing, resolve the layout (resolveLayout) into m_resolvedLayout for the live config
+  //   (parseConfigTable also serves validation copies, so resolve where m_config is assigned).
   if (config.bars.empty()) {
     if (logSummary) {
       kLog.info("no [bar.*] defined, using defaults");
@@ -1926,6 +1928,7 @@ bool ConfigService::matchesKeybind(KeybindAction action, std::uint32_t sym, std:
   });
 }
 
+// TODO(phase): bind layout-mode-set here (setLayoutMode).
 void ConfigService::registerIpc(IpcService& ipc) {
   ipc.bind(noctalia::cli::msg::configReload, [this](const std::string&) -> std::string {
     forceReload();

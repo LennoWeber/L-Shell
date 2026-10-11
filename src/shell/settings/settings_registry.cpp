@@ -3393,6 +3393,7 @@ namespace settings {
         "urgency"
     ));
 
+    // TODO(phase): call appendLayoutEntries; [bar.*] entries only in the classic layout mode.
     // Bar: register every configured bar so global search can surface settings from all of them.
     for (const auto& bar : cfg.bars) {
       constexpr SettingsSection section = SettingsSection::Bar;

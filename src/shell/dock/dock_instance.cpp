@@ -50,6 +50,7 @@ namespace shell::dock {
       return false;
     }
 
+    // TODO(phase): use shell::activeWorkspaceHasWindows instead of this copy.
     [[nodiscard]] bool activeWorkspaceHasWindows(const CompositorPlatform& platform, wl_output* output) {
       const auto workspaces = platform.workspaces(output);
       const Workspace* active = nullptr;

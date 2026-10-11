@@ -106,6 +106,7 @@ We also disable Hyprland's built-in layer animations for Noctalia so they do not
 hl.layer_rule({
   name = "noctalia",
   match = {
+    -- TODO(phase): add the island and handle namespaces to the blur rule.
     namespace = "^noctalia-(bar-.+|notification|dock|panel|attached-panel|osd|window-switcher)$",
   },
   no_anim = true,

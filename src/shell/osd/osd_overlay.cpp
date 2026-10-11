@@ -284,6 +284,8 @@ void OsdOverlay::show(const OsdContent& content) {
   if (m_wayland == nullptr || m_renderContext == nullptr) {
     return;
   }
+  // TODO(phase): offer the content to m_redirect before every gate ([osd] enabled, osd.kinds), so the island
+  //   sees volume/brightness even with the OSD turned off.
   if (!isEnabled()) {
     return;
   }

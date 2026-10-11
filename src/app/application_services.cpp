@@ -805,6 +805,7 @@ void Application::reconcileOutputSurfaces() {
   m_desktopWidgetsController.onOutputChange();
   m_lockscreenWidgetsController.onOutputChange();
   m_screenCorners.onOutputChange();
+  // TODO(phase): layout components after the bar/dock (island, gesture handle), screen-edge strips last like hot corners.
   m_hotCorners.onOutputChange();
   m_lockScreen.onOutputChange();
   m_idleGraceOverlay.onOutputChange();
@@ -847,6 +848,7 @@ void Application::initWaylandCallbacks() {
     } else {
       (void)m_compositorPlatform.clearActiveWorkspaceAlerts();
     }
+    // TODO(phase): also island/gesture handle onWorkspaceChanged (occupancy and overview decide what shows).
     m_bar.onWorkspaceChanged();
     m_dock.onWorkspaceChanged();
     m_bar.refresh();
@@ -887,6 +889,8 @@ void Application::initWaylandCallbacks() {
   }
   m_idleInhibitor.initialize(m_wayland);
   m_idleInhibitor.setChangeCallback([this, shouldRefreshControlCenter]() {
+    // TODO(phase): Application's OSD pre-gates (caffeine, night light, lock keys, keyboard layout) must not hide events
+    //   from the island: move them into OsdOverlay after the redirect.
     if (m_configService.config().osd.kinds.caffeine) {
       m_osdOverlay.show(caffeineOsdContent(m_idleInhibitor.enabled()));
     }
@@ -1209,6 +1213,7 @@ void Application::initSystemBusServices() {
       m_batteryHookState.reset(initialPower);
       m_prevBatteryPluggedForEvents = initialPower.isPresent ? batteryStatePlugged(initialPower.state) : std::nullopt;
       m_batteryWarningMonitor.evaluate(m_configService.config().battery, *m_upowerService, m_notificationManager);
+      // TODO(phase): forward to m_island.onPowerChanged(change).
       m_upowerService->setChangeCallback([this, shouldRefreshControlCenter](const UPowerChange& change) {
         if (change.origin != UPowerService::ChangeOrigin::DeviceState) {
           if (shouldRefreshControlCenter()) {
@@ -1535,6 +1540,7 @@ void Application::initSessionBusServices() {
       };
       applyMprisConfig();
       m_configService.addReloadCallback(applyMprisConfig);
+      // TODO(phase): forward to m_island.onMediaChanged().
       m_mprisService->setChangeCallback([this, shouldRefreshControlCenter]() {
         m_bar.refresh();
         m_desktopWidgetsController.requestUpdate();

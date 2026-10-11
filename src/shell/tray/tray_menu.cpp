@@ -94,6 +94,7 @@ namespace {
     }
 
     std::optional<BarConfig> fallback;
+    // TODO(phase): activeBars().
     for (const auto& base : config->config().bars) {
       BarConfig resolved = base;
       if (wlOutput != nullptr) {

@@ -179,6 +179,7 @@ namespace {
     if (path.empty()) {
       return true;
     }
+    // TODO(phase): {"layout", "mode"} reshapes the registry (the Layout page swaps the mode's settings).
     if (path[0] == "bar" || path[0] == "widget" || path[0] == "plugins" || path[0] == "plugin_settings") {
       return true;
     }
