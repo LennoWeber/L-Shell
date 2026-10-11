@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <span>
 
 /// Layer-shell exclusive zone the bar reserves on its anchored screen edge.
 /// Canonical definition shared by the bar surface and attached panels so a panel
@@ -69,4 +70,16 @@ barEdgeLayerMargin(const BarConfig& barConfig, const ShellConfig::ShadowConfig& 
 [[nodiscard]] inline std::int32_t
 reservedBarEdgeDistance(const BarConfig& barConfig, const ShellConfig::ShadowConfig& shadowConfig) {
   return reservedBarExclusiveZone(barConfig, shadowConfig) + barEdgeLayerMargin(barConfig, shadowConfig);
+}
+
+/// Top bars without an exclusive zone (the layout modes' smart bars) still cover the top edge, and the compositor
+/// does not keep other surfaces clear of them: surfaces pinned to the top keep this far down, like macOS menus.
+[[nodiscard]] inline std::int32_t floatingTopBarInset(std::span<const BarConfig> bars) {
+  std::int32_t inset = 0;
+  for (const auto& bar : bars) {
+    if (bar.enabled && bar.position == "top" && !bar.reserveSpace) {
+      inset = std::max(inset, bar.thickness + std::max<std::int32_t>(bar.marginEdge, 0));
+    }
+  }
+  return inset;
 }

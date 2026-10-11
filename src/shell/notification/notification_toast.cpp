@@ -16,6 +16,7 @@
 #include "render/render_context.h"
 #include "render/render_target.h"
 #include "render/scene/input_area.h"
+#include "shell/bar/bar_reserved_zone.h"
 #include "shell/surface/edge_inset.h"
 #include "shell/surface/glass.h"
 #include "ui/builders.h"
@@ -344,7 +345,8 @@ namespace {
       return colorSpecFromRole(ColorRole::OnSurface, 0.9F);
     case Urgency::Normal:
     default:
-      return colorSpecFromRole(ColorRole::Primary);
+      // A countdown is not state: neutral, so the accent stays for what is on or selected.
+      return colorSpecFromRole(ColorRole::OnSurface, 0.35F);
     }
   }
 
@@ -2127,7 +2129,10 @@ void NotificationToast::ensureSurfaces() {
   const float width = notificationWidth(m_config);
   const auto surfaceWidth = ::surfaceWidth(scale, width, horizontalInnerPad(scale));
   const std::uint32_t anchor = toastSurfaceAnchor(position);
-  const ToastSurfaceMargins margins = toastSurfaceMargins(position, offX, offY, scale);
+  ToastSurfaceMargins margins = toastSurfaceMargins(position, offX, offY, scale);
+  if (position.starts_with("top")) {
+    margins.top += floatingTopBarInset(m_config->activeBars());
+  }
   if (!m_instances.empty()
       && (position != m_lastPosition || layer != m_lastLayer || selectedMonitors != m_lastMonitorSelectors)) {
     for (auto& inst : m_instances) {

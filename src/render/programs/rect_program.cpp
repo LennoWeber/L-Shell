@@ -252,15 +252,22 @@ float coverage_for(float distance) {
 // above. The outward normal is the screen-space gradient of the shape distance, so corners light along their
 // curve. Top-facing edges get the full specular rim, side edges a little, bottom edges a faint counter-rim
 // (light refracted through the glass), which is what reads as thickness.
-float rim_light_intensity(float distance) {
+// How much the edge at this pixel faces the light (from above, slightly left): 1 = lit, -1 = facing away.
+float rim_facing(float distance) {
     vec2 g = vec2(dFdx(distance), dFdy(distance));
     float len = length(g);
     if (len < 1e-5) {
+        return 0.0;
+    }
+    return dot(g / len, normalize(vec2(-0.35, -1.0)));
+}
+
+float rim_light_intensity(float distance) {
+    vec2 g = vec2(dFdx(distance), dFdy(distance));
+    if (length(g) < 1e-5) {
         return 0.5;
     }
-    vec2 n = g / len;
-    vec2 light_dir = normalize(vec2(-0.35, -1.0));
-    float facing = dot(n, light_dir);
+    float facing = rim_facing(distance);
     float top = pow(max(facing, 0.0), 1.4);
     float bottom = pow(max(-facing, 0.0), 2.2) * 0.42;
     return 0.22 + 0.78 * top + bottom;
@@ -362,6 +369,16 @@ void main() {
             float glow = exp(-depth / 3.5) * inner_coverage * outer_coverage;
             float glow_alpha = u_border_color.a * u_rim_light * 0.32 * glow * lit;
             out_alpha = clamp(ring_alpha + glow_alpha * (1.0 - ring_alpha), 0.0, 1.0);
+            // The glass slab's thickness: a faint shade inside the edges that face away from the light, as if the
+            // edge bent the light away (Liquid Glass lensing). It darkens without adding color.
+            float away = max(-rim_facing(outer_distance), 0.0);
+            float shade = 0.2 * u_rim_light * exp(-depth / 6.0) * inner_coverage * outer_coverage * pow(away, 1.5);
+            float shaded_alpha = clamp(out_alpha + shade * (1.0 - out_alpha), 0.0, 1.0);
+            if (shaded_alpha <= 0.0) {
+                discard;
+            }
+            gl_FragColor = vec4(u_border_color.rgb * out_alpha, shaded_alpha);
+            return;
         }
         if (out_alpha <= 0.0) {
             discard;
@@ -383,6 +400,18 @@ void main() {
 
     vec3 interior_rgb = mix(border_pm, fill_pm, inner_coverage);
     float interior_a = mix(border_alpha, fill_base.a, inner_coverage);
+
+    if (u_rim_light > 0.0 && u_border_width > 0.0) {
+        // Liquid Glass edge on a filled pane: a light glow just inside the lit edges and a faint shade inside the
+        // edges facing away, so the pane reads as a slab of glass rather than a flat card.
+        float depth = max(-outer_distance - u_border_width, 0.0);
+        float edge = exp(-depth / 4.0) * inner_coverage;
+        float facing = rim_facing(outer_distance);
+        float glow = u_border_color.a * u_rim_light * 0.22 * edge * pow(max(facing, 0.0), 1.4);
+        float shade = 0.16 * u_rim_light * exp(-depth / 6.0) * inner_coverage * pow(max(-facing, 0.0), 1.5);
+        interior_rgb = interior_rgb * (1.0 - shade) + u_border_color.rgb * glow;
+        interior_a = clamp(interior_a + (glow + shade) * (1.0 - interior_a), 0.0, 1.0);
+    }
 
     // Apply outer shape mask
     float out_alpha = interior_a * outer_coverage;
