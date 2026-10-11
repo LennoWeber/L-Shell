@@ -1,6 +1,10 @@
 #include "shell/island/island.h"
 
+#include "dbus/upower/upower_service.h"
+#include "notification/notification.h"
+#include "notification/notification_manager.h"
 #include "shell/osd/osd_overlay.h"
+#include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
 #include <cstdlib>
@@ -33,20 +37,27 @@ bool Island::takeOsdContent(const OsdContent& content) {
   throw std::logic_error("Island::takeOsdContent: not implemented");
 }
 
-void Island::onNotificationPosted(const std::string& appName, const std::string& summary, const std::string& glyph) {
-  (void)appName;
-  (void)summary;
-  (void)glyph;
-  throw std::logic_error("Island::onNotificationPosted: not implemented");
-}
-
-void Island::onPowerChanged(bool charging, float percent) {
-  (void)charging;
-  (void)percent;
+void Island::onPowerChanged(const UPowerChange& change) {
+  (void)change;
   throw std::logic_error("Island::onPowerChanged: not implemented");
 }
 
 void Island::onMediaChanged() { throw std::logic_error("Island::onMediaChanged: not implemented"); }
+
+void Island::requestLayout() { throw std::logic_error("Island::requestLayout: not implemented"); }
+
+void Island::requestRedraw() { throw std::logic_error("Island::requestRedraw: not implemented"); }
+
+std::vector<InputRect> Island::surfaceRectsForOutput(wl_output* output) const {
+  (void)output;
+  throw std::logic_error("Island::surfaceRectsForOutput: not implemented");
+}
+
+void Island::onNotificationEvent(const Notification& notification, NotificationEvent event) {
+  (void)notification;
+  (void)event;
+  throw std::logic_error("Island::onNotificationEvent: not implemented");
+}
 
 bool Island::isActive() const noexcept {
   std::abort(); // not implemented

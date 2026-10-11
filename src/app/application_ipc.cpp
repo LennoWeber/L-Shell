@@ -110,11 +110,6 @@ namespace {
   constexpr Logger kLog("app");
 } // namespace
 
-std::string Application::layoutModeSetIpc(const std::string& args) {
-  (void)args;
-  throw std::logic_error("Application::layoutModeSetIpc: not implemented");
-}
-
 void Application::initIpc() {
   if (m_ipcService.start()) {
     kLog.info("IPC socket at {}", m_ipcService.socketPath());

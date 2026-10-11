@@ -1,5 +1,6 @@
 #include "shell/screen_edges/screen_edges.h"
 
+#include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
 #include <cstdlib>
@@ -30,6 +31,15 @@ bool ScreenEdges::onPointerEvent(const PointerEvent& event) {
   throw std::logic_error("ScreenEdges::onPointerEvent: not implemented");
 }
 
+std::vector<wl_surface*> ScreenEdges::surfaces() const {
+  throw std::logic_error("ScreenEdges::surfaces: not implemented");
+}
+
+std::vector<InputRect> ScreenEdges::surfaceRectsForOutput(wl_output* output) const {
+  (void)output;
+  throw std::logic_error("ScreenEdges::surfaceRectsForOutput: not implemented");
+}
+
 void ScreenEdges::syncInstances() { throw std::logic_error("ScreenEdges::syncInstances: not implemented"); }
 
 void ScreenEdges::destroyInstances() { throw std::logic_error("ScreenEdges::destroyInstances: not implemented"); }
@@ -58,7 +68,7 @@ void ScreenEdges::triggerStrip(OutputInstance& instance, Strip& strip) {
   throw std::logic_error("ScreenEdges::triggerStrip: not implemented");
 }
 
-ScreenEdges::StripRect ScreenEdges::stripRect(
+InputRect ScreenEdges::stripRect(
     Edge edge, std::int32_t outputWidth, std::int32_t outputHeight, const EdgesConfig& config
 ) {
   (void)edge;

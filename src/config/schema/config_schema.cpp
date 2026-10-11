@@ -472,7 +472,7 @@ namespace noctalia::config::schema {
           enumField(&ModeBarConfig::position, "position", kModeBarPositions),
           field(&ModeBarConfig::thickness, "thickness", kModeBarThicknessRange),
           field(&ModeBarConfig::scale, "scale", kScaleRange),
-          field(&ModeBarConfig::fontScale, "font_scale", kScaleRange),
+          field(&ModeBarConfig::fontScale, "font_scale", kBarFontScaleRange),
           enumField(&ModeBarConfig::background, "background", kModeBarBackgrounds),
           field(&ModeBarConfig::backgroundOpacity, "background_opacity", kUnitRange),
           field(&ModeBarConfig::floating, "floating"),

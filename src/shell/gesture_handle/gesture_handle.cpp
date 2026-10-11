@@ -1,5 +1,6 @@
 #include "shell/gesture_handle/gesture_handle.h"
 
+#include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 
 #include <cstdlib>
@@ -33,6 +34,19 @@ void GestureHandle::onWorkspaceChanged() {
 bool GestureHandle::onPointerEvent(const PointerEvent& event) {
   (void)event;
   throw std::logic_error("GestureHandle::onPointerEvent: not implemented");
+}
+
+void GestureHandle::requestLayout() { throw std::logic_error("GestureHandle::requestLayout: not implemented"); }
+
+void GestureHandle::requestRedraw() { throw std::logic_error("GestureHandle::requestRedraw: not implemented"); }
+
+std::vector<wl_surface*> GestureHandle::surfaces() const {
+  throw std::logic_error("GestureHandle::surfaces: not implemented");
+}
+
+std::vector<InputRect> GestureHandle::surfaceRectsForOutput(wl_output* output) const {
+  (void)output;
+  throw std::logic_error("GestureHandle::surfaceRectsForOutput: not implemented");
 }
 
 void GestureHandle::syncInstances() { throw std::logic_error("GestureHandle::syncInstances: not implemented"); }

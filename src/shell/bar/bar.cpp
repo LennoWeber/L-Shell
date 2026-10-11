@@ -2202,10 +2202,11 @@ void Bar::setAttachedPanelGeometry(
   }
 }
 
-void Bar::peekBar(wl_output* output, std::string_view barName) {
+void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
   (void)output;
   (void)barName;
-  throw std::logic_error("Bar::peekBar: not implemented");
+  (void)active;
+  throw std::logic_error("Bar::setBarPeek: not implemented");
 }
 
 void Bar::beginAttachedPopup(wl_surface* surface) {

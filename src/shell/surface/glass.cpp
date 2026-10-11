@@ -3,6 +3,7 @@
 #include "ui/controls/box.h"
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace shell::glass {
 
@@ -29,6 +30,30 @@ namespace shell::glass {
   void applyRim(Box& box, const GlassStyle& style, bool lightTheme, float scale) {
     box.setBorder(rimColor(style, lightTheme), style.rimWidth * scale);
     box.setRimLight(lightTheme ? 0.0F : style.rimLight);
+  }
+
+  GlassNodes buildGlass(Node& parent, const GlassStyle& style) {
+    (void)parent;
+    (void)style;
+    throw std::logic_error("buildGlass: not implemented");
+  }
+
+  void layoutGlass(GlassNodes& nodes, float x, float y, float width, float height, float scale) {
+    (void)nodes;
+    (void)x;
+    (void)y;
+    (void)width;
+    (void)height;
+    (void)scale;
+    throw std::logic_error("layoutGlass: not implemented");
+  }
+
+  void applyGlass(GlassNodes& nodes, const GlassStyle& style, bool lightTheme, float scale) {
+    (void)nodes;
+    (void)style;
+    (void)lightTheme;
+    (void)scale;
+    throw std::logic_error("applyGlass: not implemented");
   }
 
 } // namespace shell::glass

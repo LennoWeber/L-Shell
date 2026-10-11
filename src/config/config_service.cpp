@@ -579,6 +579,11 @@ ConfigService::ConfigService() {
 
 // ── Public interface ─────────────────────────────────────────────────────────
 
+void ConfigService::setLayoutMode(LayoutMode mode) {
+  (void)mode;
+  throw std::logic_error("ConfigService::setLayoutMode: not implemented");
+}
+
 const std::vector<BarConfig>& ConfigService::activeBars() const noexcept {
   std::abort(); // not implemented
 }

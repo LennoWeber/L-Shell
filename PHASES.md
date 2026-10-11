@@ -9,7 +9,7 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 |---|---|
 | 1 Understand and plan | done |
 | 2 Structures | done, reviewed |
-| 3 Signatures | done, in review |
+| 3 Signatures | done, reviewed |
 | 4 TODO markers | – |
 | 5 Trial implementation (discarded) | – |
 | 6 Invariants | – |
@@ -396,6 +396,41 @@ section, so `[layout]` already parses, exports and validates), its ranges, the b
 `Layout` sidebar descriptor. New sources are not in `meson.build` yet (wiring is phase 4/7). Added beyond the
 list: `layout-mode-set` CLI command definition, `ScreenEdges::StripRect`/`stripRect`/`panelPositionForEdge`,
 `Island::surfaces()` (focus-grab whitelist), `shell::showsHome` next to `activeWorkspaceHasWindows`.
+
+### Phase 3 (signatures)
+
+Fresh reviewer, diff `d945c7f..6218b4c`. 16 findings.
+
+Fixed:
+- `ModeBarBehavior` (a new type in phase 3) → `synthesizeBar(..., bool smartHide)`; `StripRect` → the existing
+  `InputRect`.
+- Glass build/layout/apply helpers were missing → `buildGlass`, `layoutGlass`, `applyGlass`.
+- `layout-mode-set` belongs to the owning module → `ConfigService::setLayoutMode` (also used by the Layout page),
+  bound in `ConfigService::registerIpc`; the Application member is gone.
+- Island feeds: notifications through `NotificationManager::addEventCallback` (multi-listener) inside the island;
+  power through `onPowerChanged(const UPowerChange&)`, reading UPower and `[battery]` itself; MPRIS stays a
+  forwarded `onMediaChanged()` because MPRIS has a single callback.
+- New surfaces must stay live under an open panel → `surfaces()` / `surfaceRectsForOutput()` on Island, ScreenEdges
+  and GestureHandle for the focus-grab whitelist and click-shield exclusions.
+- `requestLayout()` / `requestRedraw()` on Island and GestureHandle for Application's font/palette/RTL fan-out.
+- `peekBar` duplicated an existing reveal path without an end → `Bar::setBarPeek(output, name, bool active)`.
+- `font_scale` uses `kBarFontScaleRange`; the ranges block moved after the shell group; CLI choices renamed
+  `kMsgLayoutModeSetModeChoices`.
+
+Phase 2 gaps found here (fixed under phase 2 rules, reported as the skill asks): `Island::m_notificationToken`,
+`m_lastCharging`, `m_lastBatteryPercent`.
+
+Added to the phase 4 list: `settingPathMayReshapeRegistry` must include `{"layout", "mode"}` (the Layout page
+reshapes); the OSD redirect must run before every OSD gate (`[osd] enabled`, `osd.kinds` and Application's
+pre-gates), or the island misses volume/brightness with the OSD off; Application's focus-grab and click-shield
+providers (`application_ui.cpp`) must include the new surfaces; pin `kMsgLayoutModeSetModeChoices` to
+`kLayoutModes` in `tests/cli_schema_test.cpp`.
+
+Accepted exceptions:
+- Registering `[layout]` in the section table already makes it parse/export/validate (pure data); nothing reads it
+  until phase 7, which follows directly.
+- `StatusOverlayPanel`'s one-line overrides (layer, fills, position, decoration) are constant data.
+- Formatting: clang-format 22 runs before the phase 7 commit.
 
 ### Phase 2 (structures)
 

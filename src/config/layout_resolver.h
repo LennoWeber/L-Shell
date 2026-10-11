@@ -38,13 +38,9 @@ namespace noctalia::config {
   inline constexpr std::string_view kHandleBarName = "handle";
   inline constexpr std::string_view kFlowBarName = "flow";
 
-  enum class ModeBarBehavior : std::uint8_t {
-    AlwaysVisible, // minimal bar
-    SmartHide,     // smart bar, flow's home bar, the handle's pop-up bar: hidden while windows are open
-  };
-
   // A full BarConfig for a mode bar: the [bar.*] defaults (the macOS menu bar) with the mode's own settings on top.
-  [[nodiscard]] BarConfig synthesizeBar(const ModeBarConfig& mode, std::string_view name, ModeBarBehavior behavior);
+  // `smartHide` hides it while the active workspace has windows (smart bar, flow's home bar, the handle's bar).
+  [[nodiscard]] BarConfig synthesizeBar(const ModeBarConfig& mode, std::string_view name, bool smartHide);
 
   // What `config.layout.mode` puts on screen. Classic passes `config.bars` through unchanged.
   [[nodiscard]] ResolvedLayout resolveLayout(const Config& config);

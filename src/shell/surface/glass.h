@@ -46,4 +46,11 @@ namespace shell::glass {
   // light one (where a light rim would vanish into the tint).
   void applyRim(Box& box, const GlassStyle& style, bool lightTheme, float scale = 1.0F);
 
+  // Adds shadow, body, sheen and rim boxes (bottom to top) under `parent` and returns them.
+  [[nodiscard]] GlassNodes buildGlass(Node& parent, const GlassStyle& style);
+  // Sizes and positions every box of a glass shape to x/y/width/height (the shadow bleeds outside).
+  void layoutGlass(GlassNodes& nodes, float x, float y, float width, float height, float scale);
+  // Restyles a glass shape for the current light/dark palette (tint, sheen, rim) or a new style.
+  void applyGlass(GlassNodes& nodes, const GlassStyle& style, bool lightTheme, float scale);
+
 } // namespace shell::glass

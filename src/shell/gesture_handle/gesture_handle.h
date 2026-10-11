@@ -22,6 +22,7 @@ class IpcService;
 class Node;
 class PanelManager;
 class RenderContext;
+struct InputRect;
 struct PointerEvent;
 struct WaylandOutput;
 struct wl_output;
@@ -46,6 +47,10 @@ public:
   void onOutputChange();
   void onWorkspaceChanged();
   bool onPointerEvent(const PointerEvent& event);
+  void requestLayout();
+  void requestRedraw();
+  [[nodiscard]] std::vector<wl_surface*> surfaces() const;
+  [[nodiscard]] std::vector<InputRect> surfaceRectsForOutput(wl_output* output) const;
 
 private:
   struct Instance;

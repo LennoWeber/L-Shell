@@ -4,10 +4,10 @@
 
 namespace noctalia::config {
 
-  BarConfig synthesizeBar(const ModeBarConfig& mode, std::string_view name, ModeBarBehavior behavior) {
+  BarConfig synthesizeBar(const ModeBarConfig& mode, std::string_view name, bool smartHide) {
     (void)mode;
     (void)name;
-    (void)behavior;
+    (void)smartHide;
     throw std::logic_error("synthesizeBar: not implemented");
   }
 

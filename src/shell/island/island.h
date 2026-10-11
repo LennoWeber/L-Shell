@@ -30,8 +30,12 @@ class PanelManager;
 class ProgressBar;
 class RenderContext;
 class UPowerService;
+enum class NotificationEvent;
+struct InputRect;
+struct Notification;
 struct OsdContent;
 struct PointerEvent;
+struct UPowerChange;
 struct WaylandOutput;
 struct wl_output;
 struct wl_surface;
@@ -67,12 +71,16 @@ public:
   bool onPointerEvent(const PointerEvent& event);
   // OSD redirect: true when the island shows this content instead of the OSD.
   [[nodiscard]] bool takeOsdContent(const OsdContent& content);
-  void onNotificationPosted(const std::string& appName, const std::string& summary, const std::string& glyph);
-  void onPowerChanged(bool charging, float percent);
-  // MPRIS state changed: refreshes the ambient now-playing indicator.
+  // UPower changed (Application owns UPower's single callback): charger plugged/unplugged, low battery.
+  void onPowerChanged(const UPowerChange& change);
+  // MPRIS state changed (Application owns MPRIS's single callback): refreshes the now-playing indicator.
   void onMediaChanged();
+  void requestLayout();
+  void requestRedraw();
   [[nodiscard]] bool isActive() const noexcept;
   [[nodiscard]] std::vector<wl_surface*> surfaces() const;
+  // The capsule's rectangle per output, for the panel click shield's exclusions.
+  [[nodiscard]] std::vector<InputRect> surfaceRectsForOutput(wl_output* output) const;
 
 private:
   struct Instance;
@@ -89,6 +97,8 @@ private:
   void syncInputRegion(Instance& instance);
   void syncBlurRegion(Instance& instance);
   void post(shell::island::Activity activity);
+  // NotificationManager subscription (multi-listener), registered in initialize().
+  void onNotificationEvent(const Notification& notification, NotificationEvent event);
   void scheduleActivityTimer();
   void onActivityTimer();
   void activateClick(Instance& instance);
@@ -140,5 +150,9 @@ private:
   shell::island::Presentation m_presentation = shell::island::Presentation::Collapsed;
   // Wakes the tracker when its transient activity expires; the remaining time itself lives in the tracker.
   Timer m_activityTimer;
+  int m_notificationToken = -1;
+  // Last seen power state, to tell a charger change or a low-battery crossing from a plain refresh.
+  std::optional<bool> m_lastCharging;
+  std::optional<float> m_lastBatteryPercent;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

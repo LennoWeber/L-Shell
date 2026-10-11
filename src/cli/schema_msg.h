@@ -243,11 +243,11 @@ namespace noctalia::cli {
   };
   inline constexpr std::array<std::string_view, 3> kMsgWindowSwitcherActionChoices{"close", "hide", "hold"};
   inline constexpr std::array<std::string_view, 2> kMsgOverviewActionChoices{"close", "toggle"};
-  inline constexpr std::array<std::string_view, 7> kMsgLayoutModeChoices{
+  inline constexpr std::array<std::string_view, 7> kMsgLayoutModeSetModeChoices{
       "classic", "edges", "flow", "handle", "island", "minimal_bar", "smart_bar",
   };
   inline constexpr std::array kMsgLayoutModeSetPositionals{
-      Positional{"mode", {}, kMsgLayoutModeChoices, true, false, false},
+      Positional{"mode", {}, kMsgLayoutModeSetModeChoices, true, false, false},
   };
   inline constexpr std::array kMsgOverviewPositionals{
       Positional{"action", {}, kMsgOverviewActionChoices, false, false, false},

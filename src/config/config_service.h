@@ -133,6 +133,8 @@ public:
 
   // Persist a theme-mode override to settings.toml and trigger the reload pipeline.
   void setThemeMode(ThemeMode mode);
+  // Persists [layout].mode as a settings override (the Layout page and `layout-mode-set`).
+  void setLayoutMode(LayoutMode mode);
   // Persist `[theme].source` and the palette field for that source, then reload.
   [[nodiscard]] bool setThemeColorScheme(PaletteSource source, std::string_view value);
   // Persist dock enabled override to settings.toml and trigger the reload pipeline.

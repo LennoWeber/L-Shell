@@ -19,8 +19,10 @@ class Node;
 class PanelManager;
 class RenderContext;
 struct PointerEvent;
+struct InputRect;
 struct WaylandOutput;
 struct wl_output;
+struct wl_surface;
 
 // Caelestia-style screen-edge drawers: a thin invisible strip on the middle part of each screen edge. Resting
 // the pointer on a strip runs that edge's action; panels opened that way are anchored at the edge.
@@ -39,6 +41,9 @@ public:
   void reload();
   void onOutputChange();
   bool onPointerEvent(const PointerEvent& event);
+  // For the panel focus-grab whitelist and the click shield's exclusions, so an edge stays live under a panel.
+  [[nodiscard]] std::vector<wl_surface*> surfaces() const;
+  [[nodiscard]] std::vector<InputRect> surfaceRectsForOutput(wl_output* output) const;
 
 private:
   enum class Edge : std::uint8_t { Top, Bottom, Left, Right };
@@ -46,22 +51,15 @@ private:
   struct Strip;
   struct OutputInstance;
 
-  // Strip rectangle in output-local logical px: centered on its edge, `length` of the edge long.
-  struct StripRect {
-    std::int32_t x = 0;
-    std::int32_t y = 0;
-    std::int32_t width = 0;
-    std::int32_t height = 0;
-  };
-
   void syncInstances();
   void destroyInstances();
   void buildStrip(OutputInstance& instance, Edge edge, const noctalia::bar::WidgetAction& action);
   void armStrip(OutputInstance& instance, Strip& strip);
   void disarmStrip(Strip& strip);
   void triggerStrip(OutputInstance& instance, Strip& strip);
-  [[nodiscard]] static StripRect stripRect(Edge edge, std::int32_t outputWidth, std::int32_t outputHeight,
-                                           const EdgesConfig& config);
+  // Strip rectangle in output-local logical px: centered on its edge, `length` of the edge long.
+  [[nodiscard]] static InputRect
+  stripRect(Edge edge, std::int32_t outputWidth, std::int32_t outputHeight, const EdgesConfig& config);
   // kPanelPositions value a panel opened from this edge floats at.
   [[nodiscard]] static std::string_view panelPositionForEdge(Edge edge) noexcept;
 
