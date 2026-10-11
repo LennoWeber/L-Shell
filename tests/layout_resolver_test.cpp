@@ -67,6 +67,8 @@ int main() {
   auto flow = resolveLayout(config);
   TEST_CHECK(flow.bars.size() == 1 && flow.bars[0].name == noctalia::config::kFlowBarName);
   TEST_CHECK(flow.bars[0].smartAutoHide);
+  TEST_CHECK(flow.bars[0].legibilityScrim && !flow.bars[0].compositorBlur); // transparent like the Tahoe menu bar
+  TEST_CHECK(flow.bars[0].ignoreOtherZones);    // on the top edge, over the island's reserved strip
   TEST_CHECK(!flow.bars[0].autoHideEdgeReveal); // the island owns the top edge while windows are open
   TEST_CHECK(flow.island.has_value() && flow.islandVisibility == IslandVisibility::WhileWindowsOpen);
   TEST_CHECK(flow.edges.has_value() && flow.handle.has_value());
@@ -79,6 +81,9 @@ int main() {
   ModeBarConfig clearBar{.background = ModeBarBackground::Transparent};
   const BarConfig clear = noctalia::config::synthesizeBar(clearBar, "c", false);
   TEST_CHECK(!clear.glass && !clear.compositorBlur && clear.backgroundOpacity == 0.0F);
+  TEST_CHECK(clear.legibilityScrim && !glass.legibilityScrim); // Tahoe's transparent menu bar keeps a scrim
+  ModeBarConfig clearPill{.background = ModeBarBackground::Transparent, .floating = true};
+  TEST_CHECK(!noctalia::config::synthesizeBar(clearPill, "p", false).legibilityScrim);
 
   return EXIT_SUCCESS;
 }

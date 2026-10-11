@@ -29,6 +29,7 @@ namespace noctalia::config {
       bar.backgroundOpacity = 0.0F;
       bar.compositorBlur = false;
       bar.glass = false;
+      bar.legibilityScrim = !mode.floating;
       break;
     case ModeBarBackground::Glass:
       bar.backgroundOpacity = mode.backgroundOpacity;
@@ -56,6 +57,7 @@ namespace noctalia::config {
     bar.concaveEdgeCorners = false;
 
     bar.reserveSpace = mode.reserveSpace;
+    bar.ignoreOtherZones = !mode.reserveSpace;
     bar.autoHide = false;
     bar.smartAutoHide = smartHide;
     bar.autoHideEdgeReveal = mode.revealOnHover;

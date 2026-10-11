@@ -150,6 +150,12 @@ struct BarConfig {
   bool compositorBlur = true;
   // Liquid Glass chrome (top sheen + hairline rim) over the background; set by layout modes, off for [bar.*].
   bool glass = false;
+  // Tahoe's transparent menu bar: a soft gradient from the top edge keeps the items legible on any wallpaper.
+  // Set by layout modes with a transparent background, off for [bar.*].
+  bool legibilityScrim = false;
+  // Without a zone of its own, sit on the screen edge over other surfaces' zones (exclusive zone -1) instead of
+  // after them. Layout modes set it, so Flow's home bar stays at the top edge above the island's reserved strip.
+  bool ignoreOtherZones = false;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = 0.0F;
@@ -2028,8 +2034,10 @@ struct HandleConfig {
 struct FlowConfig {
   // Pinned on an empty workspace only; while windows are open the island owns the top edge, so the bar neither
   // reveals on hover nor flashes on a workspace switch.
+  // Transparent like the Tahoe menu bar: it only ever sits on the wallpaper (a scrim keeps it legible).
   ModeBarConfig bar{
       .thickness = 28,
+      .background = ModeBarBackground::Transparent,
       .reserveSpace = false, // only on screen when there are no windows to push aside
       .revealOnHover = false,
       .showOnWorkspaceSwitch = false,
@@ -2064,9 +2072,11 @@ struct LayoutConfig {
       .centerWidgets = {"clock"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"},
   };
+  // Always shown over its own reserved strip, never over windows: transparent like the Tahoe menu bar.
   ModeBarConfig minimalBar{
       .thickness = 24,
       .scale = 0.85F,
+      .background = ModeBarBackground::Transparent,
       .startWidgets = {"logo", "app_name"},
       .endWidgets = {"tray", "network", "battery", "launcher", "control-center", "clock"},
   };

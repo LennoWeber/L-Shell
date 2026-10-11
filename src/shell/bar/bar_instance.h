@@ -83,6 +83,8 @@ struct BarInstance {
   // Liquid Glass chrome over the background (BarConfig::glass): top sheen and edge-lit rim.
   Box* glassSheen = nullptr;
   Box* glassRim = nullptr;
+  // BarConfig::legibilityScrim: the gradient behind the items of a transparent menu bar.
+  Box* scrim = nullptr;
   Box* shadow = nullptr;
   Node* shadowLeftClip = nullptr;
   Node* shadowRightClip = nullptr;

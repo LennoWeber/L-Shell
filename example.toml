@@ -387,6 +387,9 @@ delete   = ["del"]
 [layout]
 mode = "flow"                       # flow | classic | smart_bar | minimal_bar | island | edges | handle
 
+[layout.flow.bar]
+background      = "transparent"     # like the Tahoe menu bar; a soft scrim keeps it legible (glass | solid)
+
 [layout.flow.island]
 material        = "glass"           # glass | black
 reserve_space   = true              # windows start below the island, like below the menu bar

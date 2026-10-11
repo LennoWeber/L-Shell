@@ -32,6 +32,7 @@
 #include "wayland/wayland_connection.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cerrno>
 #include <cmath>
@@ -44,6 +45,10 @@
 #include <wayland-client-protocol.h>
 
 namespace {
+
+  // Transparent menu bar scrim (BarConfig::legibilityScrim): strength at the screen edge, per theme.
+  constexpr float kScrimDarkAlpha = 0.34F;
+  constexpr float kScrimLightAlpha = 0.5F;
 
   constexpr Logger kLog("bar");
   constexpr std::chrono::milliseconds kWorkspaceRevealDebounce{80};
@@ -684,7 +689,11 @@ namespace {
       }
     }
 
-    spec.exclusiveZone = barConfig.reserveSpace ? reservedBarExclusiveZone(barConfig, shadowConfig) : 0;
+    if (barConfig.reserveSpace) {
+      spec.exclusiveZone = reservedBarExclusiveZone(barConfig, shadowConfig);
+    } else {
+      spec.exclusiveZone = barConfig.ignoreOtherZones ? -1 : 0;
+    }
     return spec;
   }
 
@@ -1965,9 +1974,12 @@ void Bar::syncBarExclusiveZone(BarInstance& instance) {
   if (instance.surface == nullptr || m_config == nullptr) {
     return;
   }
-  const std::int32_t zone = shouldReserveExclusiveZone(instance)
-      ? reservedBarExclusiveZone(instance.barConfig, m_config->config().shell.shadow)
-      : 0;
+  std::int32_t zone = 0;
+  if (shouldReserveExclusiveZone(instance)) {
+    zone = reservedBarExclusiveZone(instance.barConfig, m_config->config().shell.shadow);
+  } else if (instance.barConfig.ignoreOtherZones && !instance.barConfig.reserveSpace) {
+    zone = -1; // a layout-mode bar without its own zone stays on the screen edge (see BarConfig)
+  }
   instance.surface->setExclusiveZone(zone);
 }
 
@@ -3095,6 +3107,36 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
 }
 
 void Bar::applyGlassChrome(BarInstance& instance, const Radii& radius) {
+  if (instance.scrim != nullptr) {
+    // Darkens (dark theme) or lightens (light theme) the wallpaper under the items, fading out downwards, so the
+    // theme's text color reads on any wallpaper like macOS's transparent menu bar.
+    const bool light = isResolvedLightTheme();
+    const bool atBottom = instance.barConfig.position == "bottom";
+    const float alpha = light ? kScrimLightAlpha : kScrimDarkAlpha;
+    const float tone = light ? 1.0F : 0.0F;
+    const Color edge = rgba(tone, tone, tone, alpha);
+    const Color mid = rgba(tone, tone, tone, alpha * 0.4F);
+    const Color clear = rgba(tone, tone, tone, 0.0F);
+    // Strongest at the screen edge, eased out towards the desktop.
+    const std::array<GradientStop, 4> stops = atBottom
+        ? std::array<
+              GradientStop,
+              4>{GradientStop{0.0F, clear}, GradientStop{0.4F, mid}, GradientStop{1.0F, edge}, GradientStop{1.0F, edge}}
+        : std::array<GradientStop, 4>{
+              GradientStop{0.0F, edge}, GradientStop{0.6F, mid}, GradientStop{1.0F, clear}, GradientStop{1.0F, clear}
+          };
+    instance.scrim->setStyle(
+        RoundedRectStyle{
+            .fill = edge,
+            .border = clear,
+            .fillMode = FillMode::LinearGradient,
+            .gradientDirection = GradientDirection::Vertical,
+            .gradientStops = stops,
+            .radius = radius,
+            .softness = 0.0F,
+        }
+    );
+  }
   if (instance.glassSheen == nullptr || instance.glassRim == nullptr) {
     return;
   }
@@ -3297,6 +3339,11 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
 
     // Bar background
     instance.bg = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
+    if (instance.barConfig.legibilityScrim) {
+      instance.scrim = static_cast<Box*>(
+          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
+      );
+    }
     if (instance.barConfig.glass) {
       instance.glassSheen = static_cast<Box*>(
           instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
@@ -3428,7 +3475,7 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
         barAreaW + concave.logicalInset.left + concave.logicalInset.right,
         barAreaH + concave.logicalInset.top + concave.logicalInset.bottom
     );
-    for (Box* glass : {instance.glassSheen, instance.glassRim}) {
+    for (Box* glass : {instance.glassSheen, instance.glassRim, instance.scrim}) {
       if (glass != nullptr) {
         glass->setPosition(barAreaX, barAreaY);
         glass->setSize(barAreaW, barAreaH);
