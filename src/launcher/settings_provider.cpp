@@ -14,6 +14,8 @@ namespace {
   constexpr std::size_t kMaxResults = 30;
   // Result ids carry the setting path; parts may contain dots (bar or monitor names).
   constexpr char kPathSeparator = '\x1f';
+  // Result id that opens the settings window itself.
+  constexpr std::string_view kOpenWindowId = "open-settings";
 
   [[nodiscard]] std::string joinPath(const std::vector<std::string>& path) {
     std::string joined;
@@ -69,12 +71,47 @@ const std::vector<settings::SettingEntry>& SettingsProvider::index() const {
 }
 
 std::vector<LauncherResult> SettingsProvider::query(std::string_view text) const {
-  const std::string query = settings::normalizedSettingQuery(StringUtils::trim(text));
-  if (query.empty()) {
+  const std::string typed = settings::normalizedSettingQuery(StringUtils::trim(text));
+  if (typed.empty()) {
     return {};
   }
 
+  // "settings"/"einstellungen" (and "l-shell") state the intent; they are not part of any setting.
+  const std::string providerWord = StringUtils::toLower(displayName());
+  const auto isIntentWord = [&](std::string_view word) {
+    return word == "settings" || word == providerWord || word == "l-shell" || word == "lshell";
+  };
+  std::string query;
+  bool intent = false;
+  for (std::size_t start = 0; start < typed.size();) {
+    const std::size_t end = std::min(typed.find(' ', start), typed.size());
+    const std::string_view word = std::string_view(typed).substr(start, end - start);
+    if (!word.empty()) {
+      if (isIntentWord(word)) {
+        intent = true;
+      } else {
+        query += query.empty() ? "" : " ";
+        query += word;
+      }
+    }
+    start = end + 1;
+  }
+  // Typing the start of the name ("einst", "sett") also offers the window.
+  intent = intent || (typed.size() >= 3 && (providerWord.starts_with(typed) || std::string_view("settings").starts_with(typed)));
+
   std::vector<LauncherResult> results;
+  if (intent) {
+    LauncherResult open;
+    open.id = std::string(kOpenWindowId);
+    open.title = i18n::tr("launcher.providers.settings.open");
+    open.glyphName = "settings";
+    open.score = 1000.0;
+    results.push_back(std::move(open));
+  }
+  if (query.empty()) {
+    return results;
+  }
+
   for (const auto& entry : index()) {
     if (entry.visibleWhen && m_config != nullptr && !entry.visibleWhen(m_config->config())) {
       continue;
@@ -113,6 +150,7 @@ bool SettingsProvider::activate(const LauncherResult& result) {
     return false;
   }
   // Deferred so the launcher closes first; the settings window then takes focus.
-  DeferredCall::callLater([open = m_openSetting, path = splitPath(result.id)]() { open(path); });
+  std::vector<std::string> path = result.id == kOpenWindowId ? std::vector<std::string>{} : splitPath(result.id);
+  DeferredCall::callLater([open = m_openSetting, path = std::move(path)]() { open(path); });
   return true;
 }

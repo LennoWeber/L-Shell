@@ -700,6 +700,7 @@
         "title": "Sitzung"
       },
       "settings": {
+        "open": "L-Shell-Einstellungen öffnen",
         "title": "Einstellungen"
       },
       "wallpaper": {
@@ -3959,7 +3960,7 @@
       "export-config-saved": "Konfigurationsexport gespeichert.",
       "filter-overridden": "Überschreiben",
       "legacy-config-warning": "Veraltete Einstellung: {issue}. Bearbeite diesen Quelleintrag; Noctalia wendet den Ersatz nur vorübergehend an. Führe noctalia config validate aus, um alle erforderlichen Änderungen aufzulisten.",
-      "native-title": "Noctalia-Einstellungen",
+      "native-title": "L-Shell-Einstellungen",
       "no-results": "Keine Einstellungen gefunden",
       "no-results-hint": "Versuche einen anderen Einstellungsnamen oder Konfigurationsschlüssel.",
       "offline-mode-notice": {

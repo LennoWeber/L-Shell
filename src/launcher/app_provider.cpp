@@ -238,6 +238,9 @@ void AppProvider::refreshEntriesIfNeeded() const {
   }
 
   m_entries = desktopEntries();
+  // The upstream Noctalia shell's own entries ("Noctalia", "Open Settings") start or control the
+  // other shell, which must not run alongside L-Shell; settings are reached through L-Shell itself.
+  std::erase_if(m_entries, [](const DesktopEntry& entry) { return entry.id.starts_with("dev.noctalia.Noctalia"); });
   m_entriesVersion = version;
 }
 

@@ -38,7 +38,7 @@ namespace {
   constexpr std::size_t kRowOverscan = 3;
   // Minimum trimmed query length before prefixed opt-in providers join the global search.
   constexpr std::size_t kGlobalOptInMinChars = 2;
-  constexpr float kIconSizeDefault = 32.0F;
+  constexpr float kIconSizeDefault = 28.0F;
   constexpr float kIconSizeCompact = 28.0F;
   constexpr std::size_t kAppGridColumns = 5;
   constexpr std::string_view kApplicationsProviderId = "Applications";
@@ -48,8 +48,8 @@ namespace {
   constexpr std::string_view kProviderOverviewResultPrefix = "provider:";
   // Pseudo-results that render as Spotlight-style group headers; never selectable.
   constexpr std::string_view kSectionHeaderProviderId = "__launcher_section__";
-  constexpr float kSpotlightSearchHeight = 42.0F;
-  constexpr float kSpotlightExpandedHeight = 400.0F;
+  constexpr float kSpotlightSearchHeight = 38.0F;
+  constexpr float kSpotlightExpandedHeight = 360.0F;
 
   [[nodiscard]] bool isSectionHeader(const LauncherResult& result) {
     return result.providerId == kSectionHeaderProviderId;

@@ -281,8 +281,8 @@ namespace {
   }
 
   // Floating panels open and close quickly, like macOS popovers and Spotlight.
-  constexpr float kDetachedOpenMs = 140.0F;
-  constexpr float kDetachedCloseMs = 100.0F;
+  constexpr float kDetachedOpenMs = 100.0F;
+  constexpr float kDetachedCloseMs = 80.0F;
   constexpr float kDetachedRevealScale = 0.96F;
 
   [[nodiscard]] bool glassPanels(const ConfigService* config) {

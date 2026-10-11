@@ -59,6 +59,17 @@ int main(int argc, char* argv[]) {
        )
       && ok;
   ok = expect(provider.query("   ").empty(), "blank query lists nothing") && ok;
+  const auto withIntent = provider.query("settings bar position");
+  ok = expect(
+           withIntent.size() > 1 && withIntent.front().id == "open-settings",
+           "the word \"settings\" offers the settings window and still finds the setting"
+       )
+      && ok;
+  ok = expect(
+           std::ranges::any_of(withIntent, [](const LauncherResult& r) { return r.id == std::string("bar\x1f" "default\x1f" "position"); }),
+           "intent words are ignored for matching"
+       )
+      && ok;
   ok = expect(provider.query("zzzz-no-such-setting").empty(), "unknown words find nothing") && ok;
 
   return ok ? 0 : 1;

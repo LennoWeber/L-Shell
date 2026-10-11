@@ -699,19 +699,19 @@ struct DockConfig {
   bool enabled = true;
   DockEdge position = DockEdge::Bottom;
   bool activeMonitorOnly = false;    // render only on preferred active output
-  std::int32_t iconSize = 48;        // icon size in pixels (before ui_scale)
+  std::int32_t iconSize = 52;        // icon size in pixels (before ui_scale)
   std::int32_t mainAxisPadding = 16; // inner padding along the icon row (main axis)
   std::int32_t crossAxisPadding = 8; // inner padding perpendicular to the icon row
   std::int32_t itemSpacing = 6;      // gap between items
-  float backgroundOpacity = 0.55F;
-  // Inside outline for the dock background.
-  ColorSpec border = colorSpecFromRole(ColorRole::Outline);
-  float borderWidth = 0.0F;
-  std::int32_t radius = 20;            // dock background corner radius
-  std::int32_t radiusTopLeft = 20;     // dock background top-left corner radius
-  std::int32_t radiusTopRight = 20;    // dock background top-right corner radius
-  std::int32_t radiusBottomLeft = 20;  // dock background bottom-left corner radius
-  std::int32_t radiusBottomRight = 20; // dock background bottom-right corner radius
+  float backgroundOpacity = 0.45F;
+  // Inside outline for the dock background: a Liquid Glass hairline rim by default.
+  ColorSpec border = ColorSpec{.role = std::nullopt, .fixed = rgba(1.0F, 1.0F, 1.0F, 0.16F), .alpha = 1.0F};
+  float borderWidth = 1.0F;
+  std::int32_t radius = 24;            // dock background corner radius
+  std::int32_t radiusTopLeft = 24;     // dock background top-left corner radius
+  std::int32_t radiusTopRight = 24;    // dock background top-right corner radius
+  std::int32_t radiusBottomLeft = 24;  // dock background bottom-left corner radius
+  std::int32_t radiusBottomRight = 24; // dock background bottom-right corner radius
   bool concaveEdgeCorners = false;     // carve concave corners on the side that touches the screen edge
   std::int32_t marginEnds = 0;         // inset from each end of the dock along its main axis
   std::int32_t marginEdge = 8;         // distance from the nearest screen edge (floats the dock when > 0)
