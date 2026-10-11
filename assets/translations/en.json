@@ -793,7 +793,8 @@
           "setup-wizard": "Setup Wizard",
           "test": "Test Panel",
           "tray-drawer": "Tray Drawer",
-          "wallpaper": "Wallpaper"
+          "wallpaper": "Wallpaper",
+          "status-overlay": "Status Overview"
         },
         "title": "Panels"
       },
@@ -1400,7 +1401,13 @@
         "weather": "Weather",
         "widget-list": "Widget List",
         "widgets": "Widgets",
-        "window-switcher": "Window Switcher"
+        "window-switcher": "Window Switcher",
+        "layout-mode": "Mode",
+        "layout-bar": "Menu Bar",
+        "layout-island": "Island",
+        "layout-island-activities": "Island Activities",
+        "layout-edges": "Screen Edges",
+        "layout-handle": "Home Handle"
       },
       "sections": {
         "accessibility": "Accessibility",
@@ -1429,7 +1436,8 @@
         "system": "System",
         "templates": "Templates",
         "umbriel": "Umbriel",
-        "wallpaper": "Wallpaper"
+        "wallpaper": "Wallpaper",
+        "layout": "Layout"
       }
     },
     "notifications": {
@@ -1656,6 +1664,30 @@
         "unit": {
           "imperial": "Imperial",
           "metric": "Metric"
+        }
+      },
+      "layout": {
+        "mode": {
+          "classic": "Classic (configured bars)",
+          "smart-bar": "Smart Bar",
+          "minimal-bar": "Minimal Bar",
+          "island": "Island",
+          "edges": "Screen Edges",
+          "handle": "Home Handle",
+          "flow": "Flow"
+        },
+        "bar-background": {
+          "transparent": "Transparent",
+          "glass": "Glass",
+          "solid": "Solid"
+        },
+        "island-material": {
+          "glass": "Glass",
+          "black": "Black"
+        },
+        "handle-reveal": {
+          "bar": "Menu Bar",
+          "overlay": "Status Overview"
         }
       }
     },
@@ -3581,6 +3613,119 @@
           "description": "Effects available when changing wallpaper (one is picked at random per change)",
           "label": "Transition Effects"
         }
+      },
+      "layout": {
+        "mode": {
+          "label": "Layout Mode",
+          "description": "How the shell sits on screen. Flow shows the menu bar on an empty desktop and gets out of the way while you work."
+        },
+        "bar": {
+          "position": "Screen edge the bar sits on",
+          "background": {
+            "label": "Background",
+            "description": "Glass blurs what is behind the bar; transparent is the Tahoe menu bar"
+          },
+          "opacity": {
+            "label": "Tint",
+            "description": "How strongly glass and solid backgrounds are tinted"
+          },
+          "thickness": {
+            "label": "Height",
+            "description": "Bar height in pixels"
+          },
+          "floating": {
+            "label": "Floating",
+            "description": "Detach the bar from the edge as a rounded pill"
+          },
+          "reserve-space": "Keep windows clear of the bar",
+          "reveal-on-hover": {
+            "label": "Show on Edge Hover",
+            "description": "A hidden bar comes back when the pointer touches its edge"
+          },
+          "start": {
+            "label": "Left Widgets"
+          },
+          "center": {
+            "label": "Center Widgets"
+          },
+          "end": {
+            "label": "Right Widgets"
+          },
+          "widgets": "Widget names, in order"
+        },
+        "island": {
+          "material": {
+            "label": "Material",
+            "description": "Liquid Glass, or a black capsule like the Dynamic Island"
+          },
+          "expand-on-hover": {
+            "label": "Expand on Hover",
+            "description": "Show date, time and battery while the pointer rests on the island"
+          },
+          "suppress-osd": {
+            "label": "Replace OSD",
+            "description": "Volume, brightness and other events show in the island instead of the OSD"
+          },
+          "reserve-space": "Keep windows clear of the island",
+          "click-action": {
+            "label": "Click Action",
+            "description": "Command run when the island is clicked"
+          },
+          "activity-ms": {
+            "label": "Activity Duration",
+            "description": "How long an event keeps the island expanded"
+          },
+          "activities": {
+            "description": "Expands the island when it happens",
+            "media": "Now Playing",
+            "volume": "Volume",
+            "brightness": "Brightness",
+            "battery": "Battery and Charger",
+            "notification": "Notifications",
+            "system": "Wi-Fi, Bluetooth and Other Toggles"
+          }
+        },
+        "edges": {
+          "top": "Top Edge",
+          "bottom": "Bottom Edge",
+          "left": "Left Edge",
+          "right": "Right Edge",
+          "action": "Runs when the pointer rests on the middle of this edge; none turns it off",
+          "close-on-leave": {
+            "label": "Close When Leaving",
+            "description": "Panels opened from an edge close once the pointer leaves them"
+          },
+          "delay": {
+            "label": "Delay",
+            "description": "How long the pointer rests on an edge before it opens"
+          },
+          "length": {
+            "label": "Active Length",
+            "description": "Part of each edge that reacts, centered; corners stay free for hot corners"
+          }
+        },
+        "handle": {
+          "reveal": {
+            "label": "Shows",
+            "description": "What appears when you hover or pull up the line at the bottom. The line needs the bottom center free: with a dock always visible at the bottom, set the dock to Smart Hide."
+          },
+          "pull-up": {
+            "label": "Pull Up",
+            "description": "Dragging the line upwards also reveals"
+          },
+          "swipe": {
+            "label": "Swipe Workspaces",
+            "description": "Dragging the line sideways switches workspace"
+          },
+          "hover-delay": {
+            "label": "Hover Delay",
+            "description": "How long the pointer rests on the line before it reveals"
+          },
+          "width": {
+            "label": "Line Length",
+            "description": "Length of the home line in pixels"
+          }
+        }
       }
     },
     "session-actions": {
@@ -5070,5 +5215,47 @@
     "empty": "No open windows",
     "hint": "Tab · Shift+Tab · Arrow keys · Release the shortcut modifier to switch · Esc to cancel",
     "title": "Windows"
+  },
+  "island": {
+    "volume": "Volume",
+    "microphone": "Microphone",
+    "brightness": "Brightness",
+    "keyboard-backlight": "Keyboard Brightness",
+    "charging": "Charging",
+    "on-battery": "On Battery",
+    "low-battery": "Low Battery"
+  },
+  "status-overlay": {
+    "date-format": "%A, %-d %B",
+    "on": "On",
+    "off": "Off",
+    "battery": {
+      "title": "Battery"
+    },
+    "network": {
+      "wifi": "Wi-Fi",
+      "ethernet": "Ethernet",
+      "cellular": "Cellular",
+      "connected": "Connected",
+      "connecting": "Connecting…",
+      "not-connected": "Not Connected"
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "devices": "{count} Device",
+      "devices-plural": "{count} Devices"
+    },
+    "volume": {
+      "title": "Volume",
+      "muted": "Muted"
+    },
+    "brightness": {
+      "title": "Brightness"
+    },
+    "media": {
+      "title": "Now Playing",
+      "nothing-playing": "Nothing Playing",
+      "unknown-track": "Unknown Track"
+    }
   }
 }

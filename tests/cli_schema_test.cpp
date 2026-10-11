@@ -1,4 +1,5 @@
 #include "cli/schema_msg.h"
+#include "config/config_types.h"
 #include "tests/test_check.h"
 #include "theme/builtin_palettes.h"
 #include "theme/scheme.h"
@@ -24,7 +25,6 @@ int main() {
   const auto& builtin = child(*colorSchemeSet, "builtin");
   TEST_CHECK(builtin.positionals.size() == 1);
   const auto palettes = noctalia::theme::builtinPalettes();
-  // TODO(phase): pin kMsgLayoutModeSetModeChoices to kLayoutModes keys.
   TEST_CHECK(builtin.positionals.front().choices.size() == palettes.size());
   for (std::size_t i = 0; i < palettes.size(); ++i)
     TEST_CHECK(builtin.positionals.front().choices[i] == palettes[i].name);
@@ -38,6 +38,16 @@ int main() {
     const auto parsed = noctalia::theme::schemeFromString(name);
     TEST_CHECK(parsed.has_value());
     TEST_CHECK(noctalia::theme::schemeToString(*parsed) == name);
+  }
+
+  // layout-mode-set offers exactly the config's layout modes.
+  const noctalia::cli::Command* layoutModeSet = noctalia::cli::findMsgCommand("layout-mode-set");
+  TEST_CHECK(layoutModeSet != nullptr);
+  TEST_CHECK(layoutModeSet->positionals.size() == 1);
+  const auto& modeChoices = layoutModeSet->positionals.front().choices;
+  TEST_CHECK(modeChoices.size() == std::size(kLayoutModes));
+  for (const auto& option : kLayoutModes) {
+    TEST_CHECK(std::ranges::contains(modeChoices, option.key));
   }
 
   return EXIT_SUCCESS;

@@ -176,12 +176,11 @@ namespace {
       const std::function<std::optional<BarConfig>(wl_output*, std::string_view)>& barConfigProvider,
       std::string_view barName = {}
   ) {
-    // TODO(phase): attached-panel bar lookup follows activeBars().
-    if (configService == nullptr || configService->config().bars.empty()) {
+    if (configService == nullptr || configService->activeBars().empty()) {
       return BarConfig{};
     }
 
-    const auto& bars = configService->config().bars;
+    const auto& bars = configService->activeBars();
     const std::string_view panelAnchorBar = configService->config().shell.panelAnchorBar;
     const std::string_view effectiveName = !panelAnchorBar.empty() ? panelAnchorBar : barName;
 
@@ -245,8 +244,7 @@ namespace {
     }
 
     std::size_t count = 0;
-    // TODO(phase): activeBars().
-    for (const auto& bar : configService->config().bars) {
+    for (const auto& bar : configService->activeBars()) {
       const BarConfig resolved = wlOutput != nullptr ? ConfigService::resolveForOutput(bar, *wlOutput) : bar;
       if (!resolved.enabled || resolved.position != position) {
         continue;
@@ -259,6 +257,24 @@ namespace {
     return false;
   }
 
+  // Top bars without an exclusive zone (the layout modes' smart bars) still cover the top edge, and the compositor
+  // does not keep surfaces clear of them: panels pinned to the top open below them, like macOS menus.
+  [[nodiscard]] std::int32_t
+  floatingTopBarInset(const ConfigService* configService, CompositorPlatform* platform, wl_output* output) {
+    if (configService == nullptr) {
+      return 0;
+    }
+    const WaylandOutput* wlOutput =
+        platform != nullptr && output != nullptr ? platform->findOutputByWl(output) : nullptr;
+    std::int32_t inset = 0;
+    for (const auto& bar : configService->activeBars()) {
+      const BarConfig resolved = wlOutput != nullptr ? ConfigService::resolveForOutput(bar, *wlOutput) : bar;
+      if (resolved.enabled && resolved.position == "top" && !resolved.reserveSpace) {
+        inset = std::max(inset, resolved.thickness + std::max(resolved.marginEdge, 0));
+      }
+    }
+    return inset;
+  }
 
   [[nodiscard]] AttachedRevealDirection
   detachedRevealDirection(std::string_view panelPosition, std::string_view barPosition) {
@@ -553,16 +569,30 @@ void PanelManager::unregisterPanel(const std::string& id) {
   m_panels.erase(it);
 }
 
+bool PanelManager::dismissesOnPointerLeave() const {
+  if (!m_dismissOnPointerLeave || !m_pointerEnteredSinceOpen || m_activePanel == nullptr) {
+    return false;
+  }
+  // Moving into a context menu or a dropdown of the panel leaves its surface; that is still using the panel.
+  if (m_activePopup != nullptr || (m_selectPopup != nullptr && m_selectPopup->isSelectDropdownOpen())) {
+    return false;
+  }
+  // A focused text field (the launcher's search) keeps the panel: typing must not depend on where the pointer is.
+  const InputArea* focused = m_inputDispatcher.focusedArea();
+  return focused == nullptr || focused->textInputClient() == nullptr;
+}
+
 std::string PanelManager::effectivePanelPosition() const {
   assert(m_activePanel != nullptr && "position of a panel that is not open");
-  throw std::logic_error("PanelManager::effectivePanelPosition: not implemented");
+  if (!m_screenPositionOverride.empty()) {
+    return m_screenPositionOverride;
+  }
+  if (m_activePanel != nullptr && m_activePanelId.contains(':')) {
+    return m_activePanel->panelScreenPosition();
+  }
+  return resolvePanelPosition(m_config, m_activePanelId);
 }
 
-bool PanelManager::dismissesOnPointerLeave() const {
-  throw std::logic_error("PanelManager::dismissesOnPointerLeave: not implemented");
-}
-
-// TODO(phase): store request.dismissOnPointerLeave (m_dismissOnPointerLeave, reset m_pointerEnteredSinceOpen).
 void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest request) {
   // A screen position is a concrete kPanelPositions value ("auto" would mean "no override"), and only screen-edge
   // drawers, which always carry one, dismiss on pointer leave.
@@ -592,7 +622,8 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
       // are copied into owned storage the continuation keeps alive.
       m_platform->probeFocusedOutput(
           [this, panelId, request, context = std::string(request.context),
-           sourceBarName = std::string(request.sourceBarName)](wl_output* probed) mutable {
+           sourceBarName = std::string(request.sourceBarName),
+           screenPosition = std::string(request.screenPosition)](wl_output* probed) mutable {
             request.output =
                 probed != nullptr ? probed : m_platform->preferredInteractiveOutput(std::chrono::milliseconds(1200));
             if (request.output == nullptr) {
@@ -600,6 +631,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
             }
             request.context = context;
             request.sourceBarName = sourceBarName;
+            request.screenPosition = screenPosition;
             openPanel(panelId, request);
           },
           std::chrono::milliseconds(250)
@@ -642,6 +674,10 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
 
   m_activePanel = it->second.get();
   m_activePanelId = panelId;
+  // Screen-edge drawers float at their edge and close once the pointer has been in and left again.
+  m_screenPositionOverride = std::string(request.screenPosition);
+  m_dismissOnPointerLeave = request.dismissOnPointerLeave;
+  m_pointerEnteredSinceOpen = false;
   m_activePanel->setContentScale(shell::panel_surface::contentScale(m_config));
   m_pendingOpenContext = std::string(request.context);
   m_activePanel->setPendingOpenContext(request.context);
@@ -688,7 +724,8 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     return static_cast<std::int32_t>(std::clamp(desired, static_cast<float>(padding), static_cast<float>(maxValue)));
   };
 
-  const PanelPlacement activePlacement = m_activePanel->panelPlacement();
+  const PanelPlacement activePlacement =
+      m_screenPositionOverride.empty() ? m_activePanel->panelPlacement() : PanelPlacement::Floating;
   // Fill sizing is floating-only (see Panel::fillsWidth): every other placement sizes the
   // surface from the panel's preferred extent.
   const bool floatingPlacement = activePlacement == PanelPlacement::Floating;
@@ -703,10 +740,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   }
   m_panelFillWidth = fillWidth;
   m_panelFillHeight = fillHeight;
-  const bool pluginPanel = m_activePanelId.contains(':');
-  const std::string panelPosition =
-      // TODO(phase): PanelOpenRequest::screenPosition (screen edges) overrides the position and forces floating placement.
-      pluginPanel ? m_activePanel->panelScreenPosition() : resolvePanelPosition(m_config, m_activePanelId);
+  const std::string panelPosition = effectivePanelPosition();
   const AttachedRevealDirection detachedDirection = detachedRevealDirection(panelPosition, barConfig.position);
   const bool useScreenPosition =
       activePlacement == PanelPlacement::Floating && panelPosition != "auto" && panelPosition != "center";
@@ -762,6 +796,9 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
       const auto sp = shell::screenPositionAnchor(panelPosition, panelGap);
       standaloneAnchor = sp.anchor;
       standaloneMarginTop = sp.marginTop;
+      if ((sp.anchor & LayerShellAnchor::Top) != 0 && (sp.anchor & LayerShellAnchor::Bottom) == 0) {
+        standaloneMarginTop += floatingTopBarInset(m_config, m_platform, request.output);
+      }
       if (panelPosition == "spotlight" && outputHeight > 0) {
         // Like macOS Spotlight: the search field sits in the upper third and results grow downward.
         standaloneMarginTop = static_cast<std::int32_t>(std::lround(static_cast<double>(outputHeight) * 0.2));
@@ -1680,16 +1717,18 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
   case PointerEvent::Type::Enter: {
     if (event.surface == m_wlSurface) {
       m_pointerInside = true;
+      m_pointerEnteredSinceOpen = true;
       m_inputDispatcher.pointerEnter(static_cast<float>(event.sx), static_cast<float>(event.sy), event.serial);
     }
     break;
   }
-  // TODO(phase): leaving a panel opened with dismissOnPointerLeave closes it, unless a text input in it has focus
-  //   (the launcher must not close while typing) or it never was entered.
   case PointerEvent::Type::Leave: {
     if (event.surface == m_wlSurface) {
       m_pointerInside = false;
       m_inputDispatcher.pointerLeave();
+      if (dismissesOnPointerLeave()) {
+        closePanel();
+      }
     }
     break;
   }
@@ -1829,9 +1868,10 @@ void PanelManager::relayoutActivePanelPreferredSize() {
   const std::uint32_t surfaceHeight =
       shell::panel_surface::surfaceExtent(panelHeight, detachedShadowBleed.up, detachedShadowBleed.down);
 
-  const std::string panelPosition = resolvePanelPosition(m_config, m_activePanelId);
-  const bool useCenterScreenLayout =
-      m_activePanel->panelPlacement() == PanelPlacement::Floating && panelPosition == "center";
+  const std::string panelPosition = effectivePanelPosition();
+  const PanelPlacement placement =
+      m_screenPositionOverride.empty() ? m_activePanel->panelPlacement() : PanelPlacement::Floating;
+  const bool useCenterScreenLayout = placement == PanelPlacement::Floating && panelPosition == "center";
   if (m_panelOutputInputRect.has_value()) {
     InputRect rect = *m_panelOutputInputRect;
     const std::uint32_t anchor = m_layerSurface->anchor();
@@ -2235,7 +2275,9 @@ void PanelManager::applyDetachedReveal(float progress) {
     m_detachedRevealContentNode->setPosition(0.0F, 0.0F);
     m_detachedRevealContentNode->setFrameSize(surfaceW, surfaceH);
     m_detachedRevealContentNode->setOpacity(m_detachedRevealProgress);
-    m_detachedRevealContentNode->setScale(kDetachedRevealScale + (1.0F - kDetachedRevealScale) * m_detachedRevealProgress);
+    m_detachedRevealContentNode->setScale(
+        kDetachedRevealScale + (1.0F - kDetachedRevealScale) * m_detachedRevealProgress
+    );
   }
 
   if (m_contentNode != nullptr) {

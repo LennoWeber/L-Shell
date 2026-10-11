@@ -162,7 +162,6 @@ Blur support was introduced in Niri version 26.04. Adding these rules to earlier
 
 You can enable blur behind windows and Noctalia's bar, panels, dock, and notifications.
 
-{/* TODO(phase): add island to the blur namespace (the Liquid Glass capsule needs blur). */}
 ```kdl
 /* Apps: blur them all without xray so it looks more realistic. */
 window-rule {
@@ -178,7 +177,7 @@ window-rule {
   Noctalia publishes blur regions automatically when ext-background-effects is available.
 */
 layer-rule {
-  match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"
+  match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd|island)$"
   background-effect {
     xray false
     // blur false

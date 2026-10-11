@@ -1,0 +1,104 @@
+---
+title: Layout Modes
+description: Choose how L-Shell sits on screen, from the classic bars to the Flow mode, and tune each mode.
+sidebar:
+  order: 1
+---
+
+A layout mode decides which shell chrome is on screen. Switch modes in **Settings → Layout**, with
+`l-shell msg layout-mode-set <mode>`, or in `[layout]`. Each mode keeps its own settings, so switching back and
+forth never loses a tweak.
+
+| Mode | What you get |
+|------|--------------|
+| `flow` (default) | The menu bar on an empty desktop. While windows are open it hides, the island takes the top center, the left and right screen edges open the launcher and Control Center, and the home line at the bottom opens the status overview. |
+| `classic` | The bars you define under `[bar.*]` (see [Bar](/user/bar/)). |
+| `smart_bar` | One menu bar that shows on an empty workspace and hides while windows are open; touching the edge brings it back. |
+| `minimal_bar` | A thin, always-visible, transparent menu bar. |
+| `island` | No bar: a Dynamic Island–style capsule at the top center that expands for volume, brightness, charging and the playing track. |
+| `edges` | No bar: resting the pointer on the middle of a screen edge opens a drawer (Control Center, launcher, status overview, session menu). |
+| `handle` | No bar: an iPhone-style home line at the bottom. Hover or pull it up for the status overview (or a pop-up bar); drag it sideways to switch workspace. |
+
+```toml
+[layout]
+mode = "flow"   # flow | classic | smart_bar | minimal_bar | island | edges | handle
+
+[layout.smart_bar]            # also [layout.minimal_bar], [layout.handle.bar], [layout.flow.bar]
+position                 = "top"     # top | bottom
+thickness                = 28
+background               = "glass"   # transparent | glass | solid
+background_opacity       = 0.55
+floating                 = false     # rounded pill detached from the edge
+reserve_space            = true
+reveal_on_hover          = true      # a hidden bar comes back at the edge
+show_on_workspace_switch = true
+start  = ["logo", "workspaces", "app_name"]
+center = ["clock"]
+end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"]
+
+[layout.island]               # also [layout.flow.island]
+material         = "glass"   # glass | black
+height           = 32        # collapsed capsule
+collapsed_width  = 150
+expanded_width   = 440
+expanded_height  = 76
+margin_top       = 6
+reserve_space    = true
+expand_on_hover  = true
+click_action     = "panel-toggle control-center"
+activity_ms      = 3000
+suppress_osd     = true      # the island replaces the OSD for what it shows
+
+[layout.island.activities]
+media        = true
+volume       = true
+brightness   = true
+battery      = true
+notification = false
+system       = true          # Wi-Fi, Bluetooth, Do Not Disturb, caffeine, …
+
+[layout.edges]                # also [layout.flow.edges]
+delay_ms       = 150
+trigger_size   = 2
+length         = 0.5         # centered part of each edge; corners stay free for hot corners
+close_on_leave = true
+top    = "panel-open control-center"   # any IPC command, "exec <cmd>", or "none"
+bottom = "panel-open launcher"
+left   = "panel-open status-overlay"
+right  = "panel-open session"
+
+[layout.handle]               # also [layout.flow.handle]
+reveal            = "overlay"   # overlay | bar
+width             = 134
+thickness         = 5
+margin_bottom     = 8
+hover_delay_ms    = 250
+pull_up           = true
+swipe_workspaces  = true
+```
+
+## Flow
+
+Flow is built around "nothing on screen while you work":
+
+- **Empty desktop:** the menu bar is pinned, like macOS.
+- **Windows open:** the bar steps away. The island at the top shows the time and expands for volume,
+  brightness, charging and track changes (it replaces the OSD for those). Hover it for date, time and battery;
+  click it for Control Center.
+- **Edges:** rest on the left edge for the launcher, on the right edge for Control Center.
+- **Home line:** hover or pull up the line at the bottom for the full-screen status overview; drag it sideways to
+  change workspace.
+
+The home line leaves the bottom two pixels free, so a dock's or bar's edge reveal keeps working underneath it. A
+dock that is always visible at the bottom owns that spot, so the home line is left out (in Flow and in Handle);
+set the dock to smart hide (or move it) to get the line back.
+
+## Status overview
+
+`panel-toggle status-overlay` opens a full-screen glance at the time, battery, network, Bluetooth, volume,
+brightness and the playing track. Escape or a click anywhere closes it.
+
+## Blur
+
+The island is drawn as Liquid Glass and needs compositor blur behind it. Add `island` to your blur rule (see
+[Hyprland](/user/compositor-settings/hyprland/)); the home line and the edge strips need none.

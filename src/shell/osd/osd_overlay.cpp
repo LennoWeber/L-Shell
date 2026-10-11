@@ -21,7 +21,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <stdexcept>
 
 namespace {
 
@@ -276,17 +275,17 @@ void OsdOverlay::requestLayout() {
   }
 }
 
-void OsdOverlay::setRedirect(std::function<bool(const OsdContent&)> redirect) {
-  (void)redirect;
-  throw std::logic_error("OsdOverlay::setRedirect: not implemented");
-}
+void OsdOverlay::setRedirect(std::function<bool(const OsdContent&)> redirect) { m_redirect = std::move(redirect); }
 
 void OsdOverlay::show(const OsdContent& content) {
   if (m_wayland == nullptr || m_renderContext == nullptr) {
     return;
   }
-  // TODO(phase): offer the content to m_redirect before every gate ([osd] enabled, osd.kinds), so the island
-  //   sees volume/brightness even with the OSD turned off.
+  // The layout island sees every event, even with the OSD or this kind turned off; it decides whether the OSD
+  // still shows.
+  if (m_redirect && m_redirect(content)) {
+    return;
+  }
   if (!isEnabled()) {
     return;
   }

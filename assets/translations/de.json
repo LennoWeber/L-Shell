@@ -717,6 +717,11 @@
       },
       "window": {
         "title": "Fenster"
+      },
+      "panel": {
+        "builtin": {
+          "status-overlay": "Statusübersicht"
+        }
       }
     },
     "search-placeholder": "Spotlight-Suche",
@@ -1271,7 +1276,13 @@
         "wallpaper": "Hintergrundbild",
         "weather": "Wetter",
         "widget-list": "Widget-Liste",
-        "widgets": "Widgets"
+        "widgets": "Widgets",
+        "layout-mode": "Modus",
+        "layout-bar": "Menüleiste",
+        "layout-island": "Island",
+        "layout-island-activities": "Island-Aktivitäten",
+        "layout-edges": "Bildschirmränder",
+        "layout-handle": "Home-Leiste"
       },
       "sections": {
         "accessibility": "Barrierefreiheit",
@@ -1297,7 +1308,8 @@
         "shell": "Shell",
         "system": "System",
         "templates": "Templates",
-        "wallpaper": "Hintergrundbild"
+        "wallpaper": "Hintergrundbild",
+        "layout": "Layout"
       }
     },
     "notifications": {
@@ -1506,6 +1518,30 @@
         "unit": {
           "imperial": "Imperial",
           "metric": "Metrisch"
+        }
+      },
+      "layout": {
+        "mode": {
+          "classic": "Klassisch (eigene Leisten)",
+          "smart-bar": "Intelligente Leiste",
+          "minimal-bar": "Minimale Leiste",
+          "island": "Island",
+          "edges": "Bildschirmränder",
+          "handle": "Home-Leiste",
+          "flow": "Flow"
+        },
+        "bar-background": {
+          "transparent": "Transparent",
+          "glass": "Glas",
+          "solid": "Deckend"
+        },
+        "island-material": {
+          "glass": "Glas",
+          "black": "Schwarz"
+        },
+        "handle-reveal": {
+          "bar": "Menüleiste",
+          "overlay": "Statusübersicht"
         }
       }
     },
@@ -3211,6 +3247,119 @@
           "description": "Verfügbare Effekte beim Wechseln des Hintergrundbilds (je Wechsel wird zufällig einer ausgewählt)",
           "label": "Übergangseffekte"
         }
+      },
+      "layout": {
+        "mode": {
+          "label": "Layout-Modus",
+          "description": "Wie die Shell auf dem Bildschirm sitzt. Flow zeigt die Menüleiste auf leerem Schreibtisch und tritt beim Arbeiten zurück."
+        },
+        "bar": {
+          "position": "Bildschirmrand der Leiste",
+          "background": {
+            "label": "Hintergrund",
+            "description": "Glas zeichnet den Hintergrund weich; transparent ist die Tahoe-Menüleiste"
+          },
+          "opacity": {
+            "label": "Tönung",
+            "description": "Wie stark Glas- und deckende Hintergründe getönt sind"
+          },
+          "thickness": {
+            "label": "Höhe",
+            "description": "Leistenhöhe in Pixeln"
+          },
+          "floating": {
+            "label": "Schwebend",
+            "description": "Die Leiste als abgerundete Kapsel vom Rand lösen"
+          },
+          "reserve-space": "Fenster bleiben frei von der Leiste",
+          "reveal-on-hover": {
+            "label": "Am Rand einblenden",
+            "description": "Eine ausgeblendete Leiste erscheint, wenn der Zeiger ihren Rand berührt"
+          },
+          "start": {
+            "label": "Widgets links"
+          },
+          "center": {
+            "label": "Widgets Mitte"
+          },
+          "end": {
+            "label": "Widgets rechts"
+          },
+          "widgets": "Widget-Namen, in Reihenfolge"
+        },
+        "island": {
+          "material": {
+            "label": "Material",
+            "description": "Liquid Glass oder eine schwarze Kapsel wie die Dynamic Island"
+          },
+          "expand-on-hover": {
+            "label": "Bei Hover aufklappen",
+            "description": "Datum, Uhrzeit und Akku zeigen, solange der Zeiger auf der Island liegt"
+          },
+          "suppress-osd": {
+            "label": "OSD ersetzen",
+            "description": "Lautstärke, Helligkeit und andere Ereignisse erscheinen in der Island statt im OSD"
+          },
+          "reserve-space": "Fenster bleiben frei von der Island",
+          "click-action": {
+            "label": "Klick-Aktion",
+            "description": "Befehl beim Klick auf die Island"
+          },
+          "activity-ms": {
+            "label": "Anzeigedauer",
+            "description": "Wie lange ein Ereignis die Island aufgeklappt hält"
+          },
+          "activities": {
+            "description": "Klappt die Island auf, wenn es passiert",
+            "media": "Wiedergabe",
+            "volume": "Lautstärke",
+            "brightness": "Helligkeit",
+            "battery": "Akku und Ladegerät",
+            "notification": "Mitteilungen",
+            "system": "WLAN, Bluetooth und andere Schalter"
+          }
+        },
+        "edges": {
+          "top": "Oberer Rand",
+          "bottom": "Unterer Rand",
+          "left": "Linker Rand",
+          "right": "Rechter Rand",
+          "action": "Läuft, wenn der Zeiger auf der Mitte dieses Rands ruht; none schaltet ihn ab",
+          "close-on-leave": {
+            "label": "Beim Verlassen schließen",
+            "description": "Von einem Rand geöffnete Panels schließen, sobald der Zeiger sie verlässt"
+          },
+          "delay": {
+            "label": "Verzögerung",
+            "description": "Wie lange der Zeiger auf dem Rand ruht, bevor er öffnet"
+          },
+          "length": {
+            "label": "Aktive Länge",
+            "description": "Reagierender Teil jedes Rands, mittig; Ecken bleiben für Hot Corners frei"
+          }
+        },
+        "handle": {
+          "reveal": {
+            "label": "Zeigt",
+            "description": "Was erscheint, wenn du über die Linie unten fährst oder sie hochziehst. Die Linie braucht die Mitte unten: Ist dort immer ein Dock sichtbar, stell das Dock auf intelligentes Ausblenden."
+          },
+          "pull-up": {
+            "label": "Hochziehen",
+            "description": "Die Linie nach oben ziehen blendet ebenfalls ein"
+          },
+          "swipe": {
+            "label": "Arbeitsbereiche wischen",
+            "description": "Die Linie seitlich ziehen wechselt den Arbeitsbereich"
+          },
+          "hover-delay": {
+            "label": "Hover-Verzögerung",
+            "description": "Wie lange der Zeiger auf der Linie ruht, bevor sie einblendet"
+          },
+          "width": {
+            "label": "Linienlänge",
+            "description": "Länge der Home-Linie in Pixeln"
+          }
+        }
       }
     },
     "session-actions": {
@@ -4195,5 +4344,47 @@
     "empty": "Keine offenen Fenster",
     "hint": "Tab · Shift+Tab · Pfeiltasten · Alt loslassen zum Wechseln · Esc zum Abbrechen",
     "title": "Fenster"
+  },
+  "island": {
+    "volume": "Lautstärke",
+    "microphone": "Mikrofon",
+    "brightness": "Helligkeit",
+    "keyboard-backlight": "Tastaturbeleuchtung",
+    "charging": "Wird geladen",
+    "on-battery": "Akkubetrieb",
+    "low-battery": "Akku schwach"
+  },
+  "status-overlay": {
+    "date-format": "%A, %-d. %B",
+    "on": "Ein",
+    "off": "Aus",
+    "battery": {
+      "title": "Akku"
+    },
+    "network": {
+      "wifi": "WLAN",
+      "ethernet": "Ethernet",
+      "cellular": "Mobilfunk",
+      "connected": "Verbunden",
+      "connecting": "Verbinden…",
+      "not-connected": "Nicht verbunden"
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "devices": "{count} Gerät",
+      "devices-plural": "{count} Geräte"
+    },
+    "volume": {
+      "title": "Lautstärke",
+      "muted": "Stumm"
+    },
+    "brightness": {
+      "title": "Helligkeit"
+    },
+    "media": {
+      "title": "Wiedergabe",
+      "nothing-playing": "Keine Wiedergabe",
+      "unknown-track": "Unbekannter Titel"
+    }
   }
 }

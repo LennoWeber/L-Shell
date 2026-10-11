@@ -196,22 +196,27 @@ namespace settings {
         .gap = Style::spaceSm * scale,
     });
     if (!title.empty()) {
-      auto heading = makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold);
-      group->addChild(ui::row(
-          {.align = FlexAlign::Center, .configure = [scale](Flex& row) { row.setPadding(0.0F, 2.0F * scale); }},
-          std::move(heading)
-      ));
+      auto heading =
+          makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold);
+      group->addChild(
+          ui::row(
+              {.align = FlexAlign::Center, .configure = [scale](Flex& row) { row.setPadding(0.0F, 2.0F * scale); }},
+              std::move(heading)
+          )
+      );
     }
-    group->addChild(ui::column({
-        .out = &bodyRaw,
-        .align = FlexAlign::Stretch,
-        .gap = 0.0F,
-        .fill = colorSpecFromRole(ColorRole::SurfaceVariant, kGroupBoxFillOpacity),
-        .radius = Style::scaledRadiusLg(scale),
-        .border = colorSpecFromRole(ColorRole::OnSurface, 0.06F),
-        .borderWidth = 1.0F,
-        .configure = [scale](Flex& card) { card.setPadding(kGroupBoxPaddingV * scale, kGroupBoxPaddingH * scale); },
-    }));
+    group->addChild(
+        ui::column({
+            .out = &bodyRaw,
+            .align = FlexAlign::Stretch,
+            .gap = 0.0F,
+            .fill = colorSpecFromRole(ColorRole::SurfaceVariant, kGroupBoxFillOpacity),
+            .radius = Style::scaledRadiusLg(scale),
+            .border = colorSpecFromRole(ColorRole::OnSurface, 0.06F),
+            .borderWidth = 1.0F,
+            .configure = [scale](Flex& card) { card.setPadding(kGroupBoxPaddingV * scale, kGroupBoxPaddingH * scale); },
+        })
+    );
     parent.addChild(std::move(group));
     return bodyRaw;
   }
@@ -350,7 +355,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
-    // TODO(phase): add case SettingsSection::Layout (phase 2 left these exhaustive switches incomplete).
+    case SettingsSection::Layout:
     case SettingsSection::Plugins:
       return false;
     }
@@ -388,7 +393,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
-    // TODO(phase): add case SettingsSection::Layout.
+    case SettingsSection::Layout:
     case SettingsSection::Plugins:
       return {};
     }

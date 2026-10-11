@@ -88,7 +88,6 @@ private:
   IpcService* m_ipc = nullptr;
   PanelManager* m_panels = nullptr;
   std::optional<EdgesConfig> m_edgesConfig; // nullopt when the active layout has no screen edges
-  // Hidden while the lock-screen widget editor owns the screen.
   bool m_suppressed = false;
   std::vector<std::unique_ptr<OutputInstance>> m_instances;
 };

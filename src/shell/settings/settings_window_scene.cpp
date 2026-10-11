@@ -85,9 +85,8 @@ namespace {
   // One traffic light: a flat colored dot, a little brighter while hovered.
   std::unique_ptr<Button> makeWindowButton(std::uint32_t argb, float scale, std::function<void()> onClick) {
     const Color base = argbColor(argb);
-    const Color hover = rgba(
-        std::min(base.r * 1.1F, 1.0F), std::min(base.g * 1.1F, 1.0F), std::min(base.b * 1.1F, 1.0F), 1.0F
-    );
+    const Color hover =
+        rgba(std::min(base.r * 1.1F, 1.0F), std::min(base.g * 1.1F, 1.0F), std::min(base.b * 1.1F, 1.0F), 1.0F);
     auto button = ui::button({
         .variant = ButtonVariant::Default,
         .minWidth = kWindowButtonSize * scale,
@@ -98,12 +97,20 @@ namespace {
         .configure = [](Button& b) { b.setTabStop(false); },
     });
     const Button::ButtonStateColors normal{
-        .bg = fixedColorSpec(base), .border = fixedColorSpec(rgba(0.0F, 0.0F, 0.0F, 0.12F)), .label = clearColorSpec()};
+        .bg = fixedColorSpec(base), .border = fixedColorSpec(rgba(0.0F, 0.0F, 0.0F, 0.12F)), .label = clearColorSpec()
+    };
     const Button::ButtonStateColors hovered{
-        .bg = fixedColorSpec(hover), .border = fixedColorSpec(rgba(0.0F, 0.0F, 0.0F, 0.12F)), .label = clearColorSpec()};
-    button->setCustomPalette(Button::ButtonPalette{
-        .borderWidth = 0.5F * scale, .normal = normal, .hover = hovered, .pressed = normal, .disabled = normal,
-    });
+        .bg = fixedColorSpec(hover), .border = fixedColorSpec(rgba(0.0F, 0.0F, 0.0F, 0.12F)), .label = clearColorSpec()
+    };
+    button->setCustomPalette(
+        Button::ButtonPalette{
+            .borderWidth = 0.5F * scale,
+            .normal = normal,
+            .hover = hovered,
+            .pressed = normal,
+            .disabled = normal,
+        }
+    );
     return button;
   }
 
@@ -179,7 +186,10 @@ namespace {
     if (path.empty()) {
       return true;
     }
-    // TODO(phase): {"layout", "mode"} reshapes the registry (the Layout page swaps the mode's settings).
+    // The layout mode decides whether the [bar.*] pages exist at all.
+    if (path.size() >= 2 && path[0] == "layout" && path[1] == "mode") {
+      return true;
+    }
     if (path[0] == "bar" || path[0] == "widget" || path[0] == "plugins" || path[0] == "plugin_settings") {
       return true;
     }
@@ -1269,24 +1279,28 @@ std::unique_ptr<Flex> SettingsWindow::buildHeaderRow(float scale) {
         flex.setPadding(0.0F, Style::spaceLg * scale, 0.0F, kContentPaddingH * scale);
       },
   });
-  row->addChild(ui::row({
-      .out = &m_pageTitleRow,
-      .align = FlexAlign::Center,
-      .gap = Style::spaceSm * scale,
-      .flexGrow = 1.0F,
-  }));
-  row->addChild(ui::button({
-      .out = &m_actionsMenuButton,
-      .glyph = "dots",
-      .glyphSize = Style::fontSizeTitle * scale,
-      .variant = ButtonVariant::Ghost,
-      .minWidth = Style::controlHeightSm * scale,
-      .minHeight = Style::controlHeightSm * scale,
-      .padding = Style::spaceXs * scale,
-      .radius = Style::controlHeightSm * 0.5F * scale,
-      .onClick = [this]() { openActionsMenu(); },
-      .configure = [](Button& button) { button.setTabStop(false); },
-  }));
+  row->addChild(
+      ui::row({
+          .out = &m_pageTitleRow,
+          .align = FlexAlign::Center,
+          .gap = Style::spaceSm * scale,
+          .flexGrow = 1.0F,
+      })
+  );
+  row->addChild(
+      ui::button({
+          .out = &m_actionsMenuButton,
+          .glyph = "dots",
+          .glyphSize = Style::fontSizeTitle * scale,
+          .variant = ButtonVariant::Ghost,
+          .minWidth = Style::controlHeightSm * scale,
+          .minHeight = Style::controlHeightSm * scale,
+          .padding = Style::spaceXs * scale,
+          .radius = Style::controlHeightSm * 0.5F * scale,
+          .onClick = [this]() { openActionsMenu(); },
+          .configure = [](Button& button) { button.setTabStop(false); },
+      })
+  );
   if (Style::closeButtonsEnabled()) {
     row->addChild(
         ui::button({
@@ -1353,19 +1367,21 @@ std::unique_ptr<Flex> SettingsWindow::buildFilterRow(float scale) {
 
   static const bool translatorMode = SysUtils::isEnvFlagOn("NOCTALIA_TRANSLATOR");
   if (translatorMode) {
-    row->addChild(ui::toggle({
-        .checked = m_forceEnTranslation,
-        .scale = scale,
-        .onChange = [this](bool value) {
-          m_forceEnTranslation = value;
-          if (value) {
-            i18n::Service::instance().setLanguage("en");
-          } else if (m_config != nullptr) {
-            i18n::Service::instance().setLanguage(m_config->config().shell.lang);
-          }
-          requestSceneRebuild();
-        },
-    }));
+    row->addChild(
+        ui::toggle({
+            .checked = m_forceEnTranslation,
+            .scale = scale,
+            .onChange = [this](bool value) {
+              m_forceEnTranslation = value;
+              if (value) {
+                i18n::Service::instance().setLanguage("en");
+              } else if (m_config != nullptr) {
+                i18n::Service::instance().setLanguage(m_config->config().shell.lang);
+              }
+              requestSceneRebuild();
+            },
+        })
+    );
   }
   return row;
 }
@@ -1437,13 +1453,15 @@ std::unique_ptr<Flex> SettingsWindow::buildAccountRow(float scale, const Config&
   });
   const std::string avatarPath = shell::avatarDisplayPath(m_accounts, cfg);
   Image* avatarRaw = nullptr;
-  row->addChild(ui::image({
-      .out = &avatarRaw,
-      .fit = ImageFit::Cover,
-      .radius = avatarSize * 0.5F,
-      .width = avatarSize,
-      .height = avatarSize,
-  }));
+  row->addChild(
+      ui::image({
+          .out = &avatarRaw,
+          .fit = ImageFit::Cover,
+          .radius = avatarSize * 0.5F,
+          .width = avatarSize,
+          .height = avatarSize,
+      })
+  );
   if (avatarRaw != nullptr && !avatarPath.empty() && m_surface != nullptr) {
     (void)avatarRaw->setSourceFile(
         m_surface->renderTarget().renderer(), avatarPath, static_cast<int>(avatarSize * 2.0F), false, true
@@ -1471,13 +1489,19 @@ std::unique_ptr<Flex> SettingsWindow::buildAccountRow(float scale, const Config&
         )
     );
   }
-  row->addChild(ui::column(
-      {.align = FlexAlign::Start, .gap = 1.0F * scale, .flexGrow = 1.0F},
-      makeLabel(sessionDisplayName(), Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface),
-                FontWeight::Bold),
-      makeLabel(i18n::tr("settings.window.account-subtitle"), Style::fontSizeMini * scale,
-                colorSpecFromRole(ColorRole::OnSurfaceVariant))
-  ));
+  row->addChild(
+      ui::column(
+          {.align = FlexAlign::Start, .gap = 1.0F * scale, .flexGrow = 1.0F},
+          makeLabel(
+              sessionDisplayName(), Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface),
+              FontWeight::Bold
+          ),
+          makeLabel(
+              i18n::tr("settings.window.account-subtitle"), Style::fontSizeMini * scale,
+              colorSpecFromRole(ColorRole::OnSurfaceVariant)
+          )
+      )
+  );
   return row;
 }
 
@@ -1591,20 +1615,25 @@ std::unique_ptr<Flex> SettingsWindow::buildBody(
   auto contentColumn = ui::column({.align = FlexAlign::Stretch, .gap = 0.0F, .flexGrow = 1.0F});
   m_headerRow = contentColumn->addChild(buildHeaderRow(scale));
   if (auto status = buildStatusRow(scale)) {
-    contentColumn->addChild(ui::row(
-        {.align = FlexAlign::Stretch,
-         .configure = [scale](Flex& flex) {
-           flex.setPadding(0.0F, kContentPaddingH * scale, Style::spaceSm * scale, kContentPaddingH * scale);
-         }},
-        std::move(status)
-    ));
+    contentColumn->addChild(
+        ui::row(
+            {.align = FlexAlign::Stretch,
+             .configure =
+                 [scale](Flex& flex) {
+                   flex.setPadding(0.0F, kContentPaddingH * scale, Style::spaceSm * scale, kContentPaddingH * scale);
+                 }},
+            std::move(status)
+        )
+    );
   }
   // macOS has no group jump pills; the row stays for the content code but never shows.
-  contentColumn->addChild(ui::row({
-      .out = &m_groupJumpRow,
-      .visible = false,
-      .participatesInLayout = false,
-  }));
+  contentColumn->addChild(
+      ui::row({
+          .out = &m_groupJumpRow,
+          .visible = false,
+          .participatesInLayout = false,
+      })
+  );
 
   // Content is a centered column of at most kContentMaxWidth, like System Settings' pane.
   const float sceneWidth = m_sceneRoot != nullptr ? m_sceneRoot->width() : 0.0F;
@@ -2247,11 +2276,12 @@ void SettingsWindow::buildScene(std::uint32_t width, std::uint32_t height) {
 
   const Config fallbackCfg{};
   const Config& cfg = m_config != nullptr ? m_config->config() : fallbackCfg;
-  // TODO(phase): no [bar.*] pages outside the classic layout: empty bar list and no selected bar there.
-  const auto availableBars = settings::barNames(cfg);
+  // Only the classic layout shows the [bar.*] bars; the other modes configure theirs on the Layout page.
+  const bool classicLayout = cfg.layout.mode == LayoutMode::Classic;
+  const auto availableBars = classicLayout ? settings::barNames(cfg) : std::vector<std::string>{};
   syncSelectedBarState(cfg, availableBars);
 
-  const BarConfig* selectedBar = settings::findBar(cfg, m_selectedBarName);
+  const BarConfig* selectedBar = classicLayout ? settings::findBar(cfg, m_selectedBarName) : nullptr;
   logSettingsProfile("buildScene configSelection", phaseProfileWatch);
   phaseProfileWatch.reset();
 

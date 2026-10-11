@@ -791,11 +791,6 @@ void Application::initStyleThemeAndWayland() {
   });
 }
 
-bool Application::osdKindWanted(bool kindEnabled) const noexcept {
-  (void)kindEnabled;
-  std::abort(); // not implemented
-}
-
 void Application::reconcileOutputSurfaces() {
   // Canonical bottom-to-top (re)creation order for per-output layer surfaces.
   // This is the ONLY place this order is defined: it runs once after initUi()
@@ -810,7 +805,9 @@ void Application::reconcileOutputSurfaces() {
   m_desktopWidgetsController.onOutputChange();
   m_lockscreenWidgetsController.onOutputChange();
   m_screenCorners.onOutputChange();
-  // TODO(phase): layout components after the bar/dock (island, gesture handle), screen-edge strips last like hot corners.
+  m_island.onOutputChange();
+  m_gestureHandle.onOutputChange();
+  m_screenEdges.onOutputChange();
   m_hotCorners.onOutputChange();
   m_lockScreen.onOutputChange();
   m_idleGraceOverlay.onOutputChange();
@@ -853,43 +850,44 @@ void Application::initWaylandCallbacks() {
     } else {
       (void)m_compositorPlatform.clearActiveWorkspaceAlerts();
     }
-    // TODO(phase): also island/gesture handle onWorkspaceChanged (occupancy and overview decide what shows).
     m_bar.onWorkspaceChanged();
     m_dock.onWorkspaceChanged();
+    m_island.onWorkspaceChanged();
+    m_gestureHandle.onWorkspaceChanged();
     m_bar.refresh();
     m_windowSwitcher.onToplevelChange();
   });
   m_compositorPlatform.setKeyboardLayoutChangeCallback([this]() {
     m_bar.refresh();
-    // TODO(phase): OSD pre-gate: osdKindWanted().
-    if (m_configService.config().osd.kinds.keyboardLayout) {
+    if (osdKindWanted(m_configService.config().osd.kinds.keyboardLayout)) {
       m_keyboardLayoutOsd.onLayoutChanged(m_compositorPlatform, m_configService.config());
     }
     if (m_lockScreen.isActive()) {
       m_lockScreen.onKeyboardLayoutChanged();
     }
   });
-  // TODO(phase): windows opening/closing on the active workspace: island and handle onWorkspaceChanged().
   m_compositorPlatform.setToplevelChangeCallback([this]() {
     m_screenTimeService.onFocusChange();
     m_bar.scheduleSmartAutoHideReevaluation();
     m_dock.scheduleSmartAutoHideReevaluation();
+    // Windows opening or closing on the active workspace decide whether the island and handle show.
+    m_island.onWorkspaceChanged();
+    m_gestureHandle.onWorkspaceChanged();
     m_bar.refresh();
     m_dock.refresh();
     m_windowSwitcher.onToplevelChange();
   });
   if constexpr (kLockKeysEnabled) {
-    if (lockKeysConsumersEnabled(m_configService.config())) {
+    if (lockKeysConsumersEnabled(m_configService)) {
       m_lockKeysService.refreshNow();
     }
     m_lockKeysService.setChangeCallback(
         [this](const WaylandSeat::LockKeysState& previous, const WaylandSeat::LockKeysState& current) {
           const Config& config = m_configService.config();
-          // TODO(phase): OSD pre-gate: osdKindWanted().
-          if (config.osd.kinds.lockKeys) {
+          if (osdKindWanted(config.osd.kinds.lockKeys)) {
             m_lockKeysOsd.onLockKeysChanged(previous, current);
           }
-          if (configHasLockKeysWidget(config)) {
+          if (configHasLockKeysWidget(m_configService)) {
             m_bar.refresh();
           }
         }
@@ -897,9 +895,7 @@ void Application::initWaylandCallbacks() {
   }
   m_idleInhibitor.initialize(m_wayland);
   m_idleInhibitor.setChangeCallback([this, shouldRefreshControlCenter]() {
-    // TODO(phase): Application's OSD pre-gates (caffeine, night light, lock keys, keyboard layout) must not hide events
-    //   from the island: move them into OsdOverlay after the redirect.
-    if (m_configService.config().osd.kinds.caffeine) {
+    if (osdKindWanted(m_configService.config().osd.kinds.caffeine)) {
       m_osdOverlay.show(caffeineOsdContent(m_idleInhibitor.enabled()));
     }
     m_bar.refresh();
@@ -934,8 +930,7 @@ void Application::initAuxServicesAndHooks() {
     }
   });
   m_gammaService.setStateFeedbackCallback([this]() {
-    // TODO(phase): OSD pre-gate: osdKindWanted().
-    if (m_configService.config().osd.kinds.nightlight) {
+    if (osdKindWanted(m_configService.config().osd.kinds.nightlight)) {
       m_osdOverlay.show(nightLightOsdContent(m_gammaService));
     }
   });
@@ -1222,7 +1217,6 @@ void Application::initSystemBusServices() {
       m_batteryHookState.reset(initialPower);
       m_prevBatteryPluggedForEvents = initialPower.isPresent ? batteryStatePlugged(initialPower.state) : std::nullopt;
       m_batteryWarningMonitor.evaluate(m_configService.config().battery, *m_upowerService, m_notificationManager);
-      // TODO(phase): forward to m_island.onPowerChanged(change).
       m_upowerService->setChangeCallback([this, shouldRefreshControlCenter](const UPowerChange& change) {
         if (change.origin != UPowerService::ChangeOrigin::DeviceState) {
           if (shouldRefreshControlCenter()) {
@@ -1230,6 +1224,7 @@ void Application::initSystemBusServices() {
           }
           return;
         }
+        m_island.onPowerChanged(change);
         onUpowerStateChangedForHooks();
         m_batteryWarningMonitor.evaluate(m_configService.config().battery, *m_upowerService, m_notificationManager);
         if (m_bluetoothService != nullptr) {
@@ -1517,9 +1512,8 @@ void Application::initEarlySessionBusAndTray() {
   m_trayService->setChangeCallback([this]() {
     m_bar.refresh();
     m_trayMenu.onTrayChanged();
-    // TODO(phase): OSD pre-gate: osdKindWanted() for the keyboard-layout flag.
     m_keyboardLayoutOsd.onTrayChanged(
-        *m_trayService, m_configService.config(), m_configService.config().osd.kinds.keyboardLayout
+        *m_trayService, m_configService.config(), osdKindWanted(m_configService.config().osd.kinds.keyboardLayout)
     );
   });
   m_trayService->setMenuToggleCallback([this](const std::string& itemId, float contentScale) {
@@ -1550,9 +1544,9 @@ void Application::initSessionBusServices() {
       };
       applyMprisConfig();
       m_configService.addReloadCallback(applyMprisConfig);
-      // TODO(phase): forward to m_island.onMediaChanged().
       m_mprisService->setChangeCallback([this, shouldRefreshControlCenter]() {
         m_bar.refresh();
+        m_island.onMediaChanged();
         m_desktopWidgetsController.requestUpdate();
         m_mediaOsd.onMprisChanged(*m_mprisService);
         if (m_lockScreen.isActive()) {

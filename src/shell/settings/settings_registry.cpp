@@ -24,13 +24,13 @@
 #include "util/string_utils.h"
 
 #include <algorithm>
-#include <stdexcept>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <format>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -359,57 +359,283 @@ namespace settings {
       };
     }
 
+    [[nodiscard]] std::vector<std::string>
+    path2(const std::vector<std::string>& root, std::string_view table, std::string_view key) {
+      std::vector<std::string> p = root;
+      p.emplace_back(table);
+      p.emplace_back(key);
+      return p;
+    }
+
     // Layout-mode entry builders. Each takes the config path of its table (e.g. {"layout", "flow", "island"}),
     // so a component's settings render the same in its own mode and inside Flow.
     void appendModeBarEntries(
         std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const ModeBarConfig& bar,
         const SettingVisibility& visibleWhen
     ) {
-      (void)entries;
-      (void)root;
-      (void)bar;
-      (void)visibleWhen;
-      throw std::logic_error("appendModeBarEntries: not implemented");
+      constexpr SettingsSection section = SettingsSection::Layout;
+      const std::string group = "layout-bar";
+      auto path = [&root](std::string key) {
+        std::vector<std::string> p = root;
+        p.push_back(std::move(key));
+        return p;
+      };
+      auto push = [&](SettingEntry entry) {
+        entry.visibleWhen = visibleWhen;
+        entries.push_back(std::move(entry));
+      };
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.shared.position.label"),
+          i18n::tr("settings.schema.layout.bar.position"), path("position"),
+          asSegmented(enumSelect(kModeBarPositions, bar.position)), "edge top bottom"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.background.label"),
+          i18n::tr("settings.schema.layout.bar.background.description"), path("background"),
+          asSegmented(enumSelect(kModeBarBackgrounds, bar.background)), "glass transparent solid menu bar"
+      ));
+      {
+        SliderSetting opacity(bar.backgroundOpacity, 0.0, 1.0, 0.05, false);
+        push(makeEntry(
+            section, group, i18n::tr("settings.schema.layout.bar.opacity.label"),
+            i18n::tr("settings.schema.layout.bar.opacity.description"), path("background_opacity"), opacity,
+            "tint alpha"
+        ));
+      }
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.thickness.label"),
+          i18n::tr("settings.schema.layout.bar.thickness.description"), path("thickness"),
+          StepperSetting{.value = bar.thickness, .minValue = 20, .maxValue = 64, .step = 1, .valueSuffix = "px"},
+          "height size"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.floating.label"),
+          i18n::tr("settings.schema.layout.bar.floating.description"), path("floating"), ToggleSetting{bar.floating},
+          "pill detached rounded"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.shared.reserve-space.label"),
+          i18n::tr("settings.schema.layout.bar.reserve-space"), path("reserve_space"), ToggleSetting{bar.reserveSpace},
+          "exclusive zone"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.reveal-on-hover.label"),
+          i18n::tr("settings.schema.layout.bar.reveal-on-hover.description"), path("reveal_on_hover"),
+          ToggleSetting{bar.revealOnHover}, "edge peek autohide"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.bar.show-on-workspace-switch.label"),
+          i18n::tr("settings.schema.bar.show-on-workspace-switch.description"), path("show_on_workspace_switch"),
+          ToggleSetting{bar.showOnWorkspaceSwitch}, "workspace reveal peek"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.start.label"),
+          i18n::tr("settings.schema.layout.bar.widgets"), path("start"), ListSetting{.items = bar.startWidgets},
+          "widgets left"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.center.label"),
+          i18n::tr("settings.schema.layout.bar.widgets"), path("center"), ListSetting{.items = bar.centerWidgets},
+          "widgets middle"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.bar.end.label"),
+          i18n::tr("settings.schema.layout.bar.widgets"), path("end"), ListSetting{.items = bar.endWidgets},
+          "widgets right status"
+      ));
     }
 
     void appendIslandEntries(
         std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const IslandConfig& island,
         const SettingVisibility& visibleWhen
     ) {
-      (void)entries;
-      (void)root;
-      (void)island;
-      (void)visibleWhen;
-      throw std::logic_error("appendIslandEntries: not implemented");
+      constexpr SettingsSection section = SettingsSection::Layout;
+      const std::string group = "layout-island";
+      auto path = [&root](std::string key) {
+        std::vector<std::string> p = root;
+        p.push_back(std::move(key));
+        return p;
+      };
+      auto push = [&](SettingEntry entry) {
+        entry.visibleWhen = visibleWhen;
+        entries.push_back(std::move(entry));
+      };
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.island.material.label"),
+          i18n::tr("settings.schema.layout.island.material.description"), path("material"),
+          asSegmented(enumSelect(kIslandMaterials, island.material)), "glass black dynamic island"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.island.expand-on-hover.label"),
+          i18n::tr("settings.schema.layout.island.expand-on-hover.description"), path("expand_on_hover"),
+          ToggleSetting{island.expandOnHover}, "hover grow"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.island.suppress-osd.label"),
+          i18n::tr("settings.schema.layout.island.suppress-osd.description"), path("suppress_osd"),
+          ToggleSetting{island.suppressOsd}, "osd volume brightness replace"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.shared.reserve-space.label"),
+          i18n::tr("settings.schema.layout.island.reserve-space"), path("reserve_space"),
+          ToggleSetting{island.reserveSpace}, "exclusive zone"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.island.click-action.label"),
+          i18n::tr("settings.schema.layout.island.click-action.description"), path("click_action"),
+          TextSetting{.value = island.clickAction, .placeholder = "panel-toggle control-center"}, "click action ipc",
+          true
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.island.activity-ms.label"),
+          i18n::tr("settings.schema.layout.island.activity-ms.description"), path("activity_ms"),
+          StepperSetting{
+              .value = island.activityMs, .minValue = 500, .maxValue = 10000, .step = 250, .valueSuffix = "ms"
+          },
+          "duration timeout", true
+      ));
+      const std::string activityGroup = "layout-island-activities";
+      const auto activityEntry = [&](std::string_view key, std::string_view label, bool value) {
+        push(makeEntry(
+            section, activityGroup,
+            i18n::tr(std::string("settings.schema.layout.island.activities.") + std::string(label)),
+            i18n::tr("settings.schema.layout.island.activities.description"), path2(root, "activities", key),
+            ToggleSetting{value}, "activity event"
+        ));
+      };
+      activityEntry("media", "media", island.activities.media);
+      activityEntry("volume", "volume", island.activities.volume);
+      activityEntry("brightness", "brightness", island.activities.brightness);
+      activityEntry("battery", "battery", island.activities.battery);
+      activityEntry("notification", "notification", island.activities.notification);
+      activityEntry("system", "system", island.activities.system);
     }
 
     void appendEdgesEntries(
         std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const EdgesConfig& edges,
         const SettingVisibility& visibleWhen
     ) {
-      (void)entries;
-      (void)root;
-      (void)edges;
-      (void)visibleWhen;
-      throw std::logic_error("appendEdgesEntries: not implemented");
+      constexpr SettingsSection section = SettingsSection::Layout;
+      const std::string group = "layout-edges";
+      auto path = [&root](std::string key) {
+        std::vector<std::string> p = root;
+        p.push_back(std::move(key));
+        return p;
+      };
+      auto push = [&](SettingEntry entry) {
+        entry.visibleWhen = visibleWhen;
+        entries.push_back(std::move(entry));
+      };
+      const auto edgeEntry = [&](std::string key, std::string_view label, const std::string& value) {
+        push(makeEntry(
+            section, group, i18n::tr(std::string("settings.schema.layout.edges.") + std::string(label)),
+            i18n::tr("settings.schema.layout.edges.action"), path(std::move(key)),
+            TextSetting{.value = value, .placeholder = "none"}, "edge drawer action panel"
+        ));
+      };
+      edgeEntry("top", "top", edges.top);
+      edgeEntry("bottom", "bottom", edges.bottom);
+      edgeEntry("left", "left", edges.left);
+      edgeEntry("right", "right", edges.right);
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.edges.close-on-leave.label"),
+          i18n::tr("settings.schema.layout.edges.close-on-leave.description"), path("close_on_leave"),
+          ToggleSetting{edges.closeOnLeave}, "dismiss leave"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.edges.delay.label"),
+          i18n::tr("settings.schema.layout.edges.delay.description"), path("delay_ms"),
+          StepperSetting{.value = edges.delayMs, .minValue = 0, .maxValue = 2000, .step = 50, .valueSuffix = "ms"},
+          "dwell delay", true
+      ));
+      {
+        SliderSetting length(edges.length, 0.1, 1.0, 0.05, false);
+        push(makeEntry(
+            section, group, i18n::tr("settings.schema.layout.edges.length.label"),
+            i18n::tr("settings.schema.layout.edges.length.description"), path("length"), length, "size strip", true
+        ));
+      }
     }
 
     void appendHandleEntries(
         std::vector<SettingEntry>& entries, const std::vector<std::string>& root, const HandleConfig& handle,
         const SettingVisibility& visibleWhen
     ) {
-      (void)entries;
-      (void)root;
-      (void)handle;
-      (void)visibleWhen;
-      throw std::logic_error("appendHandleEntries: not implemented");
+      constexpr SettingsSection section = SettingsSection::Layout;
+      const std::string group = "layout-handle";
+      auto path = [&root](std::string key) {
+        std::vector<std::string> p = root;
+        p.push_back(std::move(key));
+        return p;
+      };
+      auto push = [&](SettingEntry entry) {
+        entry.visibleWhen = visibleWhen;
+        entries.push_back(std::move(entry));
+      };
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.handle.reveal.label"),
+          i18n::tr("settings.schema.layout.handle.reveal.description"), path("reveal"),
+          asSegmented(enumSelect(kHandleReveals, handle.reveal)), "overlay bar status"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.handle.pull-up.label"),
+          i18n::tr("settings.schema.layout.handle.pull-up.description"), path("pull_up"), ToggleSetting{handle.pullUp},
+          "drag gesture"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.handle.swipe.label"),
+          i18n::tr("settings.schema.layout.handle.swipe.description"), path("swipe_workspaces"),
+          ToggleSetting{handle.swipeWorkspaces}, "gesture workspace switch"
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.handle.hover-delay.label"),
+          i18n::tr("settings.schema.layout.handle.hover-delay.description"), path("hover_delay_ms"),
+          StepperSetting{
+              .value = handle.hoverDelayMs, .minValue = 0, .maxValue = 2000, .step = 50, .valueSuffix = "ms"
+          },
+          "dwell delay", true
+      ));
+      push(makeEntry(
+          section, group, i18n::tr("settings.schema.layout.handle.width.label"),
+          i18n::tr("settings.schema.layout.handle.width.description"), path("width"),
+          StepperSetting{.value = handle.width, .minValue = 40, .maxValue = 400, .step = 2, .valueSuffix = "px"},
+          "length size", true
+      ));
+      // The pop-up bar's own settings only matter when the handle reveals a bar.
+      const SettingVisibility barShown = [visibleWhen, root](const Config& c) {
+        if (visibleWhen && !visibleWhen(c)) {
+          return false;
+        }
+        const HandleConfig& h = root.size() > 2 ? c.layout.flow.handle : c.layout.handle;
+        return h.reveal == HandleReveal::Bar;
+      };
+      std::vector<std::string> barRoot = root;
+      barRoot.push_back("bar");
+      appendModeBarEntries(entries, barRoot, handle.bar, barShown);
     }
 
     // The Layout page: the mode picker, then the active mode's own settings.
     void appendLayoutEntries(std::vector<SettingEntry>& entries, const Config& cfg) {
-      (void)entries;
-      (void)cfg;
-      throw std::logic_error("appendLayoutEntries: not implemented");
+      constexpr SettingsSection section = SettingsSection::Layout;
+      const LayoutConfig& layout = cfg.layout;
+      entries.push_back(makeEntry(
+          section, "layout-mode", i18n::tr("settings.schema.layout.mode.label"),
+          i18n::tr("settings.schema.layout.mode.description"), {"layout", "mode"},
+          enumSelect(kLayoutModes, layout.mode),
+          "layout mode bar island edges handle flow classic minimal smart menu bar dock"
+      ));
+      const auto modeIs = [](LayoutMode mode) {
+        return SettingVisibility([mode](const Config& c) { return c.layout.mode == mode; });
+      };
+      appendModeBarEntries(entries, {"layout", "smart_bar"}, layout.smartBar, modeIs(LayoutMode::SmartBar));
+      appendModeBarEntries(entries, {"layout", "minimal_bar"}, layout.minimalBar, modeIs(LayoutMode::MinimalBar));
+      appendIslandEntries(entries, {"layout", "island"}, layout.island, modeIs(LayoutMode::Island));
+      appendEdgesEntries(entries, {"layout", "edges"}, layout.edges, modeIs(LayoutMode::Edges));
+      appendHandleEntries(entries, {"layout", "handle"}, layout.handle, modeIs(LayoutMode::Handle));
+      appendModeBarEntries(entries, {"layout", "flow", "bar"}, layout.flow.bar, modeIs(LayoutMode::Flow));
+      appendIslandEntries(entries, {"layout", "flow", "island"}, layout.flow.island, modeIs(LayoutMode::Flow));
+      appendEdgesEntries(entries, {"layout", "flow", "edges"}, layout.flow.edges, modeIs(LayoutMode::Flow));
+      appendHandleEntries(entries, {"layout", "flow", "handle"}, layout.flow.handle, modeIs(LayoutMode::Flow));
     }
 
   } // namespace
@@ -569,7 +795,8 @@ namespace settings {
     entries.push_back(makeEntry(
         SettingsSection::Appearance, "theme", tr("settings.schema.appearance.accent.label"),
         tr("settings.schema.appearance.accent.description"), {"theme", "accent"},
-        enumSelect(kAccentColors, cfg.theme.accent), "accent highlight color tint wallpaper blue purple pink red orange yellow green graphite"
+        enumSelect(kAccentColors, cfg.theme.accent),
+        "accent highlight color tint wallpaper blue purple pink red orange yellow green graphite"
     ));
     entries.push_back(makeEntry(
         SettingsSection::Appearance, "theme", tr("settings.schema.appearance.palette-source.label"),
@@ -3393,9 +3620,11 @@ namespace settings {
         "urgency"
     ));
 
-    // TODO(phase): call appendLayoutEntries; [bar.*] entries only in the classic layout mode.
-    // Bar: register every configured bar so global search can surface settings from all of them.
-    for (const auto& bar : cfg.bars) {
+    // Bar: register every configured bar so global search can surface settings from all of them. Only the
+    // classic layout shows the [bar.*] bars; every other mode brings its own (Layout page).
+    static const std::vector<BarConfig> kNoBars;
+    const auto& shownBars = cfg.layout.mode == LayoutMode::Classic ? cfg.bars : kNoBars;
+    for (const auto& bar : shownBars) {
       constexpr SettingsSection section = SettingsSection::Bar;
       const std::vector<std::string> root = {"bar", bar.name};
       auto path = [&](std::string key) {
@@ -3727,10 +3956,8 @@ namespace settings {
       }
     }
 
-    // TODO(phase): only the classic bars too; appendLayoutEntries after this loop, so a [bar.*] entry wins a
-    //   search tie with its layout-mode twin.
-    // Bar monitor overrides (all bars).
-    for (const auto& bar : cfg.bars) {
+    // Bar monitor overrides (all bars shown in the classic layout).
+    for (const auto& bar : shownBars) {
       for (const auto& ovr : bar.monitorOverrides) {
         constexpr SettingsSection section = SettingsSection::Bar;
         const std::vector<std::string> root = {"bar", bar.name, "monitor", ovr.match};
@@ -4082,6 +4309,9 @@ namespace settings {
         }
       }
     }
+
+    // Layout page: after the classic bars, so a [bar.*] setting wins a tie with its layout-mode twin.
+    appendLayoutEntries(entries, cfg);
 
     // Integrity guard: every override path must resolve to a real schema key, else
     // the entry silently reads/writes a dead override. Build-determined, so checked

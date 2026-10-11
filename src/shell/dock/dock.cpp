@@ -14,6 +14,7 @@
 #include "shell/dock/dock_model.h"
 #include "shell/dock/pinned_apps.h"
 #include "shell/panel/panel_manager.h"
+#include "shell/workspace_occupancy.h"
 #include "system/desktop_entry.h"
 #include "system/desktop_entry_launch.h"
 #include "ui/app_icon_colorization.h"
@@ -71,12 +72,12 @@ namespace {
     out.push_back('\x1F');
   }
 
-  std::vector<std::string> barLayerStackSignature(const Config& config) {
+  // The dock stacks against the bars on screen: the classic [bar.*] list or the layout mode's synthesized bars.
+  std::vector<std::string> barLayerStackSignature(const ConfigService& service) {
     std::vector<std::string> signature;
-    // TODO(phase): the dock stacks against the bars on screen: activeBars() (needs the ConfigService).
-    signature.reserve(config.bars.size());
+    signature.reserve(service.activeBars().size());
 
-    for (const auto& bar : config.bars) {
+    for (const auto& bar : service.activeBars()) {
       std::string item = std::format(
           "{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}", bar.name, bar.position, bar.enabled, bar.autoHide,
           bar.reserveSpace, bar.layer, bar.thickness, bar.marginEnds, bar.marginEdge, bar.shadow
@@ -247,55 +248,6 @@ namespace {
     return {"dock", "pinned"};
   }
 
-  [[nodiscard]] bool workspaceKeyMatchesAssignment(std::string_view assignmentKey, const Workspace& workspace) {
-    if (assignmentKey.empty()) {
-      return false;
-    }
-    if (!workspace.id.empty() && assignmentKey == workspace.id) {
-      return true;
-    }
-    if (!workspace.name.empty() && assignmentKey == workspace.name) {
-      return true;
-    }
-    if (workspace.index > 0 && assignmentKey == std::to_string(workspace.index)) {
-      return true;
-    }
-    return false;
-  }
-
-  // TODO(phase): use shell::activeWorkspaceHasWindows instead of this copy.
-  [[nodiscard]] bool activeWorkspaceHasWindows(const CompositorPlatform& platform, wl_output* output) {
-    const auto workspaces = platform.workspaces(output);
-    const Workspace* active = nullptr;
-    for (const auto& workspace : workspaces) {
-      if (workspace.active) {
-        active = &workspace;
-        break;
-      }
-    }
-    if (active == nullptr) {
-      return false;
-    }
-
-    const auto assignments = platform.workspaceWindowAssignments(output);
-    for (const auto& assignment : assignments) {
-      if (workspaceKeyMatchesAssignment(assignment.workspaceKey, *active)) {
-        return true;
-      }
-    }
-    if (!assignments.empty()) {
-      return false;
-    }
-    return active->occupied;
-  }
-
-  [[nodiscard]] bool dockSmartAutoHideWantsPinnedVisible(const CompositorPlatform& platform, wl_output* output) {
-    if (platform.hasOverviewState() && platform.isOverviewOpen()) {
-      return true;
-    }
-    return !activeWorkspaceHasWindows(platform, output);
-  }
-
 } // namespace
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -313,7 +265,7 @@ bool Dock::initialize(CompositorPlatform& platform, ConfigService* config, Rende
       [this]() {
         const auto& newCfg = m_config->config().dock;
         const auto& newShadow = m_config->config().shell.shadow;
-        const auto newBarLayerStack = barLayerStackSignature(m_config->config());
+        const auto newBarLayerStack = barLayerStackSignature(*m_config);
         if (newCfg == m_lastDockConfig && newShadow == m_lastShadow && newBarLayerStack == m_lastBarLayerStack) {
           return;
         }
@@ -339,7 +291,7 @@ bool Dock::initialize(CompositorPlatform& platform, ConfigService* config, Rende
 
   m_lastDockConfig = cfg;
   m_lastShadow = m_config->config().shell.shadow;
-  m_lastBarLayerStack = barLayerStackSignature(m_config->config());
+  m_lastBarLayerStack = barLayerStackSignature(*m_config);
 
   if (!dockMayBeEnabled(cfg)) {
     kLog.info("dock disabled in config");
@@ -353,7 +305,7 @@ void Dock::reload() {
   const auto& cfg = m_config->config().dock;
   m_lastDockConfig = cfg;
   m_lastShadow = m_config->config().shell.shadow;
-  m_lastBarLayerStack = barLayerStackSignature(m_config->config());
+  m_lastBarLayerStack = barLayerStackSignature(*m_config);
 
   if (!dockMayBeEnabled(cfg)) {
     closeAllInstances();
@@ -760,7 +712,7 @@ void Dock::reevaluateSmartAutoHide() {
       m_hoveredInstance = instance;
     }
 
-    const bool wantsPinned = dockSmartAutoHideWantsPinnedVisible(*m_platform, instance->output);
+    const bool wantsPinned = shell::showsHome(*m_platform, instance->output);
     const bool pinnedChanged = wantsPinned != instance->smartAutoHidePinnedVisible;
     instance->smartAutoHidePinnedVisible = wantsPinned;
 

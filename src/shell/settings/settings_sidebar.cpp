@@ -134,18 +134,30 @@ namespace settings {
             .label = colorSpecFromRole(ColorRole::OnPrimary),
         };
         return Button::ButtonPalette{
-            .borderWidth = 0.0F, .normal = accent, .hover = accent, .pressed = accent, .disabled = accent,
+            .borderWidth = 0.0F,
+            .normal = accent,
+            .hover = accent,
+            .pressed = accent,
+            .disabled = accent,
         };
       }
       return Button::ButtonPalette{
           .borderWidth = 0.0F,
-          .normal = {.bg = clearColorSpec(), .border = clearColorSpec(), .label = colorSpecFromRole(ColorRole::OnSurface)},
-          .hover = {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.07F), .border = clearColorSpec(),
-                    .label = colorSpecFromRole(ColorRole::OnSurface)},
-          .pressed = {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.12F), .border = clearColorSpec(),
-                      .label = colorSpecFromRole(ColorRole::OnSurface)},
-          .disabled = {.bg = clearColorSpec(), .border = clearColorSpec(),
-                       .label = colorSpecFromRole(ColorRole::OnSurfaceVariant)},
+          .normal =
+              {.bg = clearColorSpec(), .border = clearColorSpec(), .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .hover =
+              {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.07F),
+               .border = clearColorSpec(),
+               .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .pressed =
+              {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.12F),
+               .border = clearColorSpec(),
+               .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .disabled = {
+              .bg = clearColorSpec(),
+              .border = clearColorSpec(),
+              .label = colorSpecFromRole(ColorRole::OnSurfaceVariant)
+          },
       };
     }
 
@@ -333,8 +345,7 @@ namespace settings {
         requestRebuild();
       };
       addNavButton(
-          *nav,
-          makePrimaryNavButton(style, i18n::tr(settingsSectionLabelKey(section)), scale, selected, onClick),
+          *nav, makePrimaryNavButton(style, i18n::tr(settingsSectionLabelKey(section)), scale, selected, onClick),
           onClick
       );
 
@@ -397,7 +408,7 @@ namespace settings {
       }
     }
 
-    // TODO(phase): bar rows and "New bar" only in the classic layout mode.
+    // Bar rows and "New bar" exist only in the classic layout mode; ctx.availableBars is empty otherwise.
     for (const auto& barName : ctx.availableBars) {
       const bool barSelected =
           showActiveTab && *selectedSection == "bar" && *selectedBarName == barName && selectedMonitorOverride->empty();
@@ -502,29 +513,31 @@ namespace settings {
       *creatingBarName = nextBarName;
       requestRebuild();
     };
-    addNavButton(
-        *nav,
-        ui::button({
-            .text = i18n::tr("settings.entities.bar.new"),
-            .glyph = "add",
-            .fontSize = Style::fontSizeCaption * scale,
-            .glyphSize = kPrimaryNavGlyphSize * scale,
-            .contentAlign = ButtonContentAlign::Start,
-            .variant = ButtonVariant::Ghost,
-            .minHeight = Style::controlHeightSm * scale,
-            .paddingV = Style::spaceXs * scale,
-            .paddingH = kPrimaryNavPaddingH * scale,
-            .gap = kPrimaryNavGap * scale,
-            .radius = Style::scaledRadiusMd(scale),
-            .onClick = onNewBarClick,
-            .configure =
-                [](Button& button) {
-                  makeButtonLabelBold(button);
-                  button.setTabStop(false);
-                },
-        }),
-        onNewBarClick
-    );
+    if (cfg.layout.mode == LayoutMode::Classic) {
+      addNavButton(
+          *nav,
+          ui::button({
+              .text = i18n::tr("settings.entities.bar.new"),
+              .glyph = "add",
+              .fontSize = Style::fontSizeCaption * scale,
+              .glyphSize = kPrimaryNavGlyphSize * scale,
+              .contentAlign = ButtonContentAlign::Start,
+              .variant = ButtonVariant::Ghost,
+              .minHeight = Style::controlHeightSm * scale,
+              .paddingV = Style::spaceXs * scale,
+              .paddingH = kPrimaryNavPaddingH * scale,
+              .gap = kPrimaryNavGap * scale,
+              .radius = Style::scaledRadiusMd(scale),
+              .onClick = onNewBarClick,
+              .configure =
+                  [](Button& button) {
+                    makeButtonLabelBold(button);
+                    button.setTabStop(false);
+                  },
+          }),
+          onNewBarClick
+      );
+    }
 
     if (!creatingBarName->empty()) {
       auto createPanel = ui::column({

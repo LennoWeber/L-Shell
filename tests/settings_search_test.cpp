@@ -32,13 +32,15 @@ int main(int argc, char* argv[]) {
   i18n::Service::instance().init();
 
   Config config;
-  // TODO(phase): set the classic layout mode: the default (Flow) has no [bar.*] pages.
+  // The [bar.*] pages exist only in the classic layout mode.
+  config.layout.mode = LayoutMode::Classic;
   config.bars.push_back(BarConfig{});
   const auto registry = settings::buildSettingsRegistry(config, nullptr, nullptr, settings::RegistryEnvironment{});
 
   bool ok = true;
-  const auto barPosition =
-      std::ranges::find(registry, std::vector<std::string>{"bar", "default", "position"}, &settings::SettingEntry::path);
+  const auto barPosition = std::ranges::find(
+      registry, std::vector<std::string>{"bar", "default", "position"}, &settings::SettingEntry::path
+  );
   ok = expect(barPosition != registry.end(), "registry has the default bar's position setting") && ok;
   if (barPosition != registry.end()) {
     ok = expect(settings::matchesSettingQuery(*barPosition, "bar position"), "matches words that are not adjacent")
@@ -51,11 +53,22 @@ int main(int argc, char* argv[]) {
   const auto results = provider.query("bar position");
   ok = expect(!results.empty(), "provider finds settings for a multi-word query") && ok;
   const bool hasBarPosition = std::ranges::any_of(results, [](const LauncherResult& result) {
-    return result.id == std::string("bar\x1f" "default\x1f" "position");
+    return result.id
+        == std::string(
+               "bar\x1f"
+               "default\x1f"
+               "position"
+        );
   });
   ok = expect(hasBarPosition, "results include the bar position setting") && ok;
   ok = expect(
-           !results.empty() && results.front().id == std::string("bar\x1f" "default\x1f" "position"),
+           !results.empty()
+               && results.front().id
+                   == std::string(
+                       "bar\x1f"
+                       "default\x1f"
+                       "position"
+                   ),
            "the bar's own position setting ranks first"
        )
       && ok;
@@ -67,7 +80,17 @@ int main(int argc, char* argv[]) {
        )
       && ok;
   ok = expect(
-           std::ranges::any_of(withIntent, [](const LauncherResult& r) { return r.id == std::string("bar\x1f" "default\x1f" "position"); }),
+           std::ranges::any_of(
+               withIntent,
+               [](const LauncherResult& r) {
+                 return r.id
+                     == std::string(
+                            "bar\x1f"
+                            "default\x1f"
+                            "position"
+                     );
+               }
+           ),
            "intent words are ignored for matching"
        )
       && ok;

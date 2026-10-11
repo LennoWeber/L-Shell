@@ -143,8 +143,8 @@ struct BarConfig {
   bool autoHideEdgeReveal = true;
 
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
-  bool reserveSpace = true;  // reserve compositor exclusive zone; applies with or without auto_hide
-  std::string layer = "top"; // top | overlay; attached panels use the same layer
+  bool reserveSpace = true;    // reserve compositor exclusive zone; applies with or without auto_hide
+  std::string layer = "top";   // top | overlay; attached panels use the same layer
   std::int32_t thickness = 28; // slim macOS-style menu bar
   float backgroundOpacity = 0.65F;
   bool compositorBlur = true;
@@ -811,7 +811,7 @@ struct OsdKindsConfig {
 };
 
 struct OsdConfig {
-  bool enabled = true; // master gate for all OSD popups
+  bool enabled = true;                // master gate for all OSD popups
   std::string position = "top_right"; // under the menu bar's status area, like the macOS Tahoe volume HUD
   std::string positionVertical = "top_center";
   std::string orientation = "horizontal";
@@ -840,8 +840,8 @@ struct NotificationConfig {
   std::string layer = "top"; // top | overlay
   float scale = 1.0F;
   std::int32_t width = kDefaultWidth;
-  float backgroundOpacity = 0.8F;  // toast card background alpha (0.0–1.0)
-  bool border = true;              // outline around toast cards
+  float backgroundOpacity = 0.8F; // toast card background alpha (0.0–1.0)
+  bool border = true;             // outline around toast cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = Style::borderWidth;
   bool followFocusedOutput = false;
@@ -981,9 +981,9 @@ constexpr EnumOption<PanelPlacement> kPanelPlacements[] = {
 // panel bar-relative (the historical floating behavior); "center" reserves the
 // screen center; the rest anchor to a screen edge/corner. Same vocabulary as the
 // OSD/notification `position`.
-constexpr std::string_view kPanelPositions[] = {"auto",          "center",       "spotlight",   "top_left",
-                                                "top_center",    "top_right",    "center_left", "center_right",
-                                                "bottom_left",   "bottom_center", "bottom_right"};
+constexpr std::string_view kPanelPositions[] = {"auto",        "center",        "spotlight",   "top_left",
+                                                "top_center",  "top_right",     "center_left", "center_right",
+                                                "bottom_left", "bottom_center", "bottom_right"};
 
 constexpr EnumOption<WallpaperFillMode> kWallpaperFillModes[] = {
     {WallpaperFillMode::Center, "center", "settings.options.wallpaper.fill.center"},
@@ -1964,17 +1964,17 @@ struct IslandConfig {
   std::string clickAction = "panel-toggle control-center"; // widget action grammar
   IslandActivitiesConfig activities;
   std::int32_t activityMs = 3000; // how long an event keeps the island expanded
-  bool suppressOsd = true;      // the island replaces the OSD for every activity it shows
+  bool suppressOsd = true;        // the island replaces the OSD for every activity it shows
 
   bool operator==(const IslandConfig&) const = default;
 };
 
 // Screen-edge drawers: resting the pointer on the middle part of an edge runs that edge's action.
 struct EdgesConfig {
-  std::int32_t delayMs = 150;    // dwell time before the action runs
-  std::int32_t triggerSize = 2;  // trigger strip thickness in logical px
-  float length = 0.5F;           // fraction of each edge covered by its strip, centered
-  bool closeOnLeave = true;      // panels opened from an edge close when the pointer leaves them
+  std::int32_t delayMs = 150;                    // dwell time before the action runs
+  std::int32_t triggerSize = 2;                  // trigger strip thickness in logical px
+  float length = 0.5F;                           // fraction of each edge covered by its strip, centered
+  bool closeOnLeave = true;                      // panels opened from an edge close when the pointer leaves them
   std::string top = "panel-open control-center"; // widget action grammar; "none" disables the edge
   std::string bottom = "panel-open launcher";
   std::string left = "panel-open status-overlay";
@@ -2018,10 +2018,10 @@ struct HandleConfig {
 // the bottom and the side edges open the launcher and Control Center.
 struct FlowConfig {
   // Pinned on an empty workspace only; while windows are open the island owns the top edge, so the bar neither
-  // reserves space, nor reveals on hover, nor flashes on a workspace switch.
+  // reveals on hover nor flashes on a workspace switch.
   ModeBarConfig bar{
       .thickness = 28,
-      .reserveSpace = false,
+      .reserveSpace = false, // only on screen when there are no windows to push aside
       .revealOnHover = false,
       .showOnWorkspaceSwitch = false,
       .startWidgets = {"logo", "workspaces"},
@@ -2160,6 +2160,7 @@ struct ConfigChangeSet {
         || controlCenter
         || plugins
         || hotCorners
+        || layout
         || storage
         || accessibility
         || layout;

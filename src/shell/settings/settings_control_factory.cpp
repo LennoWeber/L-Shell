@@ -290,10 +290,6 @@ namespace settings {
     auto copy = ui::column(std::move(copyProps));
     copy->addChild(std::move(titleRow));
 
-    if (!entry.subtitle.empty()) {
-      copy->addChild(makeSettingSubtitleLabel(entry.subtitle, scale));
-    }
-
     auto actions = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale});
     if (overridden) {
       actions->addChild(makeOverrideBadge());
@@ -312,15 +308,30 @@ namespace settings {
     tagTabFocusKey(*control, joinSettingPath(entry.path));
     actions->addChild(std::move(control));
 
-    auto row = ui::row(
+    // Title and control share a line when they fit; in a narrow window the control wraps below the title instead
+    // of covering it.
+    auto line = ui::row(
         {.align = FlexAlign::Center,
          .justify = FlexJustify::SpaceBetween,
+         .wrap = true,
          .gap = Style::spaceMd * scale,
-         .paddingV = 7.0F * scale,
-         .paddingH = 0.0F,
-         .minHeight = 40.0F * scale},
+         .minHeight = 26.0F * scale,
+         .fillWidth = true},
         std::move(copy), std::move(actions)
     );
+    // Like a macOS footnote, the description runs the full width under the title and the control, so a wide
+    // control (a segmented picker, a slider) never squeezes it into a narrow column or covers the title.
+    auto row = ui::column({
+        .align = FlexAlign::Stretch,
+        .gap = 2.0F * scale,
+        .paddingV = 7.0F * scale,
+        .paddingH = 0.0F,
+        .minHeight = 40.0F * scale,
+    });
+    row->addChild(std::move(line));
+    if (!entry.subtitle.empty()) {
+      row->addChild(makeSettingSubtitleLabel(entry.subtitle, scale));
+    }
 
     // macOS group boxes separate their rows with a hairline.
     if (!section.children().empty()) {

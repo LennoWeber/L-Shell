@@ -21,8 +21,10 @@
 #include "shell/bar/widgets/taskbar_widget.h"
 #include "shell/bar/widgets/tray_widget.h"
 #include "shell/panel/panel_manager.h"
+#include "shell/surface/glass.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
+#include "shell/workspace_occupancy.h"
 #include "ui/builders.h"
 #include "ui/palette.h"
 #include "ui/style.h"
@@ -33,10 +35,10 @@
 #include <cassert>
 #include <cerrno>
 #include <cmath>
-#include <stdexcept>
 #include <linux/input-event-codes.h>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
 #include <unordered_set>
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
@@ -75,56 +77,6 @@ namespace {
     return instance.barConfig.autoHide;
   }
 
-  [[nodiscard]] bool workspaceKeyMatchesAssignment(std::string_view assignmentKey, const Workspace& workspace) {
-    if (assignmentKey.empty()) {
-      return false;
-    }
-    if (!workspace.id.empty() && assignmentKey == workspace.id) {
-      return true;
-    }
-    if (!workspace.name.empty() && assignmentKey == workspace.name) {
-      return true;
-    }
-    if (workspace.index > 0 && assignmentKey == std::to_string(workspace.index)) {
-      return true;
-    }
-    return false;
-  }
-
-  // TODO(phase): replace this private copy with shell::activeWorkspaceHasWindows (shell/workspace_occupancy.h).
-  [[nodiscard]] bool activeWorkspaceHasWindows(const CompositorPlatform& platform, wl_output* output) {
-    const auto workspaces = platform.workspaces(output);
-    const Workspace* active = nullptr;
-    for (const auto& workspace : workspaces) {
-      if (workspace.active) {
-        active = &workspace;
-        break;
-      }
-    }
-    if (active == nullptr) {
-      return false;
-    }
-
-    const auto assignments = platform.workspaceWindowAssignments(output);
-    for (const auto& assignment : assignments) {
-      if (workspaceKeyMatchesAssignment(assignment.workspaceKey, *active)) {
-        return true;
-      }
-    }
-    if (!assignments.empty()) {
-      return false;
-    }
-    return active->occupied;
-  }
-
-  [[nodiscard]] bool smartAutoHideWantsPinnedVisible(const CompositorPlatform& platform, wl_output* output) {
-    if (platform.hasOverviewState() && platform.isOverviewOpen()) {
-      return true;
-    }
-    return !activeWorkspaceHasWindows(platform, output);
-  }
-
-  // TODO(phase): BarConfig::autoHideEdgeReveal = false keeps the edge trigger strip out of the input region.
   [[nodiscard]] int barAutoHideEdgeGutter(const BarConfig& cfg) noexcept {
     if (!barConfigUsesSlideSurface(cfg) || cfg.marginEdge <= 0) {
       return 0;
@@ -139,6 +91,10 @@ namespace {
     }
     if (fullSurface) {
       return {InputRect{0, 0, surfW, surfH}};
+    }
+    // Without edge reveal a hidden bar takes no input at all; only the layout handle (setBarPeek) brings it back.
+    if (!cfg.autoHideEdgeReveal) {
+      return {};
     }
 
     const int strip = std::min(kAutoHideTriggerPx, cfg.position == "left" || cfg.position == "right" ? surfW : surfH);
@@ -1472,16 +1428,16 @@ bool Bar::initialize(const BarServices& services) {
 
   m_widgetFactory = std::make_unique<WidgetFactory>(services);
 
-  // TODO(phase): read the resolved bars (ConfigService::activeBars()) and reload on changed.layout too,
-  //   so a layout-mode switch recreates the synthesized bars.
-  m_lastBars = m_config->config().bars;
+  // Bars on screen come from the layout mode: the classic [bar.*] list or the mode's synthesized bars, so a
+  // mode switch shows up here as a changed bar list.
+  m_lastBars = m_config->activeBars();
   m_lastWidgets = m_config->config().widgets;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastPlugins = m_config->config().plugins;
   m_config->addReloadCallback(
       [this]() {
         const auto& cfg = m_config->config();
-        if (cfg.bars == m_lastBars
+        if (m_config->activeBars() == m_lastBars
             && cfg.widgets == m_lastWidgets
             && cfg.shell.shadow == m_lastShadow
             && cfg.plugins == m_lastPlugins) {
@@ -1540,9 +1496,8 @@ void Bar::reload() {
   kLog.info("reloading config");
   const auto previousBars = m_lastBars;
   const auto previousShadow = m_lastShadow;
-  // TODO(phase): compare and store activeBars() instead of [bar.*].
-  const bool recreateForOrder = barSurfaceOrderRequiresRecreate(previousBars, m_config->config().bars);
-  m_lastBars = m_config->config().bars;
+  const bool recreateForOrder = barSurfaceOrderRequiresRecreate(previousBars, m_config->activeBars());
+  m_lastBars = m_config->activeBars();
   m_lastWidgets = m_config->config().widgets;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastPlugins = m_config->config().plugins;
@@ -1701,7 +1656,6 @@ void Bar::scheduleSmartAutoHideReevaluation() {
   });
 }
 
-// TODO(phase): a bar held by setBarPeek stays revealed even while windows are open.
 void Bar::reevaluateSmartAutoHide() {
   if (m_platform == nullptr || m_overlayDisplaySuppressed) {
     return;
@@ -1716,7 +1670,7 @@ void Bar::reevaluateSmartAutoHide() {
       continue;
     }
 
-    const bool wantsPinned = smartAutoHideWantsPinnedVisible(*m_platform, instance->output);
+    const bool wantsPinned = shell::showsHome(*m_platform, instance->output);
     const bool pinnedChanged = wantsPinned != instance->smartAutoHidePinnedVisible;
     instance->smartAutoHidePinnedVisible = wantsPinned;
 
@@ -1731,7 +1685,9 @@ void Bar::reevaluateSmartAutoHide() {
         syncBarSurfaceChrome(*instance);
         needsRedraw = true;
       }
-    } else if (!instance->pointerInside && instance->attachedPopupCount == 0 && !suppressAutoHide) {
+    } else if (
+        !instance->pointerInside && !instance->peeked && instance->attachedPopupCount == 0 && !suppressAutoHide
+    ) {
       if ((instance->hideOpacity > 0.0F || pinnedChanged)
           && (!instance->barConfig.showOnWorkspaceSwitch || !isWorkspacePeekActive())) {
         startHideFadeOut(*instance);
@@ -1789,7 +1745,10 @@ void Bar::applyPendingWorkspaceReveal() {
 
   m_workspacePeekHideTimer.start(kWorkspacePeekHold, [this, peeked = std::move(peeked)]() {
     for (BarInstance* instance : peeked) {
-      if (instance == nullptr || !instance->barConfig.isAutoHideEnabled() || instance->pointerInside) {
+      if (instance == nullptr
+          || !instance->barConfig.isAutoHideEnabled()
+          || instance->pointerInside
+          || instance->peeked) {
         continue;
       }
       if (instance->barConfig.smartAutoHide && instance->smartAutoHidePinnedVisible) {
@@ -1842,6 +1801,7 @@ void Bar::reevaluateAutoHide() {
     if (instance == nullptr
         || !barPointerHideAllowed(*instance)
         || instance->pointerInside
+        || instance->peeked
         || instance->attachedPopupCount > 0) {
       continue;
     }
@@ -2211,19 +2171,32 @@ void Bar::setAttachedPanelGeometry(
   }
 }
 
-// TODO(phase): implement with a per-instance peek flag on top of revealAutoHideBar.
 void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
   assert(!barName.empty() && "a peek names the bar it holds");
-  (void)output;
-  (void)barName;
-  (void)active;
-  throw std::logic_error("Bar::setBarPeek: not implemented");
+  BarInstance* instance = instanceForBar(output, barName);
+  if (instance == nullptr || instance->surface == nullptr || !barSupportsSlideBehavior(instance->barConfig)) {
+    return;
+  }
+  instance->peeked = active;
+  if (active) {
+    revealAutoHideBar(*instance);
+    syncBarAutoHideInputRegion(*instance);
+    instance->surface->requestRedraw();
+    return;
+  }
+  if (instance->pointerInside || instance->attachedPopupCount > 0 || !barPointerHideAllowed(*instance)) {
+    return;
+  }
+  const bool suppressAutoHide =
+      (m_autoHideSuppressionCallback != nullptr) ? m_autoHideSuppressionCallback(*instance) : false;
+  if (!suppressAutoHide) {
+    startHideFadeOut(*instance);
+  }
 }
 
 bool Bar::isBarShown(wl_output* output, std::string_view barName) const noexcept {
-  (void)output;
-  (void)barName;
-  std::abort(); // not implemented
+  const BarInstance* instance = instanceForBar(output, barName);
+  return instance != nullptr && instance->surface != nullptr && barContentVisuallyShown(*instance);
 }
 
 void Bar::beginAttachedPopup(wl_surface* surface) {
@@ -2337,8 +2310,7 @@ void Bar::toggle() {
 
 void Bar::syncInstances() {
   const auto& outputs = m_platform->outputs();
-  // TODO(phase): instances follow activeBars(): the classic [bar.*] list or the mode's synthesized bars.
-  const auto& bars = m_config->config().bars;
+  const auto& bars = m_config->activeBars();
 
   const auto geometryChanged = [](const BarInstance& instance, const WaylandOutput& output) {
     return instance.outputLogicalX != output.logicalX
@@ -3103,7 +3075,6 @@ bool Bar::instanceNeedsFrameTick(const BarInstance& instance) {
       || widgetsNeedFrameTick(instance.endWidgets);
 }
 
-// TODO(phase): BarConfig::glass draws the Liquid Glass chrome (sheen + edge-lit rim) over the background.
 void Bar::applyBackgroundPalette(BarInstance& instance) {
   if (instance.bg == nullptr) {
     return;
@@ -3113,13 +3084,24 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
   style.border = resolveColorSpec(instance.barConfig.border);
   style.borderWidth = instance.barConfig.borderWidth;
   instance.bg->setStyle(style);
+  applyGlassChrome(instance, style.radius);
 }
 
-// TODO(phase): honor autoHideEdgeReveal here, and keep a peeked bar (setBarPeek) fully interactive.
 void Bar::applyGlassChrome(BarInstance& instance, const Radii& radius) {
-  (void)instance;
-  (void)radius;
-  throw std::logic_error("Bar::applyGlassChrome: not implemented");
+  if (instance.glassSheen == nullptr || instance.glassRim == nullptr) {
+    return;
+  }
+  shell::glass::GlassStyle glass;
+  glass.radius = radius;
+  instance.glassSheen->setStyle(shell::glass::sheenStyle(glass));
+  // A bar on the screen edge only gets the sheen; the lit rim belongs to floating glass, where every edge shows.
+  const bool floating = instance.barConfig.marginEdge > 0;
+  instance.glassRim->setVisible(floating);
+  if (floating) {
+    instance.glassRim->setFill(clearColor());
+    instance.glassRim->setRadii(radius);
+    shell::glass::applyRim(*instance.glassRim, glass, isResolvedLightTheme(), instance.barConfig.scale);
+  }
 }
 
 void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
@@ -3134,6 +3116,7 @@ void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
   }
   if (barConfigUsesSlideSurface(instance.barConfig)) {
     const bool fullSurface = instance.pointerInside
+        || instance.peeked
         || instance.attachedPopupCount > 0
         || instance.hideOpacity > 0.5F
         || (instance.barConfig.smartAutoHide && instance.smartAutoHidePinnedVisible);
@@ -3307,6 +3290,14 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
 
     // Bar background
     instance.bg = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
+    if (instance.barConfig.glass) {
+      instance.glassSheen = static_cast<Box*>(
+          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
+      );
+      instance.glassRim = static_cast<Box*>(
+          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
+      );
+    }
 
     // Shadow — bar shape copy rendered with large SDF softness to simulate a blurred drop shadow.
     if (shadowSize > 0.0F) {
@@ -3384,7 +3375,7 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
     });
 
     if (instance.barConfig.smartAutoHide && m_platform != nullptr) {
-      instance.smartAutoHidePinnedVisible = smartAutoHideWantsPinnedVisible(*m_platform, instance.output);
+      instance.smartAutoHidePinnedVisible = shell::showsHome(*m_platform, instance.output);
     }
     if (barConfigUsesSlideSurface(instance.barConfig)) {
       instance.slideRoot->setOpacity(1.0F);
@@ -3430,6 +3421,13 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
         barAreaW + concave.logicalInset.left + concave.logicalInset.right,
         barAreaH + concave.logicalInset.top + concave.logicalInset.bottom
     );
+    for (Box* glass : {instance.glassSheen, instance.glassRim}) {
+      if (glass != nullptr) {
+        glass->setPosition(barAreaX, barAreaY);
+        glass->setSize(barAreaW, barAreaH);
+      }
+    }
+    applyGlassChrome(instance, concave.radii);
   }
 
   instance.paletteConn = paletteChanged().connect([inst = &instance] {
@@ -3642,6 +3640,8 @@ bool Bar::onPointerEvent(const PointerEvent& event) {
   case PointerEvent::Type::Leave: {
     if (m_hoveredInstance != nullptr) {
       m_hoveredInstance->pointerInside = false;
+      // A peek ends once the pointer has used the bar and moved on.
+      m_hoveredInstance->peeked = false;
       m_hoveredInstance->inputDispatcher.pointerLeave();
       updateAccordionExpansion(*m_hoveredInstance, nullptr);
       const bool suppressAutoHide =
@@ -3755,16 +3755,15 @@ std::optional<std::string> Bar::collectBarIpcInstances(
   }
 
   if (barName.has_value()) {
-    // TODO(phase): bar-* IPC addresses the bars on screen: activeBars().
-    const bool knownBar = std::ranges::contains(m_config->config().bars, *barName, &BarConfig::name);
+    const bool knownBar = std::ranges::contains(m_config->activeBars(), *barName, &BarConfig::name);
     if (!knownBar) {
       if (!monitorSelector.has_value()) {
         monitorSelector = std::move(barName);
         barName = std::nullopt;
       } else {
         std::vector<std::string> knownBars;
-        knownBars.reserve(m_config->config().bars.size());
-        for (const auto& bar : m_config->config().bars) {
+        knownBars.reserve(m_config->activeBars().size());
+        for (const auto& bar : m_config->activeBars()) {
           knownBars.push_back(bar.name);
         }
         const std::string suffix =

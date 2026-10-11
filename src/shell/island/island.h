@@ -105,9 +105,7 @@ private:
   void scheduleActivityTimer();
   void onActivityTimer();
   void activateClick(Instance& instance);
-  // Animates every output's capsule to the tracker's presentation.
   void refreshAll();
-  // False in flow while the output shows home (the menu bar is pinned there).
   [[nodiscard]] bool shownOn(const Instance& instance) const;
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
@@ -162,7 +160,6 @@ private:
   // Last seen power state, to tell a charger change or a low-battery crossing from a plain refresh.
   std::optional<bool> m_lastCharging;
   std::optional<float> m_lastBatteryPercent;
-  // Hidden while the lock-screen widget editor owns the screen.
   bool m_suppressed = false;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

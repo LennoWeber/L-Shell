@@ -16,6 +16,7 @@
 #include "util/string_utils.h"
 
 #include <algorithm>
+#include <cassert>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -391,9 +392,9 @@ namespace {
   //   - bars: monitor overrides are resolved + clamped before comparing (barConfigEqual)
   //   - widgets / desktop widgets: settings compared with int/double coercion (widgetMapEqual / desktopWidgetEqual)
   //   - keybinds: an empty configured set and its built-in default set have the same runtime behavior
-  // TODO(phase): compare a.layout == b.layout.
   bool configEqual(const Config& a, const Config& b) {
     return vectorEqual(a.bars, b.bars, barConfigEqual)
+        && a.layout == b.layout
         && widgetMapEqual(a.widgets, b.widgets)
         && desktopWidgetsConfigEqual(a.desktopWidgets, b.desktopWidgets)
         && a.hotCorners == b.hotCorners
@@ -872,11 +873,11 @@ namespace {
 
 } // namespace
 
-// TODO(phase): set .layout = prev.layout != next.layout; the change also marks bars changed when the
-//   active bars differ; ConfigChangeSet::any() (config_types.h) must include layout.
 ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
+  // A layout change swaps the bars on screen, so it counts as a bar change as well.
+  const bool layoutChanged = !(prev.layout == next.layout);
   return ConfigChangeSet{
-      .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual),
+      .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual) || layoutChanged,
       .widgets = !widgetMapEqual(prev.widgets, next.widgets),
       .desktopWidgets = !desktopWidgetsConfigEqual(prev.desktopWidgets, next.desktopWidgets),
       .lockscreenWidgets = !lockscreenWidgetsConfigEqual(prev.lockscreenWidgets, next.lockscreenWidgets),
@@ -902,6 +903,7 @@ ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
       .controlCenter = !(prev.controlCenter == next.controlCenter),
       .plugins = !pluginsConfigEqual(prev.plugins, next.plugins),
       .hotCorners = !(prev.hotCorners == next.hotCorners),
+      .layout = layoutChanged,
       .storage = !(prev.storage == next.storage),
       .accessibility = !(prev.accessibility == next.accessibility),
   };
@@ -1045,7 +1047,6 @@ void ConfigService::removePluginSource(std::string_view name) {
   fireReloadCallbacks();
 }
 
-// TODO(phase): setLayoutMode follows this pattern (override + persist).
 void ConfigService::setThemeMode(ThemeMode mode) {
   if (m_overridesPath.empty()) {
     return;
@@ -1062,6 +1063,22 @@ void ConfigService::setThemeMode(ThemeMode mode) {
   m_ownOverridesWritePending = true;
 
   // Rebuild Config and fan out reload callbacks so ThemeService transitions.
+  loadAll();
+  fireReloadCallbacks();
+}
+
+void ConfigService::setLayoutMode(LayoutMode mode) {
+  assert(!enumToKey(kLayoutModes, mode).empty() && "layout mode outside kLayoutModes");
+  if (m_overridesPath.empty()) {
+    return;
+  }
+  auto* layoutTbl = ensureTable(m_overridesTable, "layout");
+  layoutTbl->insert_or_assign("mode", std::string(enumToKey(kLayoutModes, mode)));
+  if (!writeOverridesToFile()) {
+    kLog.warn("failed to write {}", m_overridesPath);
+    return;
+  }
+  m_ownOverridesWritePending = true;
   loadAll();
   fireReloadCallbacks();
 }

@@ -10,10 +10,10 @@ implementation). Each phase is committed separately with a `phase N:` prefix and
 | 1 Understand and plan | done |
 | 2 Structures | done, reviewed |
 | 3 Signatures | done, reviewed |
-| 4 TODO markers | done, in review |
-| 5 Trial implementation (discarded) | – |
-| 6 Invariants | – |
-| 7 Implementation | – |
+| 4 TODO markers | done, reviewed; backfilled after the trial |
+| 5 Trial implementation (discarded) | done (worktree, built, tests green, screenshots) |
+| 6 Invariants | done, in review |
+| 7 Implementation | done, in review (build + 150/151 tests green, screenshots) |
 
 ## Environment
 
@@ -402,6 +402,50 @@ list: `layout-mode-set` CLI command definition, `ScreenEdges::StripRect`/`stripR
 48 `TODO(phase):` markers (C++ `//`, `#` in meson.build/example.toml, `--` in the Hyprland Lua sample, an MDX
 comment in the bar docs). Not markable in place: the translation JSON files (no comments) and the new
 `docs/user/layout/index.mdx` page, both phase 7 work listed under "Places to change".
+
+### Phase 7 (implementation) — notes
+
+The trial diff was merged onto the current branch (`git apply -3`), conflicts taken from the trial except the phase 6
+assertions, which were carried into the implementations. Built (all 623 targets), full test suite: 150/151 pass;
+`plugin_recommendations_http` fails deterministically in the container's HTTPS loopback fixture and touches no
+changed code. Tried in headless sway (screenshots in the session): Flow home/working, island activity, status
+overlay, island/minimal/handle/classic modes, Layout settings page, Tahoe Control Center.
+
+Found while trying it, fixed in this phase:
+- The island's glyphs were centered before being measured (drawn at the top).
+- An always-visible bottom dock collides with the handle line in every mode, not only Flow: the resolver leaves
+  the handle out then, and the Handle setting explains it.
+- Panels pinned to the top opened over a bar without an exclusive zone (Flow, Smart Bar): they open below it.
+- Settings rows: in a narrow window a wide control covered the row title. Descriptions now run full width under
+  the row, and the title/control line wraps when both do not fit.
+
+### Phase 5 (trial) — what the trial taught
+
+Implemented everything in the worktree `../L-Shell-trial`, built it and ran the tests; then discarded it (the diff
+is kept as the phase 7 starting point). Gaps in the earlier phases, now part of the plan:
+
+- `ConfigService::setLayoutMode` belongs in `config_overrides.cpp` next to `setThemeMode` (`ensureTable` is local
+  there); the phase 4 marker was right.
+- `tr` in `settings_registry.cpp` is a `using` inside `buildSettingsRegistry`; the entry builders above it need
+  `i18n::tr`.
+- `initialize()` of the island, handle and edges must not create surfaces: `reconcileOutputSurfaces()` owns the
+  stacking order. Split into `applyConfig()` (reload) and creation in `onOutputChange()`.
+- Bar peek needs more than `setBarPeek`: `BarInstance::peeked`, `Bar::isBarShown()` (the handle watches the bar
+  slide away before its line returns), and the peek must be honoured in `reevaluateAutoHide`, the workspace-peek
+  timer, `syncBarAutoHideInputRegion`, and cleared on pointer leave.
+- Bar glass: `BarInstance::glassSheen/glassRim` and `Bar::applyGlassChrome()` (sheen always, lit rim only for
+  floating bars).
+- `PanelManager` needs `effectivePanelPosition()` (two layout sites) and `dismissesOnPointerLeave()`; the probe
+  continuation must copy `screenPosition` into owned storage.
+- `MainLoop` has no access to the layout components; their destructors close them at shutdown.
+- Flow bar defaults: `reveal_on_hover = false`, `show_on_workspace_switch = false` (the island owns the top edge
+  while windows are open).
+- `Island::buildScene` cancels the fade started before the first configure; restart it after a rebuild.
+- `settings.navigation.sections.layout` and every `settings.options.layout.*` key were missing (phase 2/3).
+- Status overlay: `keyboardMode() = Exclusive` (Escape on a compositor without focus grab), a 1 s refresh timer
+  while open (app service callbacks only refresh known panels), a palette hook for the glass.
+- Environment: copying `build-docker` into a worktree keeps object mtimes newer than sources edited earlier, so
+  ninja skips them. Touch every changed source after copying.
 
 ### Phase 4 (TODO markers) — review
 

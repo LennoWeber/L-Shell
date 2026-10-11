@@ -4,6 +4,7 @@
 // (application.cpp, application_services.cpp, application_ui.cpp, ...).
 // Not part of any public API — include only from src/app/application_*.cpp.
 
+#include "config/config_service.h"
 #include "config/config_types.h"
 #include "dbus/power/power_profiles_service.h"
 #include "i18n/i18n.h"
@@ -39,9 +40,10 @@ inline bool barMayRender(const BarConfig& bar) {
   });
 }
 
+// The bars on screen: the classic [bar.*] list or the layout mode's synthesized bars.
 inline bool configHasLockKeysWidget(const ConfigService& service) {
-  // TODO(phase): needs the bars on screen (ConfigService::activeBars()), not [bar.*].
-  return std::ranges::any_of(config.bars, [&config](const BarConfig& bar) {
+  const Config& config = service.config();
+  return std::ranges::any_of(service.activeBars(), [&config](const BarConfig& bar) {
     return barMayRender(bar)
         && (widgetListHasLockKeys(bar.startWidgets, config)
             || widgetListHasLockKeys(bar.centerWidgets, config)
@@ -50,7 +52,7 @@ inline bool configHasLockKeysWidget(const ConfigService& service) {
 }
 
 inline bool lockKeysConsumersEnabled(const ConfigService& service) {
-  return config.osd.kinds.lockKeys || configHasLockKeysWidget(config);
+  return service.config().osd.kinds.lockKeys || configHasLockKeysWidget(service);
 }
 
 inline OsdContent powerProfileOsdContent(std::string_view profile) {

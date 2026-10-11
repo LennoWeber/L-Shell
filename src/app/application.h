@@ -191,7 +191,7 @@ private:
   // and on every output change so first-run stacking matches hot reload.
   void reconcileOutputSurfaces();
   // An OSD kind is worth producing when the OSD shows it or the layout island may take it over.
-  [[nodiscard]] bool osdKindWanted(bool kindEnabled) const noexcept;
+  [[nodiscard]] bool osdKindWanted(bool kindEnabled) const noexcept { return kindEnabled || m_island.isActive(); }
   void initIpc();
   // (Re)register plugin-backed launcher providers from the enabled plugin set.
   void reloadPluginLauncherProviders();

@@ -11,8 +11,6 @@ These commands control shell state, logging, settings windows, the window switch
 
 ## General
 
-{/* TODO(phase): add a layout-mode-set row to this table. */}
-
 | Action | Command | Description |
 |--------|---------|-------------|
 | Print status | <IpcCommand command="status" /> | Print basic shell state as JSON. |
@@ -23,6 +21,7 @@ These commands control shell state, logging, settings windows, the window switch
 | Open plugin settings | <IpcCommand command="settings-open-plugin noctalia/notes" /> | Open the settings window at an installed plugin's settings. The plugin must be enabled and expose settings. |
 | Close settings | <IpcCommand command="settings-close" /> | Close the graphical settings window. |
 | Toggle settings | <IpcCommand command="settings-toggle [context]" /> | Open or close the graphical settings window, optionally at a specific section. |
+| Set layout mode | <IpcCommand command="layout-mode-set flow" /> | Switch the [layout mode](/user/layout/): `flow`, `classic`, `smart_bar`, `minimal_bar`, `island`, `edges` or `handle`. Saved like a settings change. |
 
 Set `NOCTALIA_LOG_LEVEL` to `debug`, `info`, `warn`, or `error` before startup to choose the initial console log level. The default is `info`; the file log remains unfiltered.
 

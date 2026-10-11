@@ -147,7 +147,6 @@ recursive                  = true    # include subdirectories when picking rando
 
 # ── Theme ─────────────────────────────────────────────────────────────────────
 
-# TODO(phase): add a [layout] example (mode + one table per mode).
 [theme]
 mode   = "dark"                     # dark | light | auto
 source = "builtin"                  # builtin | wallpaper | community
@@ -381,7 +380,28 @@ tab_next = ["tab"]
 tab_previous = ["shift+iso_left_tab"]
 delete   = ["del"]
 
+# ── Layout ────────────────────────────────────────────────────────────────────
+# Which chrome is on screen. Every mode has its own table; see docs/user/layout.
+
+[layout]
+mode = "flow"                       # flow | classic | smart_bar | minimal_bar | island | edges | handle
+
+[layout.flow.island]
+material        = "glass"           # glass | black
+expand_on_hover = true
+suppress_osd    = true              # volume, brightness, … show in the island instead of the OSD
+
+[layout.flow.edges]
+left  = "panel-open launcher"       # any IPC command, "exec <cmd>", or "none"
+right = "panel-open control-center"
+
+[layout.flow.handle]
+reveal           = "overlay"        # overlay | bar
+swipe_workspaces = true
+
 # ── Bar ───────────────────────────────────────────────────────────────────────
+# [bar.*] bars show in the classic layout mode.
+
 
 [bar.main]
 position           = "top"          # top | bottom | left | right

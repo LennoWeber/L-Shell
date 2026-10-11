@@ -36,7 +36,7 @@ std::vector<PollSource*> Application::currentPollSources() {
   sources.push_back(&m_workspacePollSource);
   sources.push_back(&m_keyboardLayoutPollSource);
   if constexpr (kLockKeysEnabled) {
-    if (lockKeysConsumersEnabled(m_configService.config())) {
+    if (lockKeysConsumersEnabled(m_configService)) {
       sources.push_back(&m_lockKeysPollSource);
     }
   }

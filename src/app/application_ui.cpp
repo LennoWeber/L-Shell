@@ -73,6 +73,7 @@
 #include "shell/session/session_ipc.h"
 #include "shell/session/session_panel.h"
 #include "shell/setup_wizard/setup_wizard_panel.h"
+#include "shell/status_overlay/status_overlay_panel.h"
 #include "shell/test/test_panel.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/tray/tray_drawer_panel.h"
@@ -99,6 +100,7 @@
 #include <csignal>
 #include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <limits>
 #include <malloc.h>
 #include <optional>
@@ -455,8 +457,14 @@ void Application::initInputDispatch() {
       return;
     if (m_dock.onPointerEvent(event))
       return;
-    // TODO(phase): island, handle and edge strips go before the panel manager: a click outside an open panel
-    //   closes it unconsumed, so a click on the island would reopen what it just closed.
+    // Layout chrome goes before the panel manager: a click outside an open panel closes it and is not consumed,
+    // so a click on the island would otherwise reopen the panel it just closed.
+    if (m_island.onPointerEvent(event))
+      return;
+    if (m_gestureHandle.onPointerEvent(event))
+      return;
+    if (m_screenEdges.onPointerEvent(event))
+      return;
     if (m_panelManager.onPointerEvent(event))
       return;
     if (m_hotCorners.onPointerEvent(event))
@@ -643,10 +651,12 @@ void Application::initPanelManagerAndPanels() {
     launcherPanel->addProvider(std::make_unique<SessionProvider>(&m_configService, &m_sessionActionRunner));
     launcherPanel->addProvider(std::make_unique<MathProvider>(&m_clipboardService, &m_configService, &m_httpClient));
     launcherPanel->addProvider(std::make_unique<EmojiProvider>(&m_clipboardService));
-    launcherPanel->addProvider(std::make_unique<SettingsProvider>(
-        [this]() { return m_settingsWindow.buildSearchIndex(); },
-        [this](std::vector<std::string> path) { m_settingsWindow.openToSetting(path); }, &m_configService
-    ));
+    launcherPanel->addProvider(
+        std::make_unique<SettingsProvider>(
+            [this]() { return m_settingsWindow.buildSearchIndex(); },
+            [this](std::vector<std::string> path) { m_settingsWindow.openToSetting(path); }, &m_configService
+        )
+    );
     launcherPanel->setCopiedActivationCallback([this]() {
       const ClipboardAutoPasteMode mode = m_configService.config().shell.launcher.autoPaste;
       if (mode == ClipboardAutoPasteMode::Off) {
@@ -736,8 +746,19 @@ void Application::initPanelManagerAndPanels() {
   m_panelManager.registerPanel("polkit", std::make_unique<PolkitPanel>(&m_configService, [this]() {
                                  return m_polkitAgent.get();
                                }));
-  // TODO(phase): register StatusOverlayPanel (kPanelId) with UPower, network, Bluetooth, audio, brightness, MPRIS.
   m_panelManager.registerPanel("setup-wizard", std::make_unique<SetupWizardPanel>(&m_configService, &m_wayland));
+  m_panelManager.registerPanel(
+      std::string(StatusOverlayPanel::kPanelId),
+      std::make_unique<StatusOverlayPanel>(StatusOverlayServices{
+          .config = &m_configService,
+          .upower = m_upowerService.get(),
+          .network = m_networkService.get(),
+          .bluetooth = m_bluetoothService.get(),
+          .audio = m_pipewireService.get(),
+          .brightness = m_brightnessService.get(),
+          .mpris = m_mprisService.get(),
+      })
+  );
 
   if (SetupWizardPanel::isFirstRun(m_configService)) {
     DeferredCall::callLater([]() { PanelManager::instance().togglePanel("setup-wizard"); });
@@ -903,10 +924,19 @@ void Application::initBarDockAndLayout() {
       .screenshots = &m_screenshotService,
       .scriptApi = &m_scriptApi,
   });
-  // TODO(phase): caffeine anchors: add island and handle surfaces (bar-less layouts have no bar to hold the inhibitor).
-  m_idleInhibitor.setAnchorSurfacesProvider([this]() { return m_bar.caffeineAnchorSurfaces(); });
-  // TODO(phase): a synthesized mode bar has no [bar.*] page: open the Layout page for it.
+  // Caffeine needs a surface to hold its inhibitor on; in the bar-less layouts the island or the handle serves.
+  m_idleInhibitor.setAnchorSurfacesProvider([this]() {
+    auto surfaces = m_bar.caffeineAnchorSurfaces();
+    std::ranges::copy(m_island.surfaces(), std::back_inserter(surfaces));
+    std::ranges::copy(m_gestureHandle.surfaces(), std::back_inserter(surfaces));
+    return surfaces;
+  });
   m_panelManager.setOpenWidgetSettingsCallback([this](std::string barName, std::string widgetName) {
+    // A layout mode's synthesized bar has no [bar.*] page; its widgets are listed on the Layout page.
+    if (!std::ranges::contains(m_configService.config().bars, barName, &BarConfig::name)) {
+      m_settingsWindow.openToSetting({"layout", "mode"});
+      return;
+    }
     m_settingsWindow.openToBarWidget(std::move(barName), std::move(widgetName));
   });
   m_panelManager.setOpenPluginSettingsCallback([this](std::string pluginId) {
@@ -917,12 +947,21 @@ void Application::initBarDockAndLayout() {
         m_bar.setAttachedPanelGeometry(output, barName, geometry);
       }
   );
-  // TODO(phase): exclude island, edge strips and handle too, so they stay live while a panel is open.
+  // The island, the handle and the edge strips stay live while a panel is open, like the bar.
   m_panelManager.setClickShieldExcludeRectsProvider([this](wl_output* output) {
-    return m_bar.surfaceRectsForOutput(output);
+    auto rects = m_bar.surfaceRectsForOutput(output);
+    std::ranges::copy(m_island.surfaceRectsForOutput(output), std::back_inserter(rects));
+    std::ranges::copy(m_gestureHandle.surfaceRectsForOutput(output), std::back_inserter(rects));
+    std::ranges::copy(m_screenEdges.surfaceRectsForOutput(output), std::back_inserter(rects));
+    return rects;
   });
-  // TODO(phase): whitelist the island, edge and handle surfaces as well.
-  m_panelManager.setFocusGrabBarSurfacesProvider([this]() { return m_bar.allBarSurfaces(); });
+  m_panelManager.setFocusGrabBarSurfacesProvider([this]() {
+    auto surfaces = m_bar.allBarSurfaces();
+    std::ranges::copy(m_island.surfaces(), std::back_inserter(surfaces));
+    std::ranges::copy(m_gestureHandle.surfaces(), std::back_inserter(surfaces));
+    std::ranges::copy(m_screenEdges.surfaces(), std::back_inserter(surfaces));
+    return surfaces;
+  });
   m_panelManager.setAttachedPanelAvailabilityCallback([this](wl_output* output, std::string_view barName) {
     return m_bar.canAttachPanelToBar(output, barName);
   });
@@ -1044,8 +1083,12 @@ void Application::initWidgetControllersAndCallbacks() {
       .lockscreenWidgets = &m_lockscreenWidgetsController,
   });
   m_desktopWidgetsController.setOnEnterEditCallback([this]() { m_settingsWindow.closeForWidgetEditor(); });
-  // TODO(phase): enter/exit: setSuppressed(true/false) on island, handle and edges, like bar and dock.
-  m_lockscreenWidgetsController.setOnEnterEditCallback([this]() { m_settingsWindow.closeForWidgetEditor(); });
+  m_lockscreenWidgetsController.setOnEnterEditCallback([this]() {
+    m_settingsWindow.closeForWidgetEditor();
+    m_island.setSuppressed(true);
+    m_gestureHandle.setSuppressed(true);
+    m_screenEdges.setSuppressed(true);
+  });
   const auto restoreSettingsAfterWidgetEditor = [this]() {
     DeferredCall::callLater([this]() {
       if (!m_desktopWidgetsController.isEditing() && !m_lockscreenWidgetsController.isEditing()) {
@@ -1054,7 +1097,12 @@ void Application::initWidgetControllersAndCallbacks() {
     });
   };
   m_desktopWidgetsController.setOnExitEditCallback(restoreSettingsAfterWidgetEditor);
-  m_lockscreenWidgetsController.setOnExitEditCallback(restoreSettingsAfterWidgetEditor);
+  m_lockscreenWidgetsController.setOnExitEditCallback([this, restoreSettingsAfterWidgetEditor]() {
+    m_island.setSuppressed(false);
+    m_gestureHandle.setSuppressed(false);
+    m_screenEdges.setSuppressed(false);
+    restoreSettingsAfterWidgetEditor();
+  });
   m_iconThemePollSource.setChangeCallback([this]() { onIconThemeChanged(); });
 
   std::string lastShellFontFamily = m_configService.config().shell.fontFamily;
@@ -1069,7 +1117,8 @@ void Application::initWidgetControllersAndCallbacks() {
         text::invalidateFontWeightCatalogCache();
         m_renderContext.setTextFontFamily(newShellFontFamily);
         m_bar.reload();
-        // TODO(phase): island and gesture handle requestLayout() in this font fan-out.
+        m_island.requestLayout();
+        m_gestureHandle.requestLayout();
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1098,9 +1147,10 @@ void Application::initWidgetControllersAndCallbacks() {
 
         lastRtl = rtl;
         Style::setRtl(rtl);
-        // TODO(phase): RTL fan-out: island and handle requestLayout() too.
         m_renderContext.setTextBaseDirection(rtl);
         m_bar.requestLayout();
+        m_island.requestLayout();
+        m_gestureHandle.requestLayout();
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1124,13 +1174,12 @@ void Application::initWidgetControllersAndCallbacks() {
     if (m_lockScreen.isActive()) {
       m_lockscreenWidgetsController.onSecondTick();
     } else {
-      // TODO(phase): m_island.onSecondTick() for its clock.
+      m_island.onSecondTick();
       m_bar.onSecondTick();
       m_desktopWidgetsController.onSecondTick();
       m_lockscreenWidgetsController.onSecondTick();
       m_settingsWindow.onSecondTick();
-      // TODO(phase): OSD pre-gate: osdKindWanted() so the island still sees this kind with the OSD kind off.
-      if (m_configService.config().osd.kinds.keyboardLayout) {
+      if (osdKindWanted(m_configService.config().osd.kinds.keyboardLayout)) {
         m_keyboardLayoutOsd.onLayoutChanged(m_compositorPlatform, m_configService.config());
       }
     }
@@ -1175,7 +1224,35 @@ void Application::initWidgetControllersAndCallbacks() {
   // the hot-corner trigger zones are built after the bar and dock so they are
   // never occluded by shell chrome on their shared layer.
   m_screenCorners.initialize(m_wayland, &m_configService, &m_renderContext);
-  // TODO(phase): initialize Island, GestureHandle, ScreenEdges after this (surfaces come from reconcileOutputSurfaces);
-  //   OSD redirect to the island; reload all three on changed.layout or changed.dock.
   m_hotCorners.initialize(m_wayland, &m_configService, &m_renderContext);
+
+  // Layout-mode chrome. Like the corners, its surfaces are created in reconcileOutputSurfaces().
+  m_island.initialize({
+      .platform = m_compositorPlatform,
+      .config = m_configService,
+      .renderContext = &m_renderContext,
+      .ipc = &m_ipcService,
+      .panels = &m_panelManager,
+      .mpris = m_mprisService.get(),
+      .notifications = &m_notificationManager,
+      .upower = m_upowerService.get(),
+  });
+  m_gestureHandle.initialize(
+      m_compositorPlatform, m_configService, &m_renderContext, &m_ipcService, &m_panelManager, &m_bar
+  );
+  m_screenEdges.initialize(m_compositorPlatform, m_configService, &m_renderContext, &m_ipcService, &m_panelManager);
+  m_osdOverlay.setRedirect([this](const OsdContent& content) { return m_island.takeOsdContent(content); });
+  m_configService.addReloadCallback(
+      [this]() {
+        // The dock decides whether Flow has a handle (an always-visible bottom dock owns that spot).
+        const auto& changed = m_configService.lastChange();
+        if (!changed.layout && !changed.dock) {
+          return;
+        }
+        m_island.reload();
+        m_gestureHandle.reload();
+        m_screenEdges.reload();
+      },
+      "layout"
+  );
 }

@@ -66,7 +66,6 @@ private:
   void reveal(Instance& instance);
   void switchWorkspace(Instance& instance, int direction);
   void settleLine(Instance& instance);
-  // Line size, position (with the drag offset), color and fade.
   void applyLineGeometry(Instance& instance);
   void prepareFrame(Instance& instance, bool needsUpdate, bool needsLayout);
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
@@ -89,7 +88,7 @@ private:
     float dragOffsetX = 0.0F;
     float dragOffsetY = 0.0F;
     AnimationManager::Id dragSettleAnim = 0; // springs the line back after a drag
-    bool occupied = false; // active workspace on this output has windows
+    bool occupied = false;                   // active workspace on this output has windows
     bool pointerInside = false;
     // reveal = "bar": the line hides while its bar is peeked and comes back once the bar slid away.
     bool peeking = false;
@@ -106,7 +105,6 @@ private:
   std::optional<HandleConfig> m_handleConfig; // nullopt when the active layout has no handle
   std::string m_revealBarName;                // synthesized bar to peek on reveal = "bar"
   bool m_hideAtHome = false;                  // flow, or reveal = "bar": the line yields to the home bar/dock
-  // Hidden while the lock-screen widget editor owns the screen.
   bool m_suppressed = false;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

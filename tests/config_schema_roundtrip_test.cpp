@@ -351,7 +351,21 @@ location = "https://example.invalid/bad"
         .soundTheme = "freedesktop"
     };
     c.weather = WeatherConfig{false, false, 17, "imperial"};
-    // TODO(phase): probe every [layout] table with a non-default value.
+    // Layout modes: a non-default value in every component table, nested Flow tables included.
+    c.layout.mode = LayoutMode::Edges;
+    c.layout.smartBar.background = ModeBarBackground::Solid;
+    c.layout.smartBar.endWidgets = {"clock", "battery"};
+    c.layout.minimalBar.position = ModeBarPosition::Bottom;
+    c.layout.island.material = IslandMaterial::Black;
+    c.layout.island.activities.notification = true;
+    c.layout.island.activityMs = 4500;
+    c.layout.edges.left = "panel-open clipboard";
+    c.layout.edges.length = 0.35F;
+    c.layout.handle.reveal = HandleReveal::Bar;
+    c.layout.handle.bar.floating = true;
+    c.layout.flow.island.expandOnHover = false;
+    c.layout.flow.edges.closeOnLeave = false;
+    c.layout.flow.handle.swipeWorkspaces = false;
     c.osd.position = "bottom_left";
     c.osd.positionVertical = "top_right";
     c.osd.orientation = "vertical";
@@ -754,7 +768,24 @@ location = "https://example.invalid/bad"
     }
   }
 
-  // TODO(phase): add a layout change-set check (mode, nested flow table, unchanged).
+  void checkLayoutChangeSet() {
+    Config before;
+    Config modeChanged = before;
+    modeChanged.layout.mode = LayoutMode::Island;
+    const auto changed = computeConfigChangeSet(before, modeChanged);
+    if (!changed.layout || !changed.bars) {
+      fail("a layout mode change did not mark layout and bars changed");
+    }
+    Config islandTuned = before;
+    islandTuned.layout.flow.island.height = 30;
+    if (!computeConfigChangeSet(before, islandTuned).layout) {
+      fail("a nested flow island change did not mark layout changed");
+    }
+    if (computeConfigChangeSet(before, before).layout) {
+      fail("an unchanged config marked layout changed");
+    }
+  }
+
   void checkMonitorOverrideChangeSet() {
     Config before;
     BarConfig bar;
@@ -1369,6 +1400,7 @@ widget_spacing = 8
   checkStorageKeySourceValidation();
   checkPanelFloatingLayerValidation();
   checkClamps();
+  checkLayoutChangeSet();
   checkMonitorOverrideChangeSet();
   checkPluginAutoUpdateMode();
   checkAutoUpdateScopeSelection();
