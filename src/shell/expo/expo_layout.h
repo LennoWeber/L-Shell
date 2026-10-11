@@ -57,7 +57,8 @@ struct ExpoWindowGeometry {
 
 // Window miniatures inside a card of cardWidth x cardHeight showing an output of
 // outputWidth x outputHeight, in card-local coordinates. Windows keep their real positions
-// when every one of them has geometry; otherwise they are laid out as a tidy grid.
+// when every one of them has geometry (zoomed out to show windows lying past the monitor);
+// otherwise they are laid out as a tidy grid.
 [[nodiscard]] std::vector<ExpoRect> placeExpoWindows(
     float cardWidth, float cardHeight, float outputWidth, float outputHeight,
     const std::vector<ExpoWindowGeometry>& windows, float scale

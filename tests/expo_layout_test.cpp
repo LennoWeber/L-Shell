@@ -111,12 +111,12 @@ int main() {
   // Nothing to show.
   TEST_CHECK(computeExpoLayout(ExpoLayoutInput{.screenWidth = 800.0F, .screenHeight = 600.0F}).sections.empty());
 
-  // Real geometry maps proportionally; off-monitor parts are clipped to the card.
+  // Real geometry maps proportionally; a border poking slightly past the monitor is clipped to the card.
   {
     const std::vector<ExpoWindowGeometry> windows{
         {.x = 0.0F, .y = 0.0F, .width = 960.0F, .height = 1080.0F},
         {.x = 960.0F, .y = 540.0F, .width = 960.0F, .height = 540.0F},
-        {.x = 1800.0F, .y = -100.0F, .width = 400.0F, .height = 300.0F},
+        {.x = 1800.0F, .y = -10.0F, .width = 140.0F, .height = 300.0F},
     };
     const auto rects = placeExpoWindows(480.0F, 270.0F, 1920.0F, 1080.0F, windows, 1.0F);
     TEST_CHECK(rects.size() == 3);
@@ -126,6 +126,25 @@ int main() {
       TEST_CHECK(inside(rect, 480.0F, 270.0F));
       TEST_CHECK(rect.width >= 14.0F && rect.height >= 14.0F);
     }
+  }
+
+  // Scrolling layout: columns past the monitor stay whole and side by side instead of being clamped to slivers.
+  {
+    const std::vector<ExpoWindowGeometry> windows{
+        {.x = 10.0F, .y = 10.0F, .width = 1900.0F, .height = 1060.0F},
+        {.x = 1930.0F, .y = 10.0F, .width = 1900.0F, .height = 1060.0F},
+        {.x = -1910.0F, .y = 10.0F, .width = 1900.0F, .height = 1060.0F},
+    };
+    const auto rects = placeExpoWindows(480.0F, 270.0F, 1920.0F, 1080.0F, windows, 1.0F);
+    for (std::size_t i = 0; i < rects.size(); ++i) {
+      TEST_CHECK(inside(rects[i], 480.0F, 270.0F));
+      TEST_CHECK(std::abs(rects[i].width - rects[0].width) < 0.5F);
+      TEST_CHECK(std::abs((rects[i].width / rects[i].height) - (1900.0F / 1060.0F)) < 0.05F);
+      for (std::size_t j = i + 1; j < rects.size(); ++j) {
+        TEST_CHECK(!overlaps(rects[i], rects[j]));
+      }
+    }
+    TEST_CHECK(rects[2].x < rects[0].x && rects[0].x < rects[1].x);
   }
 
   // Without geometry the windows form a grid that does not overlap.
