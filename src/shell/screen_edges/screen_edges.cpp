@@ -1,5 +1,6 @@
 #include "shell/screen_edges/screen_edges.h"
 
+#include "render/scene/node.h"
 #include "wayland/surface.h"
 #include "wayland/wayland_seat.h"
 

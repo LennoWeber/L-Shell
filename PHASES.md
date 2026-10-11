@@ -403,6 +403,29 @@ list: `layout-mode-set` CLI command definition, `ScreenEdges::StripRect`/`stripR
 comment in the bar docs). Not markable in place: the translation JSON files (no comments) and the new
 `docs/user/layout/index.mdx` page, both phase 7 work listed under "Places to change".
 
+### Phase 4 (TODO markers) — review
+
+Fresh reviewer. Comments only; two markers over 120 columns. The gaps it found were not patched as markers but
+taken into the phase 5 trial as its checklist (all handled there):
+
+- Toplevel and overview callbacks also drive the island/handle (windows opening on the same workspace).
+- Pointer routing: island, handle and edges go **before** the panel manager (a click outside an open panel closes
+  it without consuming the event, so the island click would reopen it).
+- `ResolvedLayout` must be computed at all three `m_config =` sites, not in `parseConfigTable`.
+- `settings_content_common.cpp` section switches lacked `Layout` (phase 2 gap, `-Wswitch`).
+- RTL has its own fan-out; the OSD pre-gates sit at six call sites (caffeine, night light, lock keys, two
+  keyboard-layout sites, tray) — all go through `osdKindWanted()` now.
+- Dismiss-on-leave must hold while a context menu or dropdown of the panel is open.
+- `reevaluateAutoHide` and the workspace-peek timer also hide a peeked bar.
+- Bar glass needs build and layout sites, not only the palette one.
+- Caffeine anchors, `settings-open-widget` for synthesized bars, the settings fallback when no `[bar.*]` page
+  exists, `panel_catalog` (`status-overlay`), the settings search test (Flow default hides `[bar.*]`), the
+  round-trip probe (never set `layout`), niri/umbriel blur rules, the IPC docs row.
+- Missing from phases 2/3: display suppression for the lock-screen widget editor, layer namespaces for the island
+  and handle (`noctalia-island`, `noctalia-handle`, `noctalia-edge`), and the dock/handle conflict (decided: the
+  handle leaves the bottom 2 px free so the dock's edge reveal works under it, and hides at home where the dock
+  is pinned).
+
 ### Phase 3 (signatures)
 
 Fresh reviewer, diff `d945c7f..6218b4c`. 16 findings.

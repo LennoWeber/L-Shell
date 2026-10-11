@@ -3,6 +3,7 @@
 #include "dbus/upower/upower_service.h"
 #include "notification/notification.h"
 #include "notification/notification_manager.h"
+#include "render/scene/node.h"
 #include "shell/osd/osd_overlay.h"
 #include "wayland/surface.h"
 #include "wayland/wayland_seat.h"

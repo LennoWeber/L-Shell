@@ -716,8 +716,15 @@ _noctalia_sources = files(
   'src/shell/session/session_ipc.cpp',
   'src/shell/session/session_panel.cpp',
   'src/shell/setup_wizard/setup_wizard_panel.cpp',
-  # TODO(phase): add layout_resolver.cpp, workspace_occupancy.cpp, island/*, screen_edges/*, gesture_handle/*,
-  #   status_overlay/*; tests layout_resolver, handle_gesture, island_activity.
+  'src/config/layout_resolver.cpp',
+  'src/shell/gesture_handle/gesture_handle.cpp',
+  'src/shell/gesture_handle/handle_gesture.cpp',
+  'src/shell/island/island.cpp',
+  'src/shell/island/island_activity.cpp',
+  'src/shell/screen_edges/screen_edges.cpp',
+  'src/shell/status_overlay/status_overlay_panel.cpp',
+  'src/shell/workspace_occupancy.cpp',
+  # TODO(phase): tests layout_resolver, handle_gesture, island_activity.
   'src/shell/surface/glass.cpp',
   'src/shell/surface/shadow.cpp',
   'src/system/telemetry_service.cpp',
@@ -1152,16 +1159,17 @@ noctalia_exe = executable(app_name,
 
 install_subdir('assets',
   install_dir: get_option('datadir') / app_name,
-  exclude_files: ['dev.noctalia.Noctalia.desktop'],
+  exclude_files: ['dev.lshell.LShell.desktop'],
 )
 
 install_data(
-  'assets/dev.noctalia.Noctalia.desktop',
+  'assets/dev.lshell.LShell.desktop',
   install_dir: get_option('datadir') / 'applications',
 )
 
 install_data(
-  'assets/noctalia.svg',
+  'assets/branding/l-shell-icon.svg',
+  rename: 'l-shell.svg',
   install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )
 
