@@ -69,6 +69,19 @@ l-shell msg overview                # Mission Control
 l-shell msg settings-toggle         # Settings
 ```
 
+## Staying current with Noctalia
+
+The `Sync upstream Noctalia` workflow runs every day. When Noctalia's `main` has new commits it merges them on the
+`upstream-sync` branch and opens a pull request into `main` (run it by hand from the Actions tab any time). A merge
+that conflicts with L-Shell's changes arrives as plain upstream `main`, so the pull request shows what to resolve.
+
+Locally:
+
+```sh
+git remote add upstream https://github.com/noctalia-dev/noctalia
+git fetch upstream && git merge upstream/main
+```
+
 ## Credits
 
 L-Shell is a fork of [Noctalia](https://github.com/noctalia-dev/noctalia), a native Wayland desktop shell built

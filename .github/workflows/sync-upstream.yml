@@ -1,0 +1,83 @@
+name: Sync upstream Noctalia
+
+# Keeps L-Shell current with Noctalia: once a day, if noctalia-dev/noctalia main has commits that L-Shell's main
+# does not, this merges them on the `upstream-sync` branch and opens (or refreshes) a pull request into main.
+# A merge that conflicts is pushed as plain upstream main instead, so the pull request shows the conflicts to resolve.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: ${{ github.repository != 'noctalia-dev/noctalia' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/noctalia-dev/noctalia.git
+          git fetch --no-tags upstream main
+
+      - name: Count missing upstream commits
+        id: check
+        run: echo "behind=$(git rev-list --count HEAD..upstream/main)" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream into upstream-sync
+        if: steps.check.outputs.behind != '0'
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git switch -c upstream-sync
+          if git merge --no-ff --no-edit -m "Merge upstream Noctalia main" upstream/main; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            git reset --hard upstream/main
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+          git push --force origin upstream-sync
+
+      - name: Open or update the pull request
+        if: steps.check.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEHIND: ${{ steps.check.outputs.behind }}
+          CLEAN: ${{ steps.merge.outputs.clean }}
+        run: |
+          {
+            echo "## Summary"
+            echo
+            echo "Brings in ${BEHIND} commit(s) from [noctalia-dev/noctalia](https://github.com/noctalia-dev/noctalia) main."
+            echo
+            if [ "$CLEAN" = "true" ]; then
+              echo "The merge applied cleanly. Review, then merge this pull request."
+            else
+              echo "The merge conflicts with L-Shell's changes. This branch is plain upstream main; resolve the"
+              echo "conflicts here (or ask Claude to merge \`upstream/main\` into \`main\`), keeping the L-Shell look."
+            fi
+            echo
+            echo "## Upstream commits"
+            echo
+            git log --no-merges --format='- %s (%h)' origin/main..upstream/main | head -n 200
+          } > body.md
+          number=$(gh pr list --head upstream-sync --base main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --body-file body.md
+          else
+            gh pr create --head upstream-sync --base main --title "Sync upstream Noctalia" --body-file body.md
+          fi
