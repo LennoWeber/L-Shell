@@ -154,6 +154,9 @@ public:
   [[nodiscard]] std::vector<std::string> workspaceDisplayKeys(wl_output* outputFilter = nullptr) const;
   [[nodiscard]] std::vector<WorkspaceWindowAssignment>
   workspaceWindowAssignments(wl_output* outputFilter = nullptr) const;
+  // Asks the workspace backend to re-read window positions and sizes that it gets no event for
+  // (Hyprland resizes). Synchronous on Hyprland; elsewhere the update arrives as a workspace change.
+  void refreshWorkspaceWindowGeometry();
   // Workspace keys of the overlay workspaces currently open on `outputFilter`
   // (nullptr = every output). Empty unless the active workspace backend tracks them.
   [[nodiscard]] std::vector<std::string> openOverlayWorkspaceKeys(wl_output* outputFilter = nullptr) const;

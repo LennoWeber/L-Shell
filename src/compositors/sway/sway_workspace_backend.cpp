@@ -180,9 +180,14 @@ namespace {
     }
     std::int32_t x = 0;
     std::int32_t y = 0;
+    std::int32_t width = 0;
+    std::int32_t height = 0;
+    // Global layout coordinates, decorations included.
     if (const auto rectIt = node.find("rect"); rectIt != node.end() && rectIt->is_object()) {
       x = rectIt->value("x", 0);
       y = rectIt->value("y", 0);
+      width = std::max(rectIt->value("width", 0), 0);
+      height = std::max(rectIt->value("height", 0), 0);
     }
 
     if (isLeaf && !workspaceName.empty() && !workspaceKey.empty() && !appId.empty()) {
@@ -194,6 +199,8 @@ namespace {
               .title = StringUtils::windowTitleSingleLine(jsonStringValue(node, "name")),
               .x = x,
               .y = y,
+              .width = width,
+              .height = height,
               .outputName = {},
           }
       );
@@ -440,6 +447,13 @@ void SwayWorkspaceBackend::focusWindow(const std::string& windowId) {
   }
 
   sendMessage(kIpcRunCommand, "[con_id=" + windowId + "] focus");
+}
+
+// Sway posts no event for a plain resize; re-read the tree (answered through the change callback).
+void SwayWorkspaceBackend::refreshWindowGeometry() {
+  if (m_socketFd >= 0) {
+    requestTree();
+  }
 }
 
 void SwayWorkspaceBackend::cleanup() {

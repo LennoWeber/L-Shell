@@ -48,6 +48,7 @@ public:
   [[nodiscard]] std::vector<WorkspaceWindow> workspaceWindows(wl_output* output) const;
   [[nodiscard]] std::vector<std::string> openOverlayWorkspaceKeys(wl_output* output) const;
   void focusWindow(const std::string& windowId) const;
+  void refreshWindowGeometry();
 
   [[nodiscard]] std::vector<Workspace> all() const;
   [[nodiscard]] std::vector<Workspace> forOutput(wl_output* output) const;

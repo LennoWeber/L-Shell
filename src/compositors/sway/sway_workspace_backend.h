@@ -39,6 +39,7 @@ public:
   assignTaskbarWindows(const std::vector<TaskbarWindowCandidate>& windows, wl_output* output) const override;
   [[nodiscard]] std::vector<WorkspaceWindow> workspaceWindows(wl_output* output) const override;
   void focusWindow(const std::string& windowId) override;
+  void refreshWindowGeometry() override;
   void cleanup() override;
 
   [[nodiscard]] int pollFd() const noexcept override { return m_socketFd; }

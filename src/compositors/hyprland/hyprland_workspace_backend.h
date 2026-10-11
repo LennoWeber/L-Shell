@@ -43,6 +43,7 @@ public:
   [[nodiscard]] std::vector<std::string> openOverlayWorkspaceKeys(wl_output* output) const override;
   [[nodiscard]] std::optional<std::string> focusedWindowId() const;
   void focusWindow(const std::string& windowId) override;
+  void refreshWindowGeometry() override;
   void cleanup() override;
   void notifyCleanup() override;
   void notifyChanged() override;
@@ -101,6 +102,8 @@ private:
     bool urgent = false;
     std::int32_t x = 0;
     std::int32_t y = 0;
+    std::int32_t width = 0;
+    std::int32_t height = 0;
   };
 
   void refreshSnapshot();

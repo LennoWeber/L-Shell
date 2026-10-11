@@ -30,6 +30,10 @@ struct WorkspaceWindow {
   std::string title;
   std::int32_t x = 0;
   std::int32_t y = 0;
+  // Logical size, 0 when the backend does not know it. When set, x/y are the window's
+  // top-left corner in the global layout space (the same space as output positions).
+  std::int32_t width = 0;
+  std::int32_t height = 0;
   std::string outputName;
 };
 
@@ -40,6 +44,9 @@ struct WorkspaceWindowAssignment {
   std::string title;
   std::int32_t x = 0;
   std::int32_t y = 0;
+  // See WorkspaceWindow::width/height.
+  std::int32_t width = 0;
+  std::int32_t height = 0;
 };
 
 struct TaskbarWindowCandidate {
@@ -85,6 +92,9 @@ public:
   // WorkspaceWindow::workspaceKey namespace.
   [[nodiscard]] virtual std::vector<std::string> openOverlayWorkspaceKeys(wl_output* /*output*/) const { return {}; }
   virtual void focusWindow(const std::string& /*windowId*/) {}
+  // Re-reads window positions and sizes for compositors that report no event when a window
+  // only moves or resizes (Hyprland). May complete asynchronously through the change callback.
+  virtual void refreshWindowGeometry() {}
   virtual void cleanup() = 0;
 
   [[nodiscard]] virtual int pollFd() const noexcept { return -1; }
