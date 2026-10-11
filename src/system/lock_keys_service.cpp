@@ -3,9 +3,10 @@
 #include "wayland/wayland_connection.h"
 
 #include <chrono>
-#include <fstream>
+#include <fcntl.h>
 #include <optional>
 #include <string>
+#include <unistd.h>
 #include <utility>
 
 namespace {
@@ -13,27 +14,39 @@ namespace {
   namespace fs = std::filesystem;
 
   constexpr auto kRefreshInterval = std::chrono::milliseconds(200);
+  // Without keyboard LEDs the state comes from the Wayland keyboard, which only changes while the shell has
+  // keyboard focus: no need to look five times a second.
+  constexpr auto kSeatOnlyRefreshInterval = std::chrono::seconds(1);
   constexpr int kSysfsFailureRescanThreshold = 3;
 
-  bool readBrightness(const fs::path& path, bool& on) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
+  // sysfs attributes report the current value on every read from offset 0.
+  bool readBrightness(int fd, bool& on) {
+    char buffer[16];
+    const ssize_t count = ::pread(fd, buffer, sizeof(buffer) - 1, 0);
+    if (count <= 0) {
       return false;
     }
-
-    int brightness = 0;
-    file >> brightness;
-    if (!file.good() && !file.eof()) {
-      return false;
-    }
-
-    on = brightness != 0;
+    buffer[count] = '\0';
+    on = buffer[0] != '0';
     return true;
   }
 
 } // namespace
 
 LockKeysService::LockKeysService(WaylandConnection& wayland) : m_wayland(wayland) {}
+
+LockKeysService::~LockKeysService() { closeLedFiles(); }
+
+void LockKeysService::closeLedFiles() {
+  for (auto* group : {&m_capsLockPaths, &m_numLockPaths, &m_scrollLockPaths}) {
+    for (const LedFile& led : *group) {
+      if (led.fd >= 0) {
+        ::close(led.fd);
+      }
+    }
+    group->clear();
+  }
+}
 
 LockKeysService::LockKeysState LockKeysService::state() const noexcept { return m_state; }
 
@@ -67,7 +80,8 @@ void LockKeysService::refreshNow() {
 
   m_state = readCurrentState();
   m_hasState = true;
-  m_nextRefreshAt = std::chrono::steady_clock::now() + kRefreshInterval;
+  m_nextRefreshAt =
+      std::chrono::steady_clock::now() + (hasCachedSysfsLeds() ? kRefreshInterval : kSeatOnlyRefreshInterval);
 
   if (hadState && previous != m_state && m_changeCallback) {
     m_changeCallback(previous, m_state);
@@ -95,10 +109,10 @@ std::optional<LockKeysService::LockKeysState> LockKeysService::readCachedSysfsSt
   bool readAny = false;
   bool hadFailure = false;
 
-  auto readGroup = [&](const std::vector<fs::path>& paths, bool LockKeysState::* field) {
-    for (const auto& path : paths) {
+  auto readGroup = [&](const std::vector<LedFile>& leds, bool LockKeysState::* field) {
+    for (const LedFile& led : leds) {
       bool on = false;
-      if (!readBrightness(path, on)) {
+      if (!readBrightness(led.fd, on)) {
         hadFailure = true;
         continue;
       }
@@ -132,9 +146,7 @@ std::optional<LockKeysService::LockKeysState> LockKeysService::readCachedSysfsSt
 }
 
 void LockKeysService::discoverSysfsLeds() {
-  m_capsLockPaths.clear();
-  m_numLockPaths.clear();
-  m_scrollLockPaths.clear();
+  closeLedFiles();
   m_sysfsReadFailures = 0;
   m_sysfsDiscovered = true;
 
@@ -152,7 +164,7 @@ void LockKeysService::discoverSysfsLeds() {
     }
 
     const std::string kind = name.substr(sep + 2);
-    std::vector<fs::path>* target = nullptr;
+    std::vector<LedFile>* target = nullptr;
     if (kind == "capslock") {
       target = &m_capsLockPaths;
     } else if (kind == "numlock") {
@@ -166,10 +178,16 @@ void LockKeysService::discoverSysfsLeds() {
     }
 
     const fs::path brightnessPath = it->path() / "brightness";
-    bool on = false;
-    if (readBrightness(brightnessPath, on)) {
-      target->push_back(brightnessPath);
+    const int fd = ::open(brightnessPath.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+      continue;
     }
+    bool on = false;
+    if (!readBrightness(fd, on)) {
+      ::close(fd);
+      continue;
+    }
+    target->push_back(LedFile{.fd = fd});
   }
 }
 

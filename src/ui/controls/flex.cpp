@@ -192,6 +192,11 @@ void Flex::setMirrorInRtl(bool mirror) {
 }
 
 void Flex::setPadding(float top, float right, float bottom, float left) {
+  // Widgets re-apply their padding on every layout pass; an unchanged value must not dirty the tree (a dirty
+  // section repaints the whole bar every second).
+  if (m_paddingTop == top && m_paddingRight == right && m_paddingBottom == bottom && m_paddingLeft == left) {
+    return;
+  }
   m_paddingTop = top;
   m_paddingRight = right;
   m_paddingBottom = bottom;
