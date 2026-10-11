@@ -3,7 +3,6 @@
 #include "config/config_types.h"
 #include "core/timer_manager.h"
 #include "render/animation/animation_manager.h"
-#include "render/scene/input_dispatcher.h"
 #include "shell/gesture_handle/handle_gesture.h"
 #include "wayland/layer_surface.h"
 
@@ -17,7 +16,6 @@ class Bar;
 class Box;
 class CompositorPlatform;
 class ConfigService;
-class InputArea;
 class IpcService;
 class Node;
 class PanelManager;
@@ -73,9 +71,8 @@ private:
     // sceneRoot must be destroyed before `animations` — ~Node() calls cancelForOwner().
     AnimationManager animations;
     std::unique_ptr<Node> sceneRoot;
-    InputDispatcher inputDispatcher;
-    InputArea* inputArea = nullptr; // whole surface: the line plus a forgiving hit margin
     Box* line = nullptr;
+    float uiScale = 1.0F;
     shell::gesture_handle::GestureRecognizer recognizer;
     Timer dwellTimer; // hover dwell before a reveal, HandleConfig::hoverDelayMs
     // 0 = hidden (empty workspace), 1 = shown; animated.
@@ -86,6 +83,11 @@ private:
     float dragOffsetY = 0.0F;
     AnimationManager::Id dragSettleAnim = 0; // springs the line back after a drag
     bool occupied = false; // active workspace on this output has windows
+    bool pointerInside = false;
+    // reveal = "bar": the line hides while its bar is peeked and comes back once the bar slid away.
+    bool peeking = false;
+    Timer peekReleaseTimer; // ends the bar peek if the pointer never reaches the bar
+    Timer peekWatchTimer;   // polls the bar until it is hidden again
   };
 
   CompositorPlatform* m_platform = nullptr;
@@ -96,5 +98,8 @@ private:
   Bar* m_bar = nullptr;
   std::optional<HandleConfig> m_handleConfig; // nullopt when the active layout has no handle
   std::string m_revealBarName;                // synthesized bar to peek on reveal = "bar"
+  bool m_hideAtHome = false;                  // flow, or reveal = "bar": the line yields to the home bar/dock
+  // Hidden while the lock-screen widget editor owns the screen.
+  bool m_suppressed = false;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

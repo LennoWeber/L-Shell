@@ -1,7 +1,9 @@
 #pragma once
 
+#include "core/timer_manager.h"
 #include "shell/panel/panel.h"
 #include "shell/surface/glass.h"
+#include "ui/signal.h"
 
 #include <cstdint>
 #include <string>
@@ -66,6 +68,8 @@ private:
     Label* title = nullptr;
     Label* value = nullptr;
     ProgressBar* level = nullptr; // accent fill; null for tiles without a level
+    bool valueDimmed = false;     // placeholder value ("Off", "Nothing Playing") in on_surface_variant
+    bool levelNeutral = false;    // level in neutral on_surface instead of the accent (muted volume)
   };
 
   void doLayout(Renderer& renderer, float width, float height) override;
@@ -83,4 +87,8 @@ private:
   Label* m_date = nullptr;
   Flex* m_tileGrid = nullptr;
   std::vector<Tile> m_tiles;
+  // Ticks the clock and polls the services while open: service callbacks only refresh the panels they know about.
+  Timer m_refreshTimer;
+  Signal<>::ScopedConnection m_paletteConn;
+  bool m_glassLightTheme = false;
 };

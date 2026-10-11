@@ -18,7 +18,6 @@
 
 class CompositorPlatform;
 class ConfigService;
-class Flex;
 class Glyph;
 class InputArea;
 class IpcService;
@@ -119,7 +118,7 @@ private:
     Node* capsule = nullptr;
     Label* clock = nullptr;
     Node* ambientIndicator = nullptr;
-    Flex* expandedContent = nullptr;
+    Node* expandedContent = nullptr;
     Glyph* activityGlyph = nullptr;
     Label* activityTitle = nullptr;
     Label* activitySubtitle = nullptr;
@@ -132,6 +131,7 @@ private:
     AnimationManager::Id visibilityAnim = 0;
     bool occupied = false; // active workspace on this output has windows
     bool pointerInside = false;
+    float uiScale = 1.0F;
   };
 
   CompositorPlatform* m_platform = nullptr;
@@ -154,5 +154,7 @@ private:
   // Last seen power state, to tell a charger change or a low-battery crossing from a plain refresh.
   std::optional<bool> m_lastCharging;
   std::optional<float> m_lastBatteryPercent;
+  // Hidden while the lock-screen widget editor owns the screen.
+  bool m_suppressed = false;
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

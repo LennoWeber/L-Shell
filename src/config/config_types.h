@@ -2017,8 +2017,13 @@ struct HandleConfig {
 // Flow: a menu bar on an empty workspace; with windows open the island takes its strip, the handle appears at
 // the bottom and the side edges open the launcher and Control Center.
 struct FlowConfig {
+  // Pinned on an empty workspace only; while windows are open the island owns the top edge, so the bar neither
+  // reserves space, nor reveals on hover, nor flashes on a workspace switch.
   ModeBarConfig bar{
       .thickness = 28,
+      .reserveSpace = false,
+      .revealOnHover = false,
+      .showOnWorkspaceSwitch = false,
       .startWidgets = {"logo", "workspaces"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
   };
@@ -2044,6 +2049,7 @@ struct LayoutConfig {
   // launcher as the Spotlight button, matching the [bar.*] defaults.
   ModeBarConfig smartBar{
       .thickness = 28,
+      .reserveSpace = false, // hidden while windows are open; a hover reveal floats over them like macOS
       .startWidgets = {"logo", "workspaces", "app_name"},
       .centerWidgets = {"clock"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"},
@@ -2155,7 +2161,8 @@ struct ConfigChangeSet {
         || plugins
         || hotCorners
         || storage
-        || accessibility;
+        || accessibility
+        || layout;
   }
 };
 

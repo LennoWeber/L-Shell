@@ -286,6 +286,8 @@ private:
   // Opened with PanelOpenRequest::dismissOnPointerLeave; armed once the pointer has entered the panel.
   bool m_dismissOnPointerLeave = false;
   bool m_pointerEnteredSinceOpen = false;
+  // PanelOpenRequest::screenPosition of the open panel (screen-edge drawers); empty when it uses its own.
+  std::string m_screenPositionOverride;
   bool m_inTransition = false;
   bool m_closing = false;
   bool m_attachedToBar = false;

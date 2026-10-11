@@ -72,12 +72,17 @@ struct BarInstance {
   // smart_auto_hide: active workspace empty (or overview open) — keep the bar visible.
   bool smartAutoHidePinnedVisible = false;
   bool pointerInside = false;
+  // Held revealed by Bar::setBarPeek (layout handle) until the pointer has visited and left the bar.
+  bool peeked = false;
   float lastPointerSx = 0.0F;
   float lastPointerSy = 0.0F;
   std::size_t attachedPopupCount = 0;
 
   // Bar background, shadow, and layout sections (start/center/end along main axis)
   Box* bg = nullptr;
+  // Liquid Glass chrome over the background (BarConfig::glass): top sheen and edge-lit rim.
+  Box* glassSheen = nullptr;
+  Box* glassRim = nullptr;
   Box* shadow = nullptr;
   Node* shadowLeftClip = nullptr;
   Node* shadowRightClip = nullptr;
