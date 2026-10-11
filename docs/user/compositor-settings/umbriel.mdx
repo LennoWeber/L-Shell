@@ -65,6 +65,7 @@ default_size = [1020, 900]
 
 Noctalia publishes blur regions for its layer-shell surfaces when the compositor supports the `ext-background-effects` protocol. Enable blur for the bar, notifications, dock, panels, and OSD with the layer rule from Umbriel's example configuration:
 
+{/* TODO(phase): add island to the blur namespace (the Liquid Glass capsule needs blur). */}
 ```toml
 [[layer_rule]]
 match.namespace = "^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"

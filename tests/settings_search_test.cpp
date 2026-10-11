@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
   i18n::Service::instance().init();
 
   Config config;
+  // TODO(phase): set the classic layout mode: the default (Flow) has no [bar.*] pages.
   config.bars.push_back(BarConfig{});
   const auto registry = settings::buildSettingsRegistry(config, nullptr, nullptr, settings::RegistryEnvironment{});
 

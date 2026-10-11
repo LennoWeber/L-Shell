@@ -3727,6 +3727,8 @@ namespace settings {
       }
     }
 
+    // TODO(phase): only the classic bars too; appendLayoutEntries after this loop, so a [bar.*] entry wins a
+    //   search tie with its layout-mode twin.
     // Bar monitor overrides (all bars).
     for (const auto& bar : cfg.bars) {
       for (const auto& ovr : bar.monitorOverrides) {

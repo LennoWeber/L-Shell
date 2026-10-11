@@ -2247,6 +2247,7 @@ void SettingsWindow::buildScene(std::uint32_t width, std::uint32_t height) {
 
   const Config fallbackCfg{};
   const Config& cfg = m_config != nullptr ? m_config->config() : fallbackCfg;
+  // TODO(phase): no [bar.*] pages outside the classic layout: empty bar list and no selected bar there.
   const auto availableBars = settings::barNames(cfg);
   syncSelectedBarState(cfg, availableBars);
 

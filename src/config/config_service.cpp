@@ -1557,6 +1557,8 @@ void ConfigService::loadAll() {
   if (m_includeLoadedFiles.empty() && m_overridesTable.empty()) {
     kLog.info("no config files found, using defaults");
     m_lastChange = ConfigChangeSet{};
+    // TODO(phase): m_resolvedLayout = resolveLayout(m_config) right after this assignment (the bars on
+    //   screen come from it; parseConfigTable also builds validation copies, so not there).
     m_config = makeDefaultConfig();
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
@@ -1616,6 +1618,8 @@ void ConfigService::loadAll() {
 
   if (semanticError.empty()) {
     m_lastChange = computeConfigChangeSet(m_config, nextConfig);
+    // TODO(phase): m_resolvedLayout = resolveLayout(m_config) right after this assignment (the bars on
+    //   screen come from it; parseConfigTable also builds validation copies, so not there).
     m_config = std::move(nextConfig);
     m_configFileBarNames = std::move(configFileBarNames);
     m_configFileMonitorOverrideNames = std::move(configFileMonitorOverrideNames);
@@ -1636,6 +1640,8 @@ void ConfigService::loadAll() {
     }
   } else if (m_config.bars.empty()) {
     m_lastChange = ConfigChangeSet{};
+    // TODO(phase): m_resolvedLayout = resolveLayout(m_config) right after this assignment (the bars on
+    //   screen come from it; parseConfigTable also builds validation copies, so not there).
     m_config = makeDefaultConfig();
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
@@ -1884,8 +1890,6 @@ void ConfigService::parseConfigTable(
     }
   }
 
-  // TODO(phase): after parsing, resolve the layout (resolveLayout) into m_resolvedLayout for the live config
-  //   (parseConfigTable also serves validation copies, so resolve where m_config is assigned).
   if (config.bars.empty()) {
     if (logSummary) {
       kLog.info("no [bar.*] defined, using defaults");

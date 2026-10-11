@@ -455,9 +455,10 @@ void Application::initInputDispatch() {
       return;
     if (m_dock.onPointerEvent(event))
       return;
+    // TODO(phase): island, handle and edge strips go before the panel manager: a click outside an open panel
+    //   closes it unconsumed, so a click on the island would reopen what it just closed.
     if (m_panelManager.onPointerEvent(event))
       return;
-    // TODO(phase): route pointer events to the island, screen edges and gesture handle as well.
     if (m_hotCorners.onPointerEvent(event))
       return;
     m_notificationToast.onPointerEvent(event);
@@ -735,6 +736,7 @@ void Application::initPanelManagerAndPanels() {
   m_panelManager.registerPanel("polkit", std::make_unique<PolkitPanel>(&m_configService, [this]() {
                                  return m_polkitAgent.get();
                                }));
+  // TODO(phase): register StatusOverlayPanel (kPanelId) with UPower, network, Bluetooth, audio, brightness, MPRIS.
   m_panelManager.registerPanel("setup-wizard", std::make_unique<SetupWizardPanel>(&m_configService, &m_wayland));
 
   if (SetupWizardPanel::isFirstRun(m_configService)) {
@@ -872,8 +874,6 @@ void Application::initBarDockAndLayout() {
   m_trayMenu.initialize(m_wayland, &m_configService, m_trayService.get(), &m_renderContext);
   m_trayMenu.setClosedCallback([this]() { m_bar.reevaluateAutoHideAfterPopup(); });
 
-  // TODO(phase): initialize Island, ScreenEdges and GestureHandle here; register the status-overlay panel;
-  //   set the OSD redirect to the island; reload them on changed.layout.
   m_bar.initialize({
       .platform = m_compositorPlatform,
       .config = m_configService,
@@ -903,7 +903,9 @@ void Application::initBarDockAndLayout() {
       .screenshots = &m_screenshotService,
       .scriptApi = &m_scriptApi,
   });
+  // TODO(phase): caffeine anchors: add island and handle surfaces (bar-less layouts have no bar to hold the inhibitor).
   m_idleInhibitor.setAnchorSurfacesProvider([this]() { return m_bar.caffeineAnchorSurfaces(); });
+  // TODO(phase): a synthesized mode bar has no [bar.*] page: open the Layout page for it.
   m_panelManager.setOpenWidgetSettingsCallback([this](std::string barName, std::string widgetName) {
     m_settingsWindow.openToBarWidget(std::move(barName), std::move(widgetName));
   });
@@ -1042,6 +1044,7 @@ void Application::initWidgetControllersAndCallbacks() {
       .lockscreenWidgets = &m_lockscreenWidgetsController,
   });
   m_desktopWidgetsController.setOnEnterEditCallback([this]() { m_settingsWindow.closeForWidgetEditor(); });
+  // TODO(phase): enter/exit: setSuppressed(true/false) on island, handle and edges, like bar and dock.
   m_lockscreenWidgetsController.setOnEnterEditCallback([this]() { m_settingsWindow.closeForWidgetEditor(); });
   const auto restoreSettingsAfterWidgetEditor = [this]() {
     DeferredCall::callLater([this]() {
@@ -1066,7 +1069,7 @@ void Application::initWidgetControllersAndCallbacks() {
         text::invalidateFontWeightCatalogCache();
         m_renderContext.setTextFontFamily(newShellFontFamily);
         m_bar.reload();
-        // TODO(phase): island and gesture handle requestLayout() in this fan-out (fonts, RTL, scale).
+        // TODO(phase): island and gesture handle requestLayout() in this font fan-out.
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1095,6 +1098,7 @@ void Application::initWidgetControllersAndCallbacks() {
 
         lastRtl = rtl;
         Style::setRtl(rtl);
+        // TODO(phase): RTL fan-out: island and handle requestLayout() too.
         m_renderContext.setTextBaseDirection(rtl);
         m_bar.requestLayout();
         m_dock.requestLayout();
@@ -1125,6 +1129,7 @@ void Application::initWidgetControllersAndCallbacks() {
       m_desktopWidgetsController.onSecondTick();
       m_lockscreenWidgetsController.onSecondTick();
       m_settingsWindow.onSecondTick();
+      // TODO(phase): OSD pre-gate: osdKindWanted() so the island still sees this kind with the OSD kind off.
       if (m_configService.config().osd.kinds.keyboardLayout) {
         m_keyboardLayoutOsd.onLayoutChanged(m_compositorPlatform, m_configService.config());
       }
@@ -1170,5 +1175,7 @@ void Application::initWidgetControllersAndCallbacks() {
   // the hot-corner trigger zones are built after the bar and dock so they are
   // never occluded by shell chrome on their shared layer.
   m_screenCorners.initialize(m_wayland, &m_configService, &m_renderContext);
+  // TODO(phase): initialize Island, GestureHandle, ScreenEdges after this (surfaces come from reconcileOutputSurfaces);
+  //   OSD redirect to the island; reload all three on changed.layout or changed.dock.
   m_hotCorners.initialize(m_wayland, &m_configService, &m_renderContext);
 }

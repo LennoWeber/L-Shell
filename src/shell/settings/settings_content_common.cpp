@@ -350,6 +350,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
+    // TODO(phase): add case SettingsSection::Layout (phase 2 left these exhaustive switches incomplete).
     case SettingsSection::Plugins:
       return false;
     }
@@ -387,6 +388,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
+    // TODO(phase): add case SettingsSection::Layout.
     case SettingsSection::Plugins:
       return {};
     }

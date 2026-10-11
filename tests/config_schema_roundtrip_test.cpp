@@ -351,6 +351,7 @@ location = "https://example.invalid/bad"
         .soundTheme = "freedesktop"
     };
     c.weather = WeatherConfig{false, false, 17, "imperial"};
+    // TODO(phase): probe every [layout] table with a non-default value.
     c.osd.position = "bottom_left";
     c.osd.positionVertical = "top_right";
     c.osd.orientation = "vertical";
@@ -753,6 +754,7 @@ location = "https://example.invalid/bad"
     }
   }
 
+  // TODO(phase): add a layout change-set check (mode, nested flow table, unchanged).
   void checkMonitorOverrideChangeSet() {
     Config before;
     BarConfig bar;

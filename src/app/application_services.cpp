@@ -861,6 +861,7 @@ void Application::initWaylandCallbacks() {
   });
   m_compositorPlatform.setKeyboardLayoutChangeCallback([this]() {
     m_bar.refresh();
+    // TODO(phase): OSD pre-gate: osdKindWanted().
     if (m_configService.config().osd.kinds.keyboardLayout) {
       m_keyboardLayoutOsd.onLayoutChanged(m_compositorPlatform, m_configService.config());
     }
@@ -868,6 +869,7 @@ void Application::initWaylandCallbacks() {
       m_lockScreen.onKeyboardLayoutChanged();
     }
   });
+  // TODO(phase): windows opening/closing on the active workspace: island and handle onWorkspaceChanged().
   m_compositorPlatform.setToplevelChangeCallback([this]() {
     m_screenTimeService.onFocusChange();
     m_bar.scheduleSmartAutoHideReevaluation();
@@ -883,6 +885,7 @@ void Application::initWaylandCallbacks() {
     m_lockKeysService.setChangeCallback(
         [this](const WaylandSeat::LockKeysState& previous, const WaylandSeat::LockKeysState& current) {
           const Config& config = m_configService.config();
+          // TODO(phase): OSD pre-gate: osdKindWanted().
           if (config.osd.kinds.lockKeys) {
             m_lockKeysOsd.onLockKeysChanged(previous, current);
           }
@@ -931,6 +934,7 @@ void Application::initAuxServicesAndHooks() {
     }
   });
   m_gammaService.setStateFeedbackCallback([this]() {
+    // TODO(phase): OSD pre-gate: osdKindWanted().
     if (m_configService.config().osd.kinds.nightlight) {
       m_osdOverlay.show(nightLightOsdContent(m_gammaService));
     }
@@ -1513,6 +1517,7 @@ void Application::initEarlySessionBusAndTray() {
   m_trayService->setChangeCallback([this]() {
     m_bar.refresh();
     m_trayMenu.onTrayChanged();
+    // TODO(phase): OSD pre-gate: osdKindWanted() for the keyboard-layout flag.
     m_keyboardLayoutOsd.onTrayChanged(
         *m_trayService, m_configService.config(), m_configService.config().osd.kinds.keyboardLayout
     );
