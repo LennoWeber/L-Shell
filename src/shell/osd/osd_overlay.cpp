@@ -708,7 +708,7 @@ void OsdOverlay::buildScene(Instance& inst, std::uint32_t width, std::uint32_t h
   auto icon = ui::glyph({
       .out = &inst.glyph,
       .glyphSize = glyphSize(s),
-      .color = colorSpecFromRole(ColorRole::Primary),
+      .color = colorSpecFromRole(ColorRole::OnSurface),
       .configure = [](Glyph& glyph) { glyph.setZIndex(1); },
   });
 
@@ -781,9 +781,10 @@ void OsdOverlay::updateInstanceContent(Instance& inst) {
     shell::glass::applyRim(*inst.background, {}, isResolvedLightTheme(), s);
   }
 
+  // Like the Tahoe HUD: a neutral icon and level, not the accent; red past the limit, dimmed when muted/off.
   const ColorRole accentRole = m_content.overLimit ? ColorRole::Error
       : m_content.inactive                         ? ColorRole::OnSurfaceVariant
-                                                   : ColorRole::Primary;
+                                                   : ColorRole::OnSurface;
   inst.glyph->setGlyph(m_content.icon);
   inst.glyph->setColor(colorSpecFromRole(accentRole));
   inst.progress->setVisible(m_content.showProgress);

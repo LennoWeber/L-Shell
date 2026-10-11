@@ -255,7 +255,7 @@ std::unique_ptr<Flex> MediaTab::create() {
               .text = i18n::tr("control-center.media.nothing-playing"),
               .fontSize = Style::fontSizeTitle * scale,
               .fontWeight = FontWeight::Bold,
-              .color = colorSpecFromRole(ColorRole::Primary),
+              .color = colorSpecFromRole(ColorRole::OnSurface),
           }),
           ui::label({
               .out = &m_trackArtist,

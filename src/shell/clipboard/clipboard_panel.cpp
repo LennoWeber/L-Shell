@@ -587,7 +587,7 @@ void ClipboardPanel::create() {
           .text = i18n::tr("clipboard.title"),
           .fontSize = Style::fontSizeTitle * scale,
           .fontWeight = FontWeight::Bold,
-          .color = colorSpecFromRole(ColorRole::Primary),
+          .color = colorSpecFromRole(ColorRole::OnSurface),
       }),
       makeCompactIconButton(&m_clearHistoryButton, "trash", ButtonVariant::Destructive, scale, [this]() {
         requestClearUnpinnedHistory();
@@ -732,7 +732,7 @@ void ClipboardPanel::create() {
           .text = i18n::tr("clipboard.entry.title"),
           .fontSize = Style::fontSizeTitle * scale,
           .fontWeight = FontWeight::Bold,
-          .color = colorSpecFromRole(ColorRole::Primary),
+          .color = colorSpecFromRole(ColorRole::OnSurface),
           .flexGrow = 1.0F,
       }),
       std::move(previewActions)
