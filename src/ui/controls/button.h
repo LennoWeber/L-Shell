@@ -29,6 +29,9 @@ enum class ButtonVariant : std::uint8_t {
   Ghost,
   Tab,
   TabActive,
+  // The selected segment of a segmented control: a raised neutral chip, like macOS (the accent marks selection
+  // only in lists and sidebars).
+  SegmentActive,
 };
 
 class Button : public Flex {

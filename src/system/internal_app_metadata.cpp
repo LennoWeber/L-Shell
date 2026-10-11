@@ -10,10 +10,11 @@ namespace internal_apps {
 
     constexpr InternalAppDefinition kInternalApps[] = {
         {
-            .appId = "dev.noctalia.Noctalia",
-            .windowTitle = "Noctalia Settings",
-            .displayName = "Noctalia",
-            .iconAssetPath = "noctalia.svg",
+            .appId = "dev.lshell.LShell",
+            .windowTitle = "L-Shell Settings",
+            // Shown by the menu bar's app name and the dock, like macOS's own settings app.
+            .displayName = "System Settings",
+            .iconAssetPath = "branding/l-shell-icon.svg",
         },
     };
 

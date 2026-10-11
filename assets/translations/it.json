@@ -862,14 +862,14 @@
       "calendar-reminder-open": "Apri",
       "calendar-reminder-untitled": "Evento senza titolo",
       "calendar-reminder-with-location": "{when}\n{location}",
-      "config-migration-body": "Aggiorna {path} nel source file. Noctalia applica questa sostituzione solo temporaneamente. Esegui noctalia config validate per elencare tutte le modifiche richieste.",
+      "config-migration-body": "Aggiorna {path} nel source file. L-Shell applica questa sostituzione solo temporaneamente. Esegui l-shell config validate per elencare tutte le modifiche richieste.",
       "config-migration-title": "È necessario l'aggiornamento della configurazione",
       "dbus-disabled": "Notifiche DBus disabilitate",
       "desktop-widgets-editor": "Editor widget",
       "desktop-widgets-editor-enabled": "L'editor dei widget desktop è attivo. Passa a un'area di lavoro vuota in modo che le finestre aperte non coprano l'editor.",
       "greeter-sync": "Noctalia Greeter",
       "greeter-sync-pending": "Sincronizzazione dell'aspetto con il greeter. Se viene visualizzato un prompt amministratore, approvarlo; l'autorizzazione senza password segue le policy di sistema.",
-      "greeter-sync-pending-console": "Sincronizzazione dell'aspetto con il greeter. Se è richiesta l'autorizzazione, approvare la richiesta polkit in Noctalia, su un TTY o su una console.",
+      "greeter-sync-pending-console": "Sincronizzazione dell'aspetto con il greeter. Se è richiesta l'autorizzazione, approvare la richiesta polkit in L-Shell, su un TTY o su una console.",
       "greeter-sync-pending-legacy": "Sincronizzazione tramite l'assistente legacy autenticato. È richiesta l'approvazione dell'amministratore.",
       "greeter-sync-pending-manual": "I file vengono preparati per la sincronizzazione legacy autenticata. Eseguire l'helper di applicazione posizionale in un terminale, mantenendo NOCTALIA_GREETER_STATE_DIR se si utilizza un percorso personalizzato, oppure configurare shell.greeter_sync.privilege_command e sincronizzare di nuovo.",
       "greeter-sync-pending-manual-pkexec": "Sincronizzazione dell'aspetto con il greeter. Se è richiesta l'autorizzazione dell'amministratore e non viene visualizzato alcun messaggio, eseguire in un terminale: pkexec noctalia-greeter-apply-appearance --sync \"/run/user/$(id -u)/noctalia-greeter-sync\".",
@@ -877,7 +877,7 @@
       "greeter-sync-timeout": "La sincronizzazione del greeter è ancora in attesa di autorizzazione. Controlla un terminale TTY o una console per visualizzare il prompt del polkit, abilita l'agente polkit nelle impostazioni di sicurezza oppure esegui pkexec manualmente.",
       "greeter-sync-timeout-manual": "La sincronizzazione legacy autenticata richiede comunque l'approvazione dell'amministratore. Eseguire lo strumento di supporto per l'applicazione posizionale in un terminale e mantenere NOCTALIA_GREETER_STATE_DIR se si utilizza un percorso personalizzato.",
       "greeter-sync-timeout-manual-pkexec": "La sincronizzazione di Greeter richiede ancora l'autorizzazione. Esegui il comando in un terminale: pkexec noctalia-greeter-apply-appearance --sync \"/run/user/$(id -u)/noctalia-greeter-sync\"",
-      "keybind-app": "Noctalia",
+      "keybind-app": "L-Shell",
       "keybind-invalid-modifier": "Questa scorciatoia accetta un singolo tasto senza modificatori.",
       "keybind-invalid-printable": "I tasti stampabili (lettere, numeri, simboli) richiedono un modificatore come Ctrl o Alt.",
       "keybind-invalid-super": "Il tasto Super/Windows non può essere usato nelle scorciatoie della shell.",
@@ -949,7 +949,7 @@
     },
     "enable-failed": {
       "body-error": "{plugin}: {error}",
-      "body-incompatible": "{plugin} richiede API plugin {versione}; questo Noctalia supporta API {oldest}–{current}.",
+      "body-incompatible": "{plugin} richiede API plugin {versione}; questo L-Shell supporta API {oldest}–{current}.",
       "body-timeout": "L'installazione di {plugin} ha richiesto troppo tempo.",
       "title": "Plugin non abilitato"
     }
@@ -1645,7 +1645,7 @@
         "deprecated": "deprecato",
         "empty": "Nessun plugin abilitato.",
         "held-back": "versione precedente",
-        "held-back-hint": "v{version} necessita plugin API {required}; questo Noctalia supporta fino a {current}. Aggiorna Noctalia per sfruttarlo.",
+        "held-back-hint": "v{version} necessita plugin API {required}; questo L-Shell supporta fino a {current}. Aggiorna L-Shell per sfruttarlo.",
         "incompatible-plugin-api": "API plugin incompatibile",
         "remove": "Rimuovi plugin",
         "requires": "Richiede: {dependencies}",
@@ -1689,15 +1689,15 @@
         "update": "Aggiorna sorgente"
       },
       "store": {
-        "add": "Aggiungi a Noctalia",
+        "add": "Aggiungi a L-Shell",
         "back-to-catalog": "Torna al catalogo dei plugin",
         "categories": "Categorie",
         "category-all": "Tutti",
         "empty": "Nessun plugin trovato",
         "held-back": "Versione precedente",
-        "held-back-hint": "Installa v{version} per plugin API {resolved}. Il più recente v{latest} necessita plugin API {latestRequired}; questo Noctalia supporta fino a {current}.",
+        "held-back-hint": "Installa v{version} per plugin API {resolved}. Il più recente v{latest} necessita plugin API {latestRequired}; questo L-Shell supporta fino a {current}.",
         "incompatible": "Incompatibile",
-        "incompatible-hint": "Richiede plugin API {richiesto}; questo Noctalia supporta {oldest}–{current}.",
+        "incompatible-hint": "Richiede plugin API {richiesto}; questo L-Shell supporta {oldest}–{current}.",
         "installed": "Installato",
         "loading": "Caricamento catalogo...",
         "no-readme": "Nessuna descrizione disponibile.",
@@ -1805,7 +1805,7 @@
           "label": "Nero puro"
         },
         "shell-theme-mode": {
-          "description": "Fissa la modalità chiara o scura di Noctalia; Segui la mantiene sincronizzata con la Modalità Tema.",
+          "description": "Fissa la modalità chiara o scura di L-Shell; Segui la mantiene sincronizzata con la Modalità Tema.",
           "label": "Modalità tema Shell"
         },
         "theme-mode": {
@@ -2247,7 +2247,7 @@
             "label": "Allo spegnimento"
           },
           "started": {
-            "description": "Comando da eseguire dopo l'avvio di Noctalia",
+            "description": "Comando da eseguire dopo l'avvio di L-Shell",
             "label": "All'avvio"
           },
           "theme-mode-changed": {
@@ -3072,9 +3072,9 @@
           "label": "Etichette del layout della tastiera"
         },
         "launch-apps-as-systemd-services": {
-          "description": "Avvia le applicazioni in servizi systemd separati così non condividono il cgroup di Noctalia",
+          "description": "Avvia le applicazioni in servizi systemd separati così non condividono il cgroup di L-Shell",
           "label": "Avvia app come servizi systemd",
-          "requires-systemd-session": "Richiede che Noctalia venga eseguito come servizio utente systemd (uwsm o unità utente systemd)"
+          "requires-systemd-session": "Richiede che L-Shell venga eseguito come servizio utente systemd (uwsm o unità utente systemd)"
         },
         "launch-apps-custom-command": {
           "description": "Comprende le app avviate dal launcher, dal dock e dalla barra delle applicazioni; sostituisce $CMD con il comando originale",
@@ -3792,7 +3792,7 @@
             "label": "Richiama l'ultima azione di notifica"
           },
           "notification-show": {
-            "description": "Mostra una notifica interna di Noctalia",
+            "description": "Mostra una notifica interna di L-Shell",
             "label": "Mostra una notifica"
           },
           "osd-disable": {
@@ -4723,8 +4723,8 @@
       "export-config": "Esporta configurazione...",
       "export-config-saved": "Esportazione configurazione salvata.",
       "filter-overridden": "Sovrascritto",
-      "legacy-config-warning": "Impostazione legacy: {issue}. Modifica questa voce; Noctalia applica la sostituzione solo temporaneamente. Esegui noctalia config validate per elencare tutte le modifiche richieste.",
-      "native-title": "Impostazioni Noctalia",
+      "legacy-config-warning": "Impostazione legacy: {issue}. Modifica questa voce; L-Shell applica la sostituzione solo temporaneamente. Esegui l-shell config validate per elencare tutte le modifiche richieste.",
+      "native-title": "Impostazioni L-Shell",
       "no-results": "Nessuna impostazione trovata",
       "no-results-hint": "Prova un nome impostazione o una chiave configurazione diversa.",
       "offline-mode-notice": {
@@ -4760,7 +4760,7 @@
     "no-wallpaper-selected": "Nessuno sfondo selezionato",
     "select-wallpaper": "Seleziona sfondo",
     "subtitle": "Alcune scelte rapide per iniziare.",
-    "title": "Benvenuto in Noctalia",
+    "title": "Benvenuto in L-Shell",
     "wallpaper": "Sfondo",
     "wallpaper-scheme": "Schema sfondo"
   },

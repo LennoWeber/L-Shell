@@ -530,8 +530,8 @@
       "battery-device": "Amûrê betariyê",
       "battery-low-title": "Betarî kêm e",
       "calendar": "Salname",
-      "greeter-sync": "Silavkarê Noctalia",
-      "keybind-app": "Noctalia"
+      "greeter-sync": "Silavkarê L-Shell",
+      "keybind-app": "L-Shell"
     }
   },
   "osd": {
@@ -943,7 +943,7 @@
         "update": "Rojane bike"
       },
       "store": {
-        "add": "Tevlî Noctalia bike",
+        "add": "Tevlî L-Shell bike",
         "categories": "Beş",
         "category-all": "Hemû",
         "title": "Markêta pêvekan"

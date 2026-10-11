@@ -430,7 +430,8 @@ namespace settings {
   std::unique_ptr<Label> makeSettingSubtitleLabel(std::string_view text, float scale) {
     return ui::label({
         .text = std::string(text),
-        .fontSize = Style::fontSizeCaption * scale,
+        // macOS secondary text: a size below the row title, in the secondary label color.
+        .fontSize = Style::fontSizeMini * scale,
         .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
         .maxLines = kSettingDescriptionMaxLines,
     });

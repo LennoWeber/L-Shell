@@ -4,6 +4,7 @@
 #include "core/files/directory_scanner.h"
 #include "core/files/resource_paths.h"
 #include "core/log.h"
+#include "core/process/process.h"
 #include "i18n/i18n.h"
 #include "render/core/renderer.h"
 #include "shell/panel/panel_manager.h"
@@ -210,6 +211,30 @@ void SetupWizardPanel::create() {
           })
       );
     }
+    card->addChild(std::move(row));
+    content->addChild(std::move(card));
+  }
+
+  // App colors: GTK, Qt and terminals follow the L-Shell palette and accent, like apps on macOS follow the system.
+  {
+    auto card = makeCard(scale, panelCardOpacity());
+
+    auto row = makeRow(scale);
+    {
+      auto col = makeTextColumn();
+      col->addChild(makeLabel(
+          i18n::tr("setup-wizard.app-colors.label"), Style::fontSizeBody * scale,
+          colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold
+      ));
+      auto description = makeLabel(
+          i18n::tr("setup-wizard.app-colors.description"), Style::fontSizeCaption * scale,
+          colorSpecFromRole(ColorRole::OnSurfaceVariant)
+      );
+      description->setMaxLines(4);
+      col->addChild(std::move(description));
+      row->addChild(std::move(col));
+    }
+    row->addChild(ui::toggle({.out = &m_appThemeToggle, .checked = true, .scale = scale}));
     card->addChild(std::move(row));
     content->addChild(std::move(card));
   }
@@ -432,7 +457,7 @@ void SetupWizardPanel::create() {
 
 void SetupWizardPanel::doLayout(Renderer& renderer, float width, float height) {
   if (m_logo != nullptr && !m_logo->hasImage()) {
-    m_logo->setSourceFile(renderer, paths::assetPath("noctalia.svg").string(), 48 * static_cast<int>(contentScale()));
+    m_logo->setSourceFile(renderer, paths::assetPath("branding/l-shell-mark.svg").string(), 48 * static_cast<int>(contentScale()));
   }
   if (m_root != nullptr) {
     m_root->setPosition(0.0F, 0.0F);
@@ -484,6 +509,19 @@ void SetupWizardPanel::configureThemeOptionSelect() {
 void SetupWizardPanel::commit() {
   if (m_telemetryToggle != nullptr) {
     m_config->setOverride({"shell", "telemetry_enabled"}, m_telemetryToggle->checked());
+  }
+  if (m_appThemeToggle != nullptr && m_appThemeToggle->checked()) {
+    // Toolkits and terminals: their templates write a separate colors file and import it, so a user's own
+    // settings stay.
+    std::vector<std::string> ids{"gtk3", "gtk4", "qt", "kcolorscheme"};
+    // Terminal templates create the terminal's config file, so only installed terminals get one.
+    for (const char* terminal : {"kitty", "foot", "ghostty", "alacritty"}) {
+      if (process::commandExists(terminal)) {
+        ids.emplace_back(terminal);
+      }
+    }
+    m_config->setOverride({"theme", "templates", "enable_builtin_templates"}, true);
+    m_config->setOverride({"theme", "templates", "builtin_ids"}, std::move(ids));
   }
   // Theme/palette overrides are written live by the select callbacks only when
   // the user actually changes them, so commit must not force any defaults here.

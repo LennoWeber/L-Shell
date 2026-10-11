@@ -41,8 +41,8 @@ check, but it only covers repositories it indexes (and may still list v4 as
 | License | MIT ([LICENSE](LICENSE)); also see vendored licenses under `third_party/` for SPDX completeness |
 | Version | Meson `project(... version: ...)` in [`meson.build`](meson.build) |
 | Binary | `noctalia` |
-| Desktop entry | `dev.noctalia.Noctalia.desktop` |
-| Icon | `noctalia` (`share/icons/hicolor/scalable/apps/noctalia.svg`) |
+| Desktop entry | `dev.lshell.LShell.desktop` |
+| Icon | `l-shell` (`share/icons/hicolor/scalable/apps/l-shell.svg`) |
 
 ## Maintenance Policy
 
@@ -104,8 +104,8 @@ Prefix/datadir are baked into the binary via `NOCTALIA_INSTALL_PREFIX` /
 ```text
 <prefix>/bin/noctalia
 <prefix>/share/noctalia/assets/...
-<prefix>/share/applications/dev.noctalia.Noctalia.desktop
-<prefix>/share/icons/hicolor/scalable/apps/noctalia.svg
+<prefix>/share/applications/dev.lshell.LShell.desktop
+<prefix>/share/icons/hicolor/scalable/apps/l-shell.svg
 ```
 
 The shipped `assets/` tree is **required at runtime**. Shipping only the binary

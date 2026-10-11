@@ -243,7 +243,7 @@ void Segmented::refreshVariants() {
     if (m_buttons[i] == nullptr) {
       continue;
     }
-    m_buttons[i]->setVariant(i == m_selected ? ButtonVariant::TabActive : ButtonVariant::Tab);
+    m_buttons[i]->setVariant(i == m_selected ? ButtonVariant::SegmentActive : ButtonVariant::Tab);
     Radii radii;
     if (n == 1) {
       radii = Radii{r, r, r, r};

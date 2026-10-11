@@ -20,7 +20,7 @@ namespace noctalia::ipc {
 
     const std::string_view command = argv[2];
     if (command == "--help" || command == "-h") {
-      std::print("{}", cli::renderHelp(cli::kMsgCmd, "noctalia msg"));
+      std::print("{}", cli::renderHelp(cli::kMsgCmd, "l-shell msg"));
       return 0;
     }
     if (argc >= 4 && (std::string_view(argv[argc - 1]) == "--help" || std::string_view(argv[argc - 1]) == "-h")) {

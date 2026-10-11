@@ -682,9 +682,9 @@
       "dbus-disabled": "Powiadomienia DBus wyłączone",
       "desktop-widgets-editor": "Edytor widżetów",
       "desktop-widgets-editor-enabled": "Edytor widżetów pulpitu jest włączony. Przejdź na pusty obszar roboczy, aby otwarte okna nie zasłaniały edytora.",
-      "greeter-sync": "Powitanie Noctalia",
+      "greeter-sync": "Powitanie L-Shell",
       "greeter-sync-success": "Wygląd zsynchronizowany. Zmiany będą obowiązywać na następnym ekranie logowania.",
-      "keybind-app": "Noctalia",
+      "keybind-app": "L-Shell",
       "keybind-invalid-modifier": "Ten skrót przyjmuje jeden klawisz bez modyfikatorów.",
       "keybind-invalid-printable": "Klawishe drukowalne (litery, cyfry, symbole) wymagają modyfikatora, takiego jak Ctrl lub Alt.",
       "keybind-invalid-super": "Klawisz Super/Windows nie może być używany w skrótach shella.",
@@ -1632,7 +1632,7 @@
             "label": "Przy wyłączaniu"
           },
           "started": {
-            "description": "Polecenie do uruchomienia po uruchomieniu Noctalia",
+            "description": "Polecenie do uruchomienia po uruchomieniu L-Shell",
             "label": "Przy starcie"
           },
           "theme-mode-changed": {
@@ -2097,7 +2097,7 @@
           "label": "Format daty"
         },
         "launch-apps-as-systemd-services": {
-          "description": "Uruchamia aplikacje w oddzielnych usługach systemd, aby nie udostępniały cgroup Noctalia",
+          "description": "Uruchamia aplikacje w oddzielnych usługach systemd, aby nie udostępniały cgroup L-Shell",
           "label": "Uruchamiaj aplikacje jako usługi systemd"
         },
         "niri-overview-type-to-launch": {
@@ -2797,7 +2797,7 @@
     "window": {
       "export-config": "Eksportuj konfigurację…",
       "export-config-saved": "Konfiguracja wyeksportowana.",
-      "native-title": "Ustawienia Noctalia",
+      "native-title": "Ustawienia L-Shell",
       "no-results": "Nie znaleziono ustawień",
       "no-results-hint": "Spróbuj innej nazwy ustawienia lub klucza konfiguracji.",
       "reset-page": "Resetuj stronę",
@@ -2818,7 +2818,7 @@
     "no-wallpaper-selected": "Nie wybrano tapety",
     "select-wallpaper": "Wybierz tapetę",
     "subtitle": "Kilka szybkich wyborów, aby zacząć.",
-    "title": "Witaj w Noctalia",
+    "title": "Witaj w L-Shell",
     "wallpaper": "Tapeta",
     "wallpaper-scheme": "Schemat tapety"
   },

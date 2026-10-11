@@ -153,6 +153,20 @@ namespace {
           .disabled = makeState(clearColorSpec(), clearColorSpec(), colorSpecFromRole(ColorRole::OnSurface)),
           .selected = std::nullopt,
       };
+    case ButtonVariant::SegmentActive: {
+      // White on a light track; a lighter grey on a dark one.
+      const ColorSpec chip = isResolvedLightTheme() ? colorSpecFromRole(ColorRole::SurfaceVariant)
+                                                    : colorSpecFromRole(ColorRole::OnSurface, 0.2F);
+      const ColorSpec text = colorSpecFromRole(ColorRole::OnSurface);
+      return Button::ButtonPalette{
+          .borderWidth = 0.0F,
+          .normal = makeState(chip, clearColorSpec(), text),
+          .hover = makeState(chip, clearColorSpec(), text),
+          .pressed = makeState(chip, clearColorSpec(), text),
+          .disabled = makeState(chip, clearColorSpec(), colorSpecFromRole(ColorRole::OnSurface, kDisabledAlpha)),
+          .selected = std::nullopt,
+      };
+    }
     case ButtonVariant::TabActive:
       return Button::ButtonPalette{
           .borderWidth = 0.0F,
@@ -609,6 +623,7 @@ void Button::resolveVisualStateColors(Color& targetBg, Color& targetBorder, Colo
   const bool isInputFocused = m_enabled && m_inputArea != nullptr && m_inputArea->focused();
   const bool keyboardNavFocus = isKeyboardFocused
       && (m_variant == ButtonVariant::TabActive
+          || m_variant == ButtonVariant::SegmentActive
           || m_variant == ButtonVariant::Tab
           || m_variant == ButtonVariant::Ghost);
   bool isHovered = m_enabled && (m_hoveredVisual || (!m_hoverSuppressed && hovered()));

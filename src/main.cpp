@@ -132,11 +132,11 @@ namespace {
   int runTopLevelFlag(const char* flag) {
     if (std::strcmp(flag, "--version") == 0 || std::strcmp(flag, "-v") == 0) {
       const std::string version = noctalia::build_info::displayVersion();
-      std::println("noctalia {}", version);
+      std::println("l-shell {}", version);
       return 0;
     }
     if (std::strcmp(flag, "--help") == 0 || std::strcmp(flag, "-h") == 0) {
-      std::print("{}", noctalia::cli::renderHelp(noctalia::cli::kRootCmd, "noctalia"));
+      std::print("{}", noctalia::cli::renderHelp(noctalia::cli::kRootCmd, "l-shell"));
       return 0;
     }
     return -1;

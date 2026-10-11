@@ -173,7 +173,8 @@ void RovingListNavController::syncKeyboardIndexToSelection() {
   }
 
   for (std::size_t i = 0; i < m_items.size(); ++i) {
-    if (isNavigable(m_items[i]) && m_items[i].button->variant() == ButtonVariant::TabActive) {
+    if (isNavigable(m_items[i]) && (m_items[i].button->variant() == ButtonVariant::TabActive
+                                       || m_items[i].button->variant() == ButtonVariant::SegmentActive)) {
       setKeyboardIndex(i, false);
       return;
     }

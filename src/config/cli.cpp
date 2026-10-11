@@ -443,7 +443,7 @@ namespace noctalia::config {
 
   int runCli(int argc, char* argv[]) {
     if (argc < 3 || std::strcmp(argv[2], "--help") == 0 || std::strcmp(argv[2], "-h") == 0) {
-      std::print("{}", cli::renderHelp(cli::kConfigCmd, "noctalia config"));
+      std::print("{}", cli::renderHelp(cli::kConfigCmd, "l-shell config"));
       return argc < 3 ? 1 : 0;
     }
 

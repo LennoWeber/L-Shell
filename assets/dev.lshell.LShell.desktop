@@ -1,15 +1,16 @@
 [Desktop Entry]
 Type=Application
-Name=Noctalia
-Comment=A sleek, customizable desktop shell crafted for Wayland.
-Exec=noctalia --daemon
-Icon=noctalia
+Name=L-Shell
+GenericName=Desktop Shell
+Comment=A macOS Tahoe–style desktop shell for Wayland.
+Exec=l-shell --daemon
+Icon=l-shell
 Terminal=false
 Categories=Settings;DesktopSettings;
 StartupNotify=false
 Actions=Settings;
-Keywords=desktop;shell;wayland;
+Keywords=desktop;shell;wayland;settings;system;
 
 [Desktop Action Settings]
-Name=Open Settings
-Exec=sh -c "noctalia msg settings-open || { noctalia --daemon && noctalia msg settings-open; }"
+Name=System Settings
+Exec=sh -c "l-shell msg settings-open || { l-shell --daemon && l-shell msg settings-open; }"

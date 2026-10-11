@@ -37,6 +37,7 @@ private:
   Flex* m_root = nullptr;
   Image* m_logo = nullptr;
   Toggle* m_telemetryToggle = nullptr;
+  Toggle* m_appThemeToggle = nullptr;
   Select* m_modeSelect = nullptr;
   Select* m_themeSourceSelect = nullptr;
   Label* m_themeOptionLabel = nullptr;

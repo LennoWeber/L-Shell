@@ -850,10 +850,10 @@
       "dbus-disabled": "Сповіщення DBus вимкнено",
       "desktop-widgets-editor": "Редактор віджетів",
       "desktop-widgets-editor-enabled": "Редактор віджетів робочого столу увімкнено. Перейди на порожній робочий простір, щоб побачити оверлей редактора.",
-      "greeter-sync": "Вітальний екран Noctalia",
+      "greeter-sync": "Вітальний екран L-Shell",
       "greeter-sync-pending": "Синхронізація вигляду з greeter. Якщо з’явиться запит адміністратора, підтвердьте його; авторизація без пароля залежить від системної політики.",
       "greeter-sync-success": "Оформлення синхронізовано. Зміни будуть застосовані при наступному екрані входу.",
-      "keybind-app": "Noctalia",
+      "keybind-app": "L-Shell",
       "keybind-invalid-modifier": "Це поєднання клавіш приймає одну клавішу без модифікаторів.",
       "keybind-invalid-printable": "Клавіші з друкованими символами (літери, цифри тощо) працюватимуть лише з модифікатором, як-от Ctrl або Alt.",
       "keybind-invalid-super": "Клавіша Super/Windows не може бути використана у прив'язках клавіш оболонки.",
@@ -919,7 +919,7 @@
     },
     "enable-failed": {
       "body-error": "{plugin}: {error}",
-      "body-incompatible": "{plugin} очікує API {version}; ця версія Noctalia підтримує API {oldest}–{current}.",
+      "body-incompatible": "{plugin} очікує API {version}; ця версія L-Shell підтримує API {oldest}–{current}.",
       "body-timeout": "Установлення додатку «{plugin}» тривало надто довго.",
       "title": "Додаток не увімкнено."
     }
@@ -1545,7 +1545,7 @@
         "delete-confirm-title": "Видалити «{name}»?",
         "empty": "Немає ввімкнених додатків.",
         "held-back": "",
-        "held-back-hint": "v{version} вимагає API {required}; ця версія оболонки Noctalia підтримує версії до API {current}. Онови оболонку Noctalia щоб мати змогу встановити цей додаток.",
+        "held-back-hint": "v{version} вимагає API {required}; ця версія оболонки L-Shell підтримує версії до API {current}. Онови оболонку L-Shell щоб мати змогу встановити цей додаток.",
         "incompatible-plugin-api": "Несумісний API",
         "remove": "Вилучити додаток",
         "requires": "Вимагає: {dependencies}",
@@ -1587,15 +1587,15 @@
         "update": "Оновити джерело"
       },
       "store": {
-        "add": "Додати до Noctalia",
+        "add": "Додати до L-Shell",
         "back-to-catalog": "Назад до каталогу додатків",
         "categories": "Категорії",
         "category-all": "Усі",
         "empty": "Додатки не знайдені.",
         "held-back": "Старіша версія",
-        "held-back-hint": "Встановлює v{version} для API {resolved}. Найновіша v{latest} потребує API {latestRequired}; ця версія оболонки Noctalia підтримує тільки до API {current}.",
+        "held-back-hint": "Встановлює v{version} для API {resolved}. Найновіша v{latest} потребує API {latestRequired}; ця версія оболонки L-Shell підтримує тільки до API {current}.",
         "incompatible": "Несумісно",
-        "incompatible-hint": "Потребує API {required}; ця версія оболонки Noctalia підтримує {oldest}–{current}.",
+        "incompatible-hint": "Потребує API {required}; ця версія оболонки L-Shell підтримує {oldest}–{current}.",
         "installed": "Встановлено",
         "loading": "Триває завантаження каталогу…",
         "no-readme": "Немає доступного опису.",
@@ -2091,7 +2091,7 @@
             "label": "При вимкненні"
           },
           "started": {
-            "description": "Команда для запуску після старту Noctalia",
+            "description": "Команда для запуску після старту L-Shell",
             "label": "При запуску"
           },
           "theme-mode-changed": {
@@ -2621,7 +2621,7 @@
           "label": "Автоматично синхронізувати"
         },
         "launch-apps-as-systemd-services": {
-          "description": "Запускає програми в окремих службах systemd, щоб вони не ділили cgroup Noctalia",
+          "description": "Запускає програми в окремих службах systemd, щоб вони не ділили cgroup L-Shell",
           "label": "Запускати програми як служби systemd"
         },
         "niri-overview-type-to-launch": {
@@ -2793,7 +2793,7 @@
         "sync-greeter": {
           "button": "Синхронізувати зараз",
           "description": "Скопіювати поточний вигляд і розташування моніторів у Noctalia Greeter. Буде запитано дозвіл адміністратора, якщо системна політика не дозволяє синхронізацію без пароля для вашого користувача.",
-          "label": "Noctalia Привітання"
+          "label": "L-Shell Привітання"
         },
         "telemetry": {
           "description": "Надсилає невеликий анонімний стартовий пінг з версією, OS, композитором, роздільною здатністю монітора, RAM та UI scale",
@@ -3455,7 +3455,7 @@
       "export-config": "Експортувати конфігурацію…",
       "export-config-saved": "Конфігурацію експортовано.",
       "filter-overridden": "Змінені",
-      "native-title": "Параметри Noctalia",
+      "native-title": "Параметри L-Shell",
       "no-results": "Параметр не знайдено",
       "no-results-hint": "Спробуйте іншу назву налаштування або config key.",
       "offline-mode-notice": {
@@ -3481,7 +3481,7 @@
     "no-wallpaper-selected": "Тло екрана не вибрано.",
     "select-wallpaper": "Обери тло екрана.",
     "subtitle": "Кілька швидких варіантів для початку.",
-    "title": "Ласкаво просимо до Noctalia",
+    "title": "Ласкаво просимо до L-Shell",
     "wallpaper": "Шпалери",
     "wallpaper-scheme": "Схема генерування палітри"
   },

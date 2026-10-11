@@ -195,7 +195,7 @@ void Application::syncNotificationDaemon() {
         m_notificationPollSource.setDbusService(nullptr);
         m_notificationDaemonInitFailed = true;
         m_notificationManager.addInternal(
-            "Noctalia", i18n::tr("notifications.internal.dbus-disabled"), kdeError.what(), Urgency::Low
+            "L-Shell", i18n::tr("notifications.internal.dbus-disabled"), kdeError.what(), Urgency::Low
         );
         return;
       }
@@ -206,7 +206,7 @@ void Application::syncNotificationDaemon() {
     m_notificationPollSource.setDbusService(nullptr);
     m_notificationDaemonInitFailed = true;
     m_notificationManager.addInternal(
-        "Noctalia", i18n::tr("notifications.internal.dbus-disabled"), ownerError.what(), Urgency::Low
+        "L-Shell", i18n::tr("notifications.internal.dbus-disabled"), ownerError.what(), Urgency::Low
     );
   }
 }
@@ -405,7 +405,7 @@ void Application::syncPolkitAgent() {
       DeferredCall::callLater([this, error]() {
         if (polkit_session::isNoSessionForPidError(error)) {
           notify::error(
-              "Noctalia", i18n::tr("notifications.internal.polkit-agent"),
+              "L-Shell", i18n::tr("notifications.internal.polkit-agent"),
               i18n::tr("notifications.internal.polkit-no-session")
           );
         }
@@ -516,7 +516,7 @@ void Application::initServices() {
   // can now be reported with a translated message.
   if (m_earlySessionBusError.has_value()) {
     m_notificationManager.addInternal(
-        "Noctalia", i18n::tr("notifications.internal.session-bus-unavailable"), *m_earlySessionBusError, Urgency::Low
+        "L-Shell", i18n::tr("notifications.internal.session-bus-unavailable"), *m_earlySessionBusError, Urgency::Low
     );
     m_earlySessionBusError.reset();
   }
@@ -1559,7 +1559,7 @@ void Application::initSessionBusServices() {
       m_mprisService.reset();
       m_lockScreen.setLoginBoxServices(&m_sessionActionRunner, nullptr, &m_weatherService, &m_httpClient);
       m_notificationManager.addInternal(
-          "Noctalia", i18n::tr("notifications.internal.mpris-disabled"), e.what(), Urgency::Low
+          "L-Shell", i18n::tr("notifications.internal.mpris-disabled"), e.what(), Urgency::Low
       );
     }
 

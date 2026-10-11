@@ -619,12 +619,12 @@ namespace noctalia::plugins {
 
   int runCli(int argc, char* argv[]) {
     if (argc < 3) {
-      std::print(stderr, "{}", cli::renderHelp(cli::kPluginsCmd, "noctalia plugins"));
+      std::print(stderr, "{}", cli::renderHelp(cli::kPluginsCmd, "l-shell plugins"));
       return 1;
     }
     const char* command = argv[2];
     if (std::strcmp(command, "--help") == 0 || std::strcmp(command, "-h") == 0) {
-      std::print("{}", cli::renderHelp(cli::kPluginsCmd, "noctalia plugins"));
+      std::print("{}", cli::renderHelp(cli::kPluginsCmd, "l-shell plugins"));
       return 0;
     }
     if (std::strcmp(command, "lint") == 0) {
