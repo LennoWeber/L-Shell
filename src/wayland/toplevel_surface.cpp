@@ -105,6 +105,23 @@ void ToplevelSurface::beginMove(std::uint32_t serial) {
   }
 }
 
+void ToplevelSurface::minimize() {
+  if (m_toplevel != nullptr) {
+    xdg_toplevel_set_minimized(m_toplevel);
+  }
+}
+
+void ToplevelSurface::toggleMaximized() {
+  if (m_toplevel == nullptr) {
+    return;
+  }
+  if (m_maximized) {
+    xdg_toplevel_unset_maximized(m_toplevel);
+  } else {
+    xdg_toplevel_set_maximized(m_toplevel);
+  }
+}
+
 void ToplevelSurface::handleXdgSurfaceConfigure(void* data, xdg_surface* surface, std::uint32_t serial) {
   auto* self = static_cast<ToplevelSurface*>(data);
   xdg_surface_ack_configure(surface, serial);
@@ -123,9 +140,19 @@ void ToplevelSurface::handleXdgSurfaceConfigure(void* data, xdg_surface* surface
 }
 
 void ToplevelSurface::handleToplevelConfigure(
-    void* data, xdg_toplevel* /*toplevel*/, std::int32_t width, std::int32_t height, wl_array* /*states*/
+    void* data, xdg_toplevel* /*toplevel*/, std::int32_t width, std::int32_t height, wl_array* states
 ) {
   auto* self = static_cast<ToplevelSurface*>(data);
+  self->m_maximized = false;
+  if (states != nullptr && states->data != nullptr) {
+    const auto* begin = static_cast<const std::uint32_t*>(states->data);
+    const std::size_t count = states->size / sizeof(std::uint32_t);
+    for (std::size_t i = 0; i < count; ++i) {
+      if (begin[i] == XDG_TOPLEVEL_STATE_MAXIMIZED) {
+        self->m_maximized = true;
+      }
+    }
+  }
   self->m_lastToplevelWidth = width;
   self->m_lastToplevelHeight = height;
   if (width > 0) {

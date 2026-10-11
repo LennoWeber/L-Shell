@@ -10,10 +10,12 @@ namespace Style {
   inline constexpr int animNormal = 200;
   inline constexpr int animSlow = 400;
 
-  inline constexpr float radiusSm = 3.0F;
-  inline constexpr float radiusMd = 6.0F;
-  inline constexpr float radiusLg = 9.0F;
-  inline constexpr float radiusXl = 12.0F;
+  // macOS Tahoe radii (before [shell].corner_radius_scale): small controls, controls and rows, cards and menus,
+  // popovers and panels.
+  inline constexpr float radiusSm = 5.0F;
+  inline constexpr float radiusMd = 8.0F;
+  inline constexpr float radiusLg = 12.0F;
+  inline constexpr float radiusXl = 16.0F;
 
   inline constexpr float borderWidth = 1.0F;
   inline constexpr float emphasizedBorderWidth = 3.0F;
@@ -32,15 +34,17 @@ namespace Style {
   inline constexpr float barCapsulePadding = 6.0F;
   inline constexpr float baseGlyphSize = 16.0F;
 
+  // macOS type scale: caption, body (13 pt, the system font size), title 3, and a large header.
   inline constexpr float fontSizeMini = 11.0F;
-  inline constexpr float fontSizeCaption = 13.0F;
-  inline constexpr float fontSizeBody = 14.0F;
-  inline constexpr float fontSizeTitle = 16.0F;
+  inline constexpr float fontSizeCaption = 12.0F;
+  inline constexpr float fontSizeBody = 13.0F;
+  inline constexpr float fontSizeTitle = 15.0F;
   inline constexpr float fontSizeHeader = 20.0F;
 
-  inline constexpr float controlHeightSm = 32.0F;
-  inline constexpr float controlHeight = 38.0F;
-  inline constexpr float controlHeightLg = 44.0F;
+  // Control heights, a touch roomier than AppKit's for a 1080p desktop.
+  inline constexpr float controlHeightSm = 28.0F;
+  inline constexpr float controlHeight = 32.0F;
+  inline constexpr float controlHeightLg = 38.0F;
   inline constexpr float scrollWheelStep = 56.0F;
   // Pointer distance in logical px before an armed drag becomes active.
   inline constexpr float dragStartThreshold = 6.0F;
@@ -82,7 +86,7 @@ namespace Style {
   inline constexpr float toggleInsetSm = 2.0F;
   inline constexpr float toggleTravelSm = 12.0F;
   inline constexpr float toggleThumbSizeMd = 18.0F;
-  inline constexpr float toggleInsetMd = 3.0F;
+  inline constexpr float toggleInsetMd = 2.0F;
   inline constexpr float toggleTravelMd = 16.0F;
   inline constexpr float toggleThumbSizeLg = 22.0F;
   inline constexpr float toggleInsetLg = 4.0F;
@@ -90,8 +94,8 @@ namespace Style {
 
   // Slider geometry.
   inline constexpr float sliderDefaultWidth = 180.0F;
-  inline constexpr float sliderTrackHeight = 8.0F;
-  inline constexpr float sliderThumbSize = 18.0F;
+  inline constexpr float sliderTrackHeight = 5.0F;
+  inline constexpr float sliderThumbSize = 20.0F;
   inline constexpr float sliderHorizontalPadding = 2.0F;
 
   [[nodiscard]] float cornerRadiusScale() noexcept;

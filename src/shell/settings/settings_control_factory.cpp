@@ -265,7 +265,7 @@ namespace settings {
         .fillWidth = true,
     });
     titleRow->addChild(
-        makeLabel(entry.title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold)
+        makeLabel(entry.title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Normal)
     );
     if (entry.advanced) {
       titleRow->addChild(makeAdvancedBadge());
@@ -315,13 +315,17 @@ namespace settings {
     auto row = ui::row(
         {.align = FlexAlign::Center,
          .justify = FlexJustify::SpaceBetween,
-         .gap = Style::spaceXs * scale,
-         .paddingV = 2.0F * scale,
+         .gap = Style::spaceMd * scale,
+         .paddingV = 7.0F * scale,
          .paddingH = 0.0F,
-         .minHeight = Style::controlHeight * scale},
+         .minHeight = 40.0F * scale},
         std::move(copy), std::move(actions)
     );
 
+    // macOS group boxes separate their rows with a hairline.
+    if (!section.children().empty()) {
+      section.addChild(ui::separator({.color = colorSpecFromRole(ColorRole::OnSurface, 0.08F), .thickness = 1.0F}));
+    }
     section.addChild(std::move(row));
   }
 

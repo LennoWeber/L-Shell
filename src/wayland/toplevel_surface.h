@@ -32,6 +32,10 @@ public:
   void setClosedCallback(std::function<void()> callback);
   void setMinSize(std::uint32_t minWidth, std::uint32_t minHeight);
   void beginMove(std::uint32_t serial);
+  // Window buttons (macOS traffic lights): the compositor decides whether either is honored.
+  void minimize();
+  void toggleMaximized();
+  [[nodiscard]] bool isMaximized() const noexcept { return m_maximized; }
 
   [[nodiscard]] xdg_surface* xdgSurface() const noexcept { return m_xdgSurface; }
 
@@ -54,4 +58,5 @@ private:
   std::uint32_t m_pendingHeight = 0;
   std::int32_t m_lastToplevelWidth = 0;
   std::int32_t m_lastToplevelHeight = 0;
+  bool m_maximized = false;
 };

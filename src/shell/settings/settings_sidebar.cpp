@@ -11,8 +11,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -20,12 +22,132 @@
 namespace settings {
   namespace {
 
-    constexpr float kSidebarWidth = 200.0F;
-    constexpr float kSidebarPadding = 6.0F;
-    constexpr float kSidebarGap = 2.0F;
+    // macOS Tahoe System Settings sidebar metrics.
+    constexpr float kSidebarWidth = 214.0F;
+    constexpr float kSidebarPadding = 8.0F;
+    constexpr float kSidebarGap = 1.0F;
+    constexpr float kSidebarGroupGap = 10.0F;
     constexpr float kPrimaryNavGlyphSize = 18.0F;
-    constexpr float kPrimaryNavGap = 6.0F;
-    constexpr float kPrimaryNavPaddingH = 10.0F;
+    constexpr float kPrimaryNavGap = 8.0F;
+    constexpr float kPrimaryNavPaddingH = 6.0F;
+    constexpr float kSidebarRowHeight = 30.0F;
+    constexpr float kSidebarRowRadius = 8.0F;
+    constexpr float kSidebarFontSize = 13.0F;
+    constexpr float kSquircleSize = 22.0F;
+    constexpr float kSquircleRadius = 6.0F;
+    constexpr float kSquircleGlyphSize = 14.0F;
+
+    // How a section looks in the sidebar: a white SF-Symbol-like glyph on a colored squircle, and which group
+    // it sits in (groups are separated by a gap, like macOS's System Settings).
+    struct SidebarStyle {
+      std::string_view glyph;
+      std::uint32_t color = 0xff8e8e93U;
+      std::uint8_t group = 0;
+    };
+
+    SidebarStyle sidebarStyle(SettingsSection section) {
+      switch (section) {
+      case SettingsSection::Layout:
+        return {"layout-dashboard-filled", 0xff0a84ffU, 0};
+      case SettingsSection::Appearance:
+        return {"circle-half-2", 0xff3a3a3cU, 0};
+      case SettingsSection::Wallpaper:
+        return {"photo-filled", 0xff32ade6U, 0};
+      case SettingsSection::Templates:
+        return {"palette-filled", 0xffbf5af2U, 0};
+      case SettingsSection::Desktop:
+        return {"layout-board-filled", 0xff5e5ce6U, 0};
+      case SettingsSection::Bar:
+        return {"layout-navbar-filled", 0xff3a3a3cU, 1};
+      case SettingsSection::Dock:
+        return {"layout-bottombar-filled", 0xff3a3a3cU, 1};
+      case SettingsSection::Panels:
+        return {"app-window-filled", 0xff64d2ffU, 1};
+      case SettingsSection::ControlCenter:
+        return {"adjustments-filled", 0xff8e8e93U, 1};
+      case SettingsSection::Launcher:
+        return {"search", 0xff8e8e93U, 1};
+      case SettingsSection::Notifications:
+        return {"bell-filled", 0xffff3b30U, 1};
+      case SettingsSection::Osd:
+        return {"message-circle-filled", 0xffff9500U, 1};
+      case SettingsSection::Shell:
+        return {"settings-filled", 0xff8e8e93U, 2};
+      case SettingsSection::Keybinds:
+        return {"keyboard-filled", 0xff8e8e93U, 2};
+      case SettingsSection::Screenshot:
+        return {"camera-filled", 0xff636366U, 2};
+      case SettingsSection::Power:
+        return {"battery-3-filled", 0xff30d158U, 2};
+      case SettingsSection::System:
+        return {"cpu", 0xff636366U, 2};
+      case SettingsSection::Services:
+        return {"stack-2-filled", 0xff34c759U, 2};
+      case SettingsSection::Location:
+        return {"location-filled", 0xff0a84ffU, 2};
+      case SettingsSection::Calendar:
+        return {"calendar-filled", 0xffff3b30U, 2};
+      case SettingsSection::Security:
+        return {"hand-stop", 0xff0a84ffU, 2};
+      case SettingsSection::Hooks:
+        return {"link", 0xffff9f0aU, 3};
+      case SettingsSection::Plugins:
+        return {"puzzle-filled", 0xffff9f0aU, 3};
+      case SettingsSection::Niri:
+      case SettingsSection::Umbriel:
+        return {sectionGlyph(section), 0xff5e5ce6U, 3};
+      }
+      return {sectionGlyph(section), 0xff8e8e93U, 3};
+    }
+
+    [[nodiscard]] Color argbColor(std::uint32_t argb) {
+      return rgba(
+          static_cast<float>((argb >> 16U) & 0xffU) / 255.0F, static_cast<float>((argb >> 8U) & 0xffU) / 255.0F,
+          static_cast<float>(argb & 0xffU) / 255.0F, 1.0F
+      );
+    }
+
+    std::unique_ptr<Flex> makeSquircle(std::string_view glyph, std::uint32_t argb, float scale) {
+      return ui::row(
+          {
+              .align = FlexAlign::Center,
+              .justify = FlexJustify::Center,
+              .fill = fixedColorSpec(argbColor(argb)),
+              .radius = kSquircleRadius * scale,
+              .width = kSquircleSize * scale,
+              .height = kSquircleSize * scale,
+          },
+          ui::glyph({
+              .glyph = std::string(glyph),
+              .glyphSize = kSquircleGlyphSize * scale,
+              .color = fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 1.0F)),
+          })
+      );
+    }
+
+    // Sidebar rows: no fill at rest, a faint wash on hover, the accent when selected.
+    Button::ButtonPalette sidebarRowPalette(bool selected) {
+      if (selected) {
+        const Button::ButtonStateColors accent{
+            .bg = colorSpecFromRole(ColorRole::Primary),
+            .border = clearColorSpec(),
+            .label = colorSpecFromRole(ColorRole::OnPrimary),
+        };
+        return Button::ButtonPalette{
+            .borderWidth = 0.0F, .normal = accent, .hover = accent, .pressed = accent, .disabled = accent,
+        };
+      }
+      return Button::ButtonPalette{
+          .borderWidth = 0.0F,
+          .normal = {.bg = clearColorSpec(), .border = clearColorSpec(), .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .hover = {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.07F), .border = clearColorSpec(),
+                    .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .pressed = {.bg = colorSpecFromRole(ColorRole::OnSurface, 0.12F), .border = clearColorSpec(),
+                      .label = colorSpecFromRole(ColorRole::OnSurface)},
+          .disabled = {.bg = clearColorSpec(), .border = clearColorSpec(),
+                       .label = colorSpecFromRole(ColorRole::OnSurfaceVariant)},
+      };
+    }
 
     void addNavButton(RovingListNavHost& nav, std::unique_ptr<Button> button, std::function<void()> onClick) {
       Button* raw = button.get();
@@ -62,28 +184,26 @@ namespace settings {
       }
     }
 
-    // Primary sidebar nav style: top-level section rows with a bolder label.
+    // Primary sidebar nav style: a section row with its colored squircle icon, macOS System Settings style.
     std::unique_ptr<Button> makePrimaryNavButton(
-        std::string_view glyph, std::string text, float scale, bool selected, std::function<void()> onClick
+        const SidebarStyle& style, std::string text, float scale, bool selected, std::function<void()> onClick
     ) {
-      return ui::button({
+      auto button = ui::button({
           .text = std::move(text),
-          .glyph = std::string(glyph),
-          .fontSize = Style::fontSizeCaption * scale,
-          .glyphSize = kPrimaryNavGlyphSize * scale,
+          .fontSize = kSidebarFontSize * scale,
           .contentAlign = ButtonContentAlign::Start,
           .variant = selected ? ButtonVariant::TabActive : ButtonVariant::Tab,
-          .minHeight = Style::controlHeightSm * scale,
-          .paddingV = Style::spaceXs * scale,
+          .minHeight = kSidebarRowHeight * scale,
+          .paddingV = 0.0F,
           .paddingH = kPrimaryNavPaddingH * scale,
           .gap = kPrimaryNavGap * scale,
-          .radius = Style::scaledRadiusMd(scale),
+          .radius = kSidebarRowRadius * scale,
           .onClick = std::move(onClick),
-          .configure = [](Button& button) {
-            makeButtonLabelBold(button);
-            button.setTabStop(false);
-          },
+          .configure = [](Button& button) { button.setTabStop(false); },
       });
+      button->setCustomPalette(sidebarRowPalette(selected));
+      button->insertChildAt(0, makeSquircle(style.glyph, style.color, scale));
+      return button;
     }
 
     // Secondary sidebar nav style: indented compact rows for bars and monitors.
@@ -97,15 +217,18 @@ namespace settings {
           .glyphSize = Style::fontSizeCaption * scale,
           .contentAlign = ButtonContentAlign::Start,
           .variant = selected ? ButtonVariant::TabActive : ButtonVariant::Tab,
-          .minHeight = Style::controlHeightSm * scale,
-          .paddingTop = Style::spaceXs * scale,
+          .minHeight = kSidebarRowHeight * scale,
+          .paddingTop = 0.0F,
           .paddingRight = Style::spaceMd * scale,
-          .paddingBottom = Style::spaceXs * scale,
-          .paddingLeft = Style::spaceLg * scale,
+          .paddingBottom = 0.0F,
+          .paddingLeft = (kPrimaryNavPaddingH + kSquircleSize + kPrimaryNavGap) * scale,
           .gap = Style::spaceXs * scale,
-          .radius = Style::scaledRadiusMd(scale),
+          .radius = kSidebarRowRadius * scale,
           .onClick = std::move(onClick),
-          .configure = [](Button& button) { button.setTabStop(false); },
+          .configure = [selected](Button& button) {
+            button.setTabStop(false);
+            button.setCustomPalette(sidebarRowPalette(selected));
+          },
       });
     }
 
@@ -164,7 +287,7 @@ namespace settings {
         .scrollbarVisible = true,
         .viewportPaddingH = 0.0F,
         .viewportPaddingV = 0.0F,
-        .fill = ctx.config.shell.settingsWindowTranslucent ? clearColorSpec() : colorSpecFromRole(ColorRole::Surface),
+        .fill = clearColorSpec(),
         .radius = Style::scaledRadiusXl(scale),
         .minWidth = kSidebarWidth * scale,
         .fillHeight = true,
@@ -185,7 +308,15 @@ namespace settings {
     sidebarNav->setPadding(kSidebarPadding * scale);
     RovingListNavHost* nav = sidebarNav.get();
 
-    for (const auto& section : ctx.sections) {
+    std::vector<SettingsSection> orderedSections = ctx.sections;
+    std::ranges::stable_sort(orderedSections, {}, [](SettingsSection section) { return sidebarStyle(section).group; });
+    std::optional<std::uint8_t> previousGroup;
+    for (const auto& section : orderedSections) {
+      const SidebarStyle style = sidebarStyle(section);
+      if (previousGroup.has_value() && *previousGroup != style.group) {
+        nav->addChild(ui::row({.height = kSidebarGroupGap * scale}));
+      }
+      previousGroup = style.group;
       const std::string sectionId(settingsSectionId(section));
       const bool selected = showActiveTab
           && sectionId == *selectedSection
@@ -203,9 +334,7 @@ namespace settings {
       };
       addNavButton(
           *nav,
-          makePrimaryNavButton(
-              sectionGlyph(section), i18n::tr(settingsSectionLabelKey(section)), scale, selected, onClick
-          ),
+          makePrimaryNavButton(style, i18n::tr(settingsSectionLabelKey(section)), scale, selected, onClick),
           onClick
       );
 
@@ -289,7 +418,7 @@ namespace settings {
       addNavButton(
           *nav,
           makePrimaryNavButton(
-              sectionGlyph(SettingsSection::Bar), i18n::tr("settings.entities.bar.label", "name", barName), scale,
+              sidebarStyle(SettingsSection::Bar), i18n::tr("settings.entities.bar.label", "name", barName), scale,
               barSelected, onBarClick
           ),
           onBarClick

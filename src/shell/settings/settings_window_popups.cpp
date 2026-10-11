@@ -57,6 +57,9 @@ namespace {
 
   constexpr std::int32_t kActionSupportReport = 1;
   constexpr std::int32_t kActionExportConfig = 2;
+  constexpr std::int32_t kActionShowAdvanced = 3;
+  constexpr std::int32_t kActionShowChangedOnly = 4;
+  constexpr std::int32_t kActionResetPage = 5;
   constexpr std::string_view kCalendarDiscoveryOwner = "calendar_discovery";
 
   std::string calendarCredentialError(CalendarService::CredentialOperationResult result) {
@@ -328,6 +331,24 @@ void SettingsWindow::openActionsMenu() {
         }
         DeferredCall::callLater([this]() { openConfigExportDialog(); });
         break;
+      case kActionShowAdvanced:
+        if (m_actionsMenuPopup != nullptr) {
+          m_actionsMenuPopup->close();
+        }
+        DeferredCall::callLater([this]() { setShowAdvanced(!m_showAdvanced); });
+        break;
+      case kActionShowChangedOnly:
+        if (m_actionsMenuPopup != nullptr) {
+          m_actionsMenuPopup->close();
+        }
+        DeferredCall::callLater([this]() { setShowOverriddenOnly(!m_showOverriddenOnly); });
+        break;
+      case kActionResetPage:
+        if (m_actionsMenuPopup != nullptr) {
+          m_actionsMenuPopup->close();
+        }
+        DeferredCall::callLater([this]() { armOrConfirmPageReset(); });
+        break;
       default:
         break;
       }
@@ -338,6 +359,28 @@ void SettingsWindow::openActionsMenu() {
   }
 
   std::vector<ContextMenuControlEntry> entries;
+  entries.push_back(
+      {.id = kActionShowAdvanced,
+       .label = i18n::tr("settings.window.show-advanced"),
+       .checkmark = true,
+       .toggleState = m_showAdvanced ? 1 : 0}
+  );
+  entries.push_back(
+      {.id = kActionShowChangedOnly,
+       .label = i18n::tr("settings.window.show-changed-only"),
+       .checkmark = true,
+       .toggleState = m_showOverriddenOnly ? 1 : 0}
+  );
+  if (!currentPageResetPaths().empty()) {
+    // buildScene drops a pending reset that belongs to another page, so any pending scope is this page's.
+    const bool armed = !m_pendingResetPageScope.empty();
+    entries.push_back({.separator = true});
+    entries.push_back(
+        {.id = kActionResetPage,
+         .label = armed ? i18n::tr("settings.window.reset-page-confirm") : i18n::tr("settings.window.reset-page")}
+    );
+  }
+  entries.push_back({.separator = true});
   entries.push_back(
       {.id = kActionSupportReport,
        .label = i18n::tr("settings.window.support-report"),

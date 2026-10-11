@@ -22,6 +22,11 @@ namespace settings {
     // opacity, so a full-strength card fill would match them. Mixing the theme's own elevated tone
     // partway toward Surface keeps the palette hue and still reads distinct from those controls.
     constexpr float kCardFillOpacity = 0.4F;
+
+    // macOS System Settings group box: an inset rounded card with a hairline edge, rows separated by hairlines.
+    constexpr float kGroupBoxFillOpacity = 0.7F;
+    constexpr float kGroupBoxPaddingH = 14.0F;
+    constexpr float kGroupBoxPaddingV = 4.0F;
   } // namespace
 
   bool isMonitorOverrideSettingPath(const std::vector<std::string>& path) {
@@ -186,24 +191,28 @@ namespace settings {
 
   Flex* addSettingsCard(Flex& parent, std::string_view title, float scale) {
     Flex* bodyRaw = nullptr;
-    auto card = ui::column(
-        {
-            .align = FlexAlign::Stretch,
-            .gap = Style::spaceSm * scale,
-            .configure =
-                [scale](Flex& container) {
-                  container.setPadding(Style::spaceSm * scale, Style::spaceMd * scale);
-                  container.setCardStyle(scale, kCardFillOpacity);
-                },
-        },
-        makeLabel(title, Style::fontSizeTitle * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold),
-        ui::column({
-            .out = &bodyRaw,
-            .align = FlexAlign::Stretch,
-            .gap = Style::spaceSm * scale,
-        })
-    );
-    parent.addChild(std::move(card));
+    auto group = ui::column({
+        .align = FlexAlign::Stretch,
+        .gap = Style::spaceSm * scale,
+    });
+    if (!title.empty()) {
+      auto heading = makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold);
+      group->addChild(ui::row(
+          {.align = FlexAlign::Center, .configure = [scale](Flex& row) { row.setPadding(0.0F, 2.0F * scale); }},
+          std::move(heading)
+      ));
+    }
+    group->addChild(ui::column({
+        .out = &bodyRaw,
+        .align = FlexAlign::Stretch,
+        .gap = 0.0F,
+        .fill = colorSpecFromRole(ColorRole::SurfaceVariant, kGroupBoxFillOpacity),
+        .radius = Style::scaledRadiusLg(scale),
+        .border = colorSpecFromRole(ColorRole::OnSurface, 0.06F),
+        .borderWidth = 1.0F,
+        .configure = [scale](Flex& card) { card.setPadding(kGroupBoxPaddingV * scale, kGroupBoxPaddingH * scale); },
+    }));
+    parent.addChild(std::move(group));
     return bodyRaw;
   }
 

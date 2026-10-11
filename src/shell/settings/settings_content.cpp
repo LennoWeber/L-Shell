@@ -150,19 +150,17 @@ namespace settings {
     };
 
     const auto makeSection = [&](std::string_view title, SettingsSection sectionKey) -> Flex* {
+      // The page title sits in the toolbar in the window's own color, like macOS's (no glyph, no accent).
+      (void)sectionKey;
       auto titleRow = ui::row(
           {.align = FlexAlign::Center, .gap = Style::spaceSm * scale},
-          ui::glyph({
-              .glyph = std::string(sectionGlyph(sectionKey)),
-              .glyphSize = Style::fontSizeHeader * scale,
-              .color = colorSpecFromRole(ColorRole::Primary),
-          }),
-          makeLabel(title, Style::fontSizeHeader * scale, colorSpecFromRole(ColorRole::Primary), FontWeight::Bold)
+          makeLabel(title, Style::fontSizeTitle * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::Bold)
       );
       auto section = ui::column({
           .align = FlexAlign::Stretch,
-          .gap = Style::spaceSm * scale,
-          .padding = Style::spaceLg * scale,
+          .gap = Style::spaceLg * scale,
+          .paddingV = Style::spaceSm * scale,
+          .paddingH = 0.0F,
           .fill = clearColorSpec(),
       });
       if (ctx.pageTitleRow != nullptr && ctx.searchQuery.empty() && ctx.pageTitleRow->children().empty()) {
@@ -1304,7 +1302,9 @@ namespace settings {
         }
       }
     }
-    const bool collapsibleGroups = ctx.searchQuery.empty() && !pageGroupKeys.empty();
+    // macOS System Settings never folds groups away: with expand-all (the default) every group is a plain card.
+    const bool collapsibleGroups =
+        ctx.searchQuery.empty() && !pageGroupKeys.empty() && !ctx.config.shell.settingsExpandAllGroups;
     std::unordered_set<std::string>* expandedGroups = nullptr;
     if (collapsibleGroups) {
       auto [pageIt, fresh] = ctx.expandedGroupsByPage.try_emplace(pageKey);

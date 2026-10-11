@@ -1234,7 +1234,7 @@ struct ShellConfig {
   AnimationConfig animation;
   std::string avatarPath;
   bool settingsShowAdvanced = true;
-  bool settingsExpandAllGroups = false;
+  bool settingsExpandAllGroups = true; // macOS System Settings shows every group open
   bool settingsWindowTranslucent = false;
   bool showLocation = true;
   bool appIconColorize = false;

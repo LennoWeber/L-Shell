@@ -3991,14 +3991,18 @@
         "templates": "Community-Template-Downloads und -Aktualisierungen werden nicht funktionieren.",
         "title": "Offline-Modus"
       },
-      "reset-page": "Seite zurücksetzen",
-      "reset-page-confirm": "Zurücksetzen bestätigen",
-      "search-placeholder": "Einstellungen suchen…",
+      "reset-page": "Diese Seite zurücksetzen …",
+      "reset-page-confirm": "Zurücksetzen dieser Seite bestätigen",
+      "search-placeholder": "Suchen",
       "search-truncated": "Die ersten {count} Treffer werden angezeigt. Verfeinere deine Suche, um die Ergebnisse einzugrenzen.",
       "support-report": "Supportbericht",
       "support-report-saved": "Supportbericht gespeichert.",
       "support-report-title": "Supportbericht speichern",
-      "title": "Einstellungen"
+      "title": "Einstellungen",
+      "account-subtitle": "L-Shell",
+      "show-advanced": "Erweiterte Einstellungen zeigen",
+      "show-changed-only": "Nur geänderte Einstellungen zeigen",
+      "reset-page-armed": "Wähle „Zurücksetzen bestätigen“ im …-Menü, um alle Einstellungen dieser Seite zurückzusetzen."
     }
   },
   "setup-wizard": {

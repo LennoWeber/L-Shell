@@ -156,10 +156,22 @@ private:
   [[nodiscard]] std::vector<settings::SelectOption> availableOutputs() const;
   void refreshSettingsRegistry(const Config& cfg);
   void syncSelectedBarState(const Config& cfg, const std::vector<std::string>& availableBars);
+  // Content toolbar (macOS System Settings): the page title, then the actions menu.
   [[nodiscard]] std::unique_ptr<Flex> buildHeaderRow(float scale);
-  [[nodiscard]] std::unique_ptr<Flex>
-  buildFilterRow(float scale, const std::string& resetPageScope, std::vector<std::vector<std::string>> resetPagePaths);
+  // The sidebar's search field.
+  [[nodiscard]] std::unique_ptr<Flex> buildFilterRow(float scale);
   [[nodiscard]] std::unique_ptr<Flex> buildStatusRow(float scale);
+  // Floating glass sidebar: window buttons, search, the account row and the section list.
+  [[nodiscard]] std::unique_ptr<Flex> buildSidebarPane(
+      float scale, const Config& cfg, const std::vector<settings::SettingsSection>& sections,
+      const std::vector<std::string>& availableBars
+  );
+  // macOS traffic lights: close, minimize, zoom.
+  [[nodiscard]] std::unique_ptr<Flex> buildWindowButtons(float scale);
+  [[nodiscard]] std::unique_ptr<Flex> buildAccountRow(float scale, const Config& cfg);
+  void setShowAdvanced(bool show);
+  void setShowOverriddenOnly(bool show);
+  void armOrConfirmPageReset();
   [[nodiscard]] std::unique_ptr<Flex> buildBody(
       float scale, const Config& cfg, const std::vector<settings::SettingsSection>& sections,
       const std::vector<std::string>& availableBars
