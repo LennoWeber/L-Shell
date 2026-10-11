@@ -1393,6 +1393,7 @@ std::vector<WorkspaceWindowAssignment> CompositorPlatform::workspaceWindowAssign
             .y = window.y,
             .width = window.width,
             .height = window.height,
+            .hidden = window.hidden,
         }
     );
   }
@@ -1744,7 +1745,8 @@ bool CompositorPlatform::sameWorkspaceModelSnapshot(
         && a.x == b.x
         && a.y == b.y
         && a.width == b.width
-        && a.height == b.height;
+        && a.height == b.height
+        && a.hidden == b.hidden;
   };
 
   if (lhs.size() != rhs.size()) {

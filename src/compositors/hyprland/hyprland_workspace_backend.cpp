@@ -179,6 +179,7 @@ std::vector<WorkspaceWindow> HyprlandWorkspaceBackend::workspaceWindows(wl_outpu
             .y = toplevel.y,
             .width = toplevel.width,
             .height = toplevel.height,
+            .hidden = toplevel.hidden,
             .outputName = {},
         }
     );
@@ -593,7 +594,11 @@ void HyprlandWorkspaceBackend::refreshClients() {
       state.appId = item.value("initialClass", "");
     }
     state.title = StringUtils::windowTitleSingleLine(item.value("title", ""));
-    if (const auto atIt = item.find("at"); atIt != item.end() && atIt->is_array() && atIt->size() >= 2) {
+    if (const auto atIt = item.find("at"); atIt != item.end()
+        && atIt->is_array()
+        && atIt->size() >= 2
+        && (*atIt)[0].is_number()
+        && (*atIt)[1].is_number()) {
       state.x = (*atIt)[0].get<std::int32_t>();
       state.y = (*atIt)[1].get<std::int32_t>();
     }
@@ -605,6 +610,10 @@ void HyprlandWorkspaceBackend::refreshClients() {
         && (*sizeIt)[1].is_number()) {
       state.width = std::max((*sizeIt)[0].get<std::int32_t>(), 0);
       state.height = std::max((*sizeIt)[1].get<std::int32_t>(), 0);
+    }
+    // Inactive members of a tab group share the active member's geometry but are not drawn.
+    if (const auto hiddenIt = item.find("hidden"); hiddenIt != item.end() && hiddenIt->is_boolean()) {
+      state.hidden = hiddenIt->get<bool>();
     }
 
     bool urgent = false;
