@@ -3941,6 +3941,10 @@
             "description": "Set the EasyEffects output or input profile",
             "label": "Set EasyEffects profile"
           },
+          "expo": {
+            "description": "Show every workspace on every monitor with its windows, or close it",
+            "label": "Expo"
+          },
           "greeter-sync": {
             "description": "Sync wallpaper, colors, and monitor layout to Noctalia Greeter",
             "label": "Sync greeter appearance"
@@ -4072,6 +4076,10 @@
           "osd-toggle": {
             "description": "Toggle OSD popups",
             "label": "Toggle OSD"
+          },
+          "overview": {
+            "description": "Show the current workspace's windows Mission-Control style, or close it",
+            "label": "Overview"
           },
           "panel-close": {
             "description": "Close the active panel, or close the named panel if it is active",
@@ -5213,6 +5221,9 @@
       "fetch-failed": "Weather fetch failed",
       "parse-weather": "Could not parse weather response"
     }
+  },
+  "expo": {
+    "desktop": "Desktop {name}"
   },
   "window-switcher": {
     "count": "{count} window",
