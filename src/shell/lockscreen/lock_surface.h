@@ -2,6 +2,7 @@
 
 #include "capture/screencopy_capture.h"
 #include "config/config_service.h"
+#include "core/timer_manager.h"
 #include "render/animation/animation_manager.h"
 #include "render/core/blur_cache.h"
 #include "render/core/color.h"
@@ -13,7 +14,6 @@
 #include "shell/lockscreen/lockscreen_login_box.h"
 #include "wayland/surface.h"
 
-#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -107,13 +107,6 @@ protected:
   void onFrameCallbackDone() override;
 
 private:
-  struct ForecastColumn {
-    Flex* column = nullptr;
-    Label* day = nullptr;
-    Glyph* glyph = nullptr;
-    Label* temps = nullptr;
-  };
-
   enum class TransitionPhase : std::uint8_t {
     Disabled,
     Cover,
@@ -138,10 +131,14 @@ private:
   void applyBlurredDesktopTexture();
   void releaseCaptureTextures();
   void layoutScene(std::uint32_t width, std::uint32_t height);
+  void hideLoginChrome();
   void updateCopy();
-  void syncRegularExtras(Renderer& renderer);
+  void refreshClock();
+  void syncInfoExtras(Renderer& renderer);
+  void syncAvatar(Renderer& renderer);
+  void syncPillChrome(bool force);
+  void startErrorShake();
   void rebuildSessionButtons();
-  void ensureLayoutChipInPasswordRow();
   [[nodiscard]] std::vector<SessionPanelActionConfig> resolveSessionActions() const;
   [[nodiscard]] lockscreen_login_box::LoginBoxStyle resolveLoginStyle() const;
   [[nodiscard]] bool isLoginBoxEnabled() const;
@@ -162,28 +159,31 @@ private:
   WallpaperNode* m_wallpaper = nullptr;
   Box* m_tintOverlay = nullptr;
   Box* m_backdrop = nullptr;
-  Flex* m_loginPanel = nullptr;
-  Flex* m_infoRow = nullptr;
-  Flex* m_mediaBlock = nullptr;
+  // Top center: date line (with inline weather) over the large clock, and a now-playing capsule under it.
+  Flex* m_clockColumn = nullptr;
+  Label* m_dateLabel = nullptr;
+  Glyph* m_weatherGlyph = nullptr;
+  Label* m_weatherTemp = nullptr;
+  Label* m_clockLabel = nullptr;
+  Flex* m_nowPlaying = nullptr;
   Image* m_mediaArt = nullptr;
   Glyph* m_mediaFallbackGlyph = nullptr;
-  Flex* m_mediaTextColumn = nullptr;
   Label* m_mediaTitle = nullptr;
   Label* m_mediaArtist = nullptr;
-  Flex* m_weatherBlock = nullptr;
-  Flex* m_weatherCurrent = nullptr;
-  Glyph* m_weatherGlyph = nullptr;
-  Flex* m_weatherTextColumn = nullptr;
-  Label* m_weatherTemp = nullptr;
-  Label* m_weatherMeta = nullptr;
-  Flex* m_forecastRow = nullptr;
-  std::array<ForecastColumn, 5> m_forecastColumns{};
-  Flex* m_authPanel = nullptr;
-  Label* m_authLabel = nullptr;
-  Flex* m_loginContentRow = nullptr;
+  // Bottom center: avatar, display name and the glass password pill (the login box).
+  Flex* m_loginPanel = nullptr;
+  Flex* m_avatarFrame = nullptr;
+  Image* m_avatarImage = nullptr;
+  Glyph* m_avatarGlyph = nullptr;
+  Label* m_userName = nullptr;
+  Flex* m_pill = nullptr;
   Input* m_passwordField = nullptr;
-  Button* m_passwordRevealButton = nullptr;
+  Glyph* m_capsLockGlyph = nullptr;
   Button* m_loginButton = nullptr;
+  Flex* m_statusChip = nullptr;
+  Label* m_statusLabel = nullptr;
+  // Bottom-right corner: keyboard layout chip and session action circles.
+  Flex* m_cornerRow = nullptr;
   Button* m_layoutChip = nullptr;
   Flex* m_sessionRow = nullptr;
   std::vector<Button*> m_sessionButtons;
@@ -205,7 +205,6 @@ private:
   float m_transitionDurationMs = 1500.0F;
   float m_blurIntensity = 0.5F;
   float m_tintIntensity = 0.3F;
-  float m_regularContentScale = 1.0F;
   bool m_blackout = false;
   bool m_useDesktopCaptureBackground = false;
   bool m_enterTransitionRequested = false;
@@ -244,8 +243,12 @@ private:
   std::unordered_set<std::string> m_pendingArtDownloads;
   std::shared_ptr<void> m_aliveGuard = std::make_shared<int>(0);
   std::string m_lastArtUrl;
-  std::string m_lastMediaTitle;
-  std::string m_lastMediaArtist;
-  std::string m_lastWeatherFingerprint;
   std::vector<std::string> m_lastSessionActionKeys;
+  Timer m_clockTimer;
+  std::string m_avatarPath;
+  bool m_avatarDirty = true;
+  bool m_pillFocused = false;
+  float m_pillRestX = 0.0F;
+  float m_shakeOffset = 0.0F;
+  AnimationManager::Id m_shakeAnimation = 0;
 };

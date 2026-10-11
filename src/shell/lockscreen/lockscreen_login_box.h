@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config/config_types.h"
-#include "ui/palette.h"
+#include "render/core/color.h"
 
 #include <cstdint>
 #include <string>
@@ -39,13 +39,10 @@ namespace lockscreen_login_box {
     Regular,
   };
 
+  // The background_* and input_opacity/input_radius settings styled the old boxed card. They are still
+  // normalized for config compatibility, but the glass look does not read them.
   struct LoginBoxStyle {
     LayoutMode layout = LayoutMode::Regular;
-    ColorSpec panelFill = colorSpecFromRole(ColorRole::SurfaceVariant, 0.88F);
-    float panelOpacity = 0.88F;
-    float panelRadius = 12.0F;
-    float inputOpacity = 1.0F;
-    float inputRadius = 6.0F;
     bool centerPasswordText = false;
     bool showLoginButton = true;
     bool showCapsLock = true;
@@ -56,16 +53,6 @@ namespace lockscreen_login_box {
     bool showUnlockHint = true;
   };
 
-  // Regular info row media/weather visibility (both may be off).
-  struct InfoExtrasVisibility {
-    bool showMedia = false;
-    bool showWeather = false;
-  };
-
-  [[nodiscard]] InfoExtrasVisibility
-  resolveInfoExtrasVisibility(bool regular, const LoginBoxStyle& style, bool mediaReady, bool weatherReady);
-  [[nodiscard]] float infoExtraBudget(float contentWidth, bool showSelf, bool showOther);
-
   [[nodiscard]] bool isLoginBoxWidget(const DesktopWidgetState& state);
   [[nodiscard]] bool isLoginBoxWidgetType(std::string_view type);
   [[nodiscard]] bool isLoginBoxWidgetId(std::string_view id);
@@ -74,51 +61,30 @@ namespace lockscreen_login_box {
   [[nodiscard]] LayoutMode resolveLayout(const std::unordered_map<std::string, WidgetSettingValue>& settings);
   [[nodiscard]] LayoutMode resolveLayout(std::string_view layout);
 
-  constexpr float kCompactDefaultWidthCap = 400.0F;
-  constexpr float kRegularDefaultWidthCap = 810.0F;
-  constexpr float kCompactMinPanelWidth = 240.0F;
-  // Min width for media + weather; forecast needs more.
-  constexpr float kRegularMinPanelWidth = 720.0F;
-  constexpr float kCompactMaxPanelHeight = 140.0F;
-  constexpr float kRegularMaxPanelHeight = 320.0F;
+  // The login box is the macOS Tahoe user block: a round avatar, the display name and a glass password pill,
+  // stacked and centered (Compact keeps only the pill). Its width is the pill width. Session buttons sit in the
+  // bottom-right corner and media and weather next to the clock, so they no longer size the box.
+  constexpr float kAvatarSize = 64.0F;
+  constexpr float kNameFontSize = 15.0F;
+  constexpr float kNameLineHeight = 20.0F;
+  constexpr float kGroupGap = 12.0F;
+  constexpr float kPillHeight = 30.0F;
+  constexpr float kPillDefaultWidth = 220.0F;
+  constexpr float kPillMinWidth = 180.0F;
+  constexpr float kPillMaxWidth = 360.0F;
+  constexpr float kSubmitButtonSize = 22.0F;
+  // Gap between the pill and the status hint under it.
+  constexpr float kHintGap = 10.0F;
+  // The block's bottom edge rests this fraction of the output height above the bottom.
+  constexpr float kGroupBottomInset = 0.13F;
 
-  // Matches lock-surface media art / forecast glyph sizes used in Regular layout.
-  constexpr float kRegularMediaArtSize = 40.0F;
-  constexpr float kRegularForecastGlyphSize = 18.0F;
-
-  // Content floors shared by min-size clamping and the editor ghost.
-  [[nodiscard]] float regularInfoContentHeight();
-  [[nodiscard]] float regularStatusContentHeight();
-  [[nodiscard]] float regularSessionContentHeight();
-
-  // Proportional row heights for Regular: each floor scales by the same factor.
-  struct RegularRowHeights {
-    float info = 0.0F;
-    float status = 0.0F;
-    float password = 0.0F;
-    float session = 0.0F;
-    float scale = 1.0F;
-  };
-
-  [[nodiscard]] RegularRowHeights
-  regularRowHeights(float panelHeight, bool showSessionButtons, bool showInfoExtras = true);
-
-  struct PanelContentLayout {
-    float contentLeft = 0.0F;
-    float contentTop = 0.0F;
-    float inputWidth = 0.0F;
-    float buttonX = 0.0F;
-    float controlHeight = 0.0F;
-  };
-
-  [[nodiscard]] float defaultPanelWidth(float screenWidth, LayoutMode layout);
+  [[nodiscard]] float defaultPanelWidth();
+  // The session/info flags are accepted for the editor's call sites; neither changes the block anymore.
   [[nodiscard]] float defaultPanelHeight(LayoutMode layout, bool showSessionButtons = true, bool showInfoExtras = true);
-  [[nodiscard]] float minPanelWidth(LayoutMode layout);
-  [[nodiscard]] float minPanelHeight(LayoutMode layout, bool showSessionButtons = true, bool showInfoExtras = true);
-  [[nodiscard]] float maxPanelHeight(LayoutMode layout);
-  [[nodiscard]] float resolvePanelWidth(float screenWidth, float boxWidth, LayoutMode layout);
-  [[nodiscard]] float
-  resolvePanelHeight(float boxHeight, LayoutMode layout, bool showSessionButtons = true, bool showInfoExtras = true);
+  // Login boxes wider than the pill range were sized and placed for the old boxed card.
+  [[nodiscard]] bool isLegacyCardBox(const DesktopWidgetState& state) noexcept;
+  // Widths past kPillMaxWidth fall back to the default pill.
+  [[nodiscard]] float resolvePanelWidth(float screenWidth, float boxWidth);
   void defaultPanelSize(
       float screenWidth, float& boxWidth, float& boxHeight, LayoutMode layout, bool showSessionButtons = true,
       bool showInfoExtras = true
@@ -127,18 +93,14 @@ namespace lockscreen_login_box {
       float screenWidth, float& boxWidth, float& boxHeight, LayoutMode layout, bool showSessionButtons = true,
       bool showInfoExtras = true
   );
-  [[nodiscard]] PanelContentLayout panelContentLayout(float panelWidth, float panelHeight, bool showLoginButton);
-  void defaultPanelCenter(
-      float screenWidth, float screenHeight, float& cx, float& cy, LayoutMode layout, bool showSessionButtons = true,
-      bool showInfoExtras = true
-  );
-  void panelOriginFromCenter(
-      float cx, float cy, float screenWidth, float boxWidth, float boxHeight, LayoutMode layout, float& panelX,
-      float& panelY, float& panelWidthOut, float& panelHeightOut, bool showSessionButtons = true,
-      bool showInfoExtras = true
-  );
+  void defaultPanelCenter(float screenWidth, float screenHeight, float& cx, float& cy, LayoutMode layout);
 
-  // Height flags from settings.
+  // Glass fill and edge of the password pill. The field draws its text in the palette's on-surface color, so a
+  // light palette gets denser glass to keep that dark text legible.
+  [[nodiscard]] Color pillFillColor();
+  [[nodiscard]] Color pillEdgeColor();
+
+  // Whether media or weather is configured; the editor passes it to the sizing helpers.
   [[nodiscard]] bool styleShowsInfoExtras(const LoginBoxStyle& style) noexcept;
 
   [[nodiscard]] const DesktopWidgetState*

@@ -3,12 +3,12 @@
 #include "config/config_types.h"
 #include "shell/desktop/desktop_widget.h"
 
-#include <array>
 #include <unordered_map>
 
 class Box;
 class Glyph;
 
+// Editor stand-in for the lock screen's user block: avatar, name bar and the glass password pill.
 class DesktopLoginBoxWidget : public DesktopWidget {
 public:
   void create() override;
@@ -32,13 +32,11 @@ private:
   float m_screenHeight = 0.0F;
   float m_panelCenterY = 0.0F;
   std::unordered_map<std::string, WidgetSettingValue> m_settings;
-  Box* m_panel = nullptr;
-  Box* m_infoGhost = nullptr;
-  Box* m_mediaGhost = nullptr;
-  Box* m_weatherGhost = nullptr;
-  Box* m_statusGhost = nullptr;
-  Box* m_passwordGhost = nullptr;
-  Box* m_loginButtonGhost = nullptr;
-  Glyph* m_loginGlyph = nullptr;
-  std::array<Box*, 5> m_sessionGhosts{};
+  Box* m_avatarGhost = nullptr;
+  Glyph* m_avatarGlyph = nullptr;
+  Box* m_nameGhost = nullptr;
+  Box* m_pillGhost = nullptr;
+  Box* m_submitGhost = nullptr;
+  Glyph* m_submitGlyph = nullptr;
+  Box* m_hintGhost = nullptr;
 };
