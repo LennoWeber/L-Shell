@@ -42,6 +42,7 @@
 #include "shell/bar/bar.h"
 #include "shell/desktop/desktop_widgets_controller.h"
 #include "shell/dock/dock.h"
+#include "shell/expo/expo.h"
 #include "shell/gesture_handle/gesture_handle.h"
 #include "shell/hot_corners/hot_corners.h"
 #include "shell/island/island.h"
@@ -351,6 +352,7 @@ private:
   // reload can retire the previous set before registering the new one.
   std::vector<std::string> m_pluginPanelIds;
   WindowSwitcher m_windowSwitcher;
+  Expo m_expo;
   OverviewLauncherCapture m_overviewLauncherCapture;
   NotificationToast m_notificationToast;
   AudioOsd m_audioOsd;

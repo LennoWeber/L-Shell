@@ -4371,6 +4371,9 @@
       "parse-weather": "Wetterantwort konnte nicht verarbeitet werden"
     }
   },
+  "expo": {
+    "desktop": "Schreibtisch {name}"
+  },
   "window-switcher": {
     "desktop": "Schreibtisch {name}",
     "empty": "Keine offenen Fenster",

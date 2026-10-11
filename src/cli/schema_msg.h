@@ -243,11 +243,15 @@ namespace noctalia::cli {
   };
   inline constexpr std::array<std::string_view, 3> kMsgWindowSwitcherActionChoices{"close", "hide", "hold"};
   inline constexpr std::array<std::string_view, 2> kMsgOverviewActionChoices{"close", "toggle"};
+  inline constexpr std::array<std::string_view, 2> kMsgExpoActionChoices{"close", "toggle"};
   inline constexpr std::array<std::string_view, 7> kMsgLayoutModeSetModeChoices{
       "classic", "edges", "flow", "handle", "island", "minimal_bar", "smart_bar",
   };
   inline constexpr std::array kMsgLayoutModeSetPositionals{
       Positional{"mode", {}, kMsgLayoutModeSetModeChoices, true, false, false},
+  };
+  inline constexpr std::array kMsgExpoPositionals{
+      Positional{"action", {}, kMsgExpoActionChoices, false, false, false},
   };
   inline constexpr std::array kMsgOverviewPositionals{
       Positional{"action", {}, kMsgOverviewActionChoices, false, false, false},
@@ -440,6 +444,10 @@ namespace noctalia::cli {
                                         false};
     inline constexpr Command dpmsOff{"dpms-off", "Turn monitors off", {}, {}, {}, {}, {}, false};
     inline constexpr Command dpmsOn{"dpms-on", "Turn monitors on", {}, {}, {}, {}, {}, false};
+    inline constexpr Command expo{
+        "expo", "Toggle the expo: every workspace on every monitor with its windows", {}, {}, {}, kMsgExpoPositionals,
+        {},     false
+    };
     inline constexpr Command effectsProfileSet{
         "effects-profile-set",
         "Set the EasyEffects output or input profile",
@@ -889,6 +897,7 @@ namespace noctalia::cli {
       msg::dpmsOff,
       msg::dpmsOn,
       msg::effectsProfileSet,
+      msg::expo,
       msg::greeterSync,
       msg::keyboardBacklightDown,
       msg::keyboardBacklightOsd,

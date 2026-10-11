@@ -88,6 +88,8 @@ hl.bind(mainMod .. "+S", hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"))
 hl.bind(mainMod .. "+N", hl.dsp.exec_cmd(ipc .. "panel-toggle notification-center"))
 hl.bind(mainMod .. "+comma", hl.dsp.exec_cmd(ipc .. "settings-toggle"))
 hl.bind("ALT + Tab", hl.dsp.exec_cmd(ipc .. "window-switcher hold"))
+-- Expo: every workspace on every monitor with its windows (like hyprexpo, built into the shell)
+hl.bind(mainMod .. "+O", hl.dsp.exec_cmd(ipc .. "expo"))
 
 -- Media keys
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(ipc .. "volume-up"))
@@ -104,6 +106,8 @@ hl.window_rule({
 })
 ```
 
+With a classic `hyprland.conf`, the expo bind reads `bind = SUPER, O, exec, l-shell msg expo`.
+
 ## Blur
 
 Enable blur for Noctalia's bar, panels, dock, and notifications.
@@ -115,7 +119,7 @@ We also disable Hyprland's built-in layer animations for Noctalia so they do not
 hl.layer_rule({
   name = "noctalia",
   match = {
-    namespace = "^noctalia-(bar-.+|notification|dock|panel|attached-panel|osd|window-switcher|island)$",
+    namespace = "^noctalia-(bar-.+|notification|dock|panel|attached-panel|osd|window-switcher|expo|island)$",
   },
   no_anim = true,
   -- Below the lightest glass tint (the dock's 0.45), above the soft drop shadows: glass gets blurred, shadows do not.

@@ -310,6 +310,12 @@ void WaylandWorkspaces::focusWindow(const std::string& windowId) const {
   }
 }
 
+void WaylandWorkspaces::refreshWindowGeometry() {
+  if (m_activeBackend != nullptr) {
+    m_activeBackend->refreshWindowGeometry();
+  }
+}
+
 std::optional<std::string> WaylandWorkspaces::focusedWindowId() const {
   if (m_hyprlandBackend != nullptr) {
     return static_cast<const HyprlandWorkspaceBackend*>(m_hyprlandBackend)->focusedWindowId();

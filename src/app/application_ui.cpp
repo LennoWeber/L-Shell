@@ -417,6 +417,15 @@ void Application::initInputDispatch() {
       m_lockScreen.onPointerEvent(event);
       return;
     }
+    if (m_expo.isActive()) {
+      if (m_expo.onPointerEvent(event)) {
+        return;
+      }
+      if (event.type == PointerEvent::Type::Button || event.type == PointerEvent::Type::Axis) {
+        return;
+      }
+      // Enter/Leave/Motion fall through so other surfaces' hover state stays in sync.
+    }
     if (m_windowSwitcher.isActive()) {
       if (m_windowSwitcher.onPointerEvent(event)) {
         return;
@@ -525,6 +534,9 @@ void Application::initInputDispatch() {
       return;
     }
     if (m_notificationToast.onKeyboardEvent(event)) {
+      return;
+    }
+    if (m_expo.onKeyboardEvent(event)) {
       return;
     }
     if (m_windowSwitcher.onKeyboardEvent(event)) {
@@ -807,6 +819,14 @@ void Application::initNotificationAndOsd() {
       m_wayland, &m_renderContext, m_compositorPlatform, &m_configService, &m_asyncTextureCache
   );
   m_configService.addReloadCallback([this]() { m_windowSwitcher.onConfigReload(); });
+  m_expo.initialize(m_wayland, &m_renderContext, m_compositorPlatform, &m_configService, &m_asyncTextureCache);
+  // One full-screen window overview at a time.
+  m_expo.setOnOpen([this]() {
+    if (m_windowSwitcher.isActive()) {
+      m_windowSwitcher.close();
+    }
+  });
+  m_configService.addReloadCallback([this]() { m_expo.onConfigReload(); });
   m_configService.addReloadCallback([this]() { m_osdOverlay.onConfigReload(); });
   m_idleGraceOverlay.initialize(m_wayland, &m_renderContext);
   m_wayland.setIdleCapabilitiesReadyCallback([this]() { m_idleManager.reload(m_configService.config().idle); });

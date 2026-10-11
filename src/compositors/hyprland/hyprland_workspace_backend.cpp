@@ -177,6 +177,8 @@ std::vector<WorkspaceWindow> HyprlandWorkspaceBackend::workspaceWindows(wl_outpu
             .title = toplevel.title,
             .x = toplevel.x,
             .y = toplevel.y,
+            .width = toplevel.width,
+            .height = toplevel.height,
             .outputName = {},
         }
     );
@@ -238,6 +240,17 @@ void HyprlandWorkspaceBackend::focusWindow(const std::string& windowId) {
     (void)m_runtime.request(std::format("dispatch focuswindow {}", target));
   }
   (void)m_runtime.request(std::format("dispatch alterzorder top,{}", target));
+}
+
+// Hyprland posts no event when a window is only resized or dragged, so the cached `at`/`size`
+// can be stale. Re-reading the clients is one synchronous IPC round trip; it does not notify,
+// the caller reads the fresh geometry right away.
+void HyprlandWorkspaceBackend::refreshWindowGeometry() {
+  if (!m_runtime.available() || m_ipcSchema == IpcSchema::Unknown) {
+    return;
+  }
+  refreshClients();
+  recomputeWorkspaceFlags();
 }
 
 void HyprlandWorkspaceBackend::notifyCleanup() {
@@ -583,6 +596,15 @@ void HyprlandWorkspaceBackend::refreshClients() {
     if (const auto atIt = item.find("at"); atIt != item.end() && atIt->is_array() && atIt->size() >= 2) {
       state.x = (*atIt)[0].get<std::int32_t>();
       state.y = (*atIt)[1].get<std::int32_t>();
+    }
+    // `at` and `size` are logical pixels in the global layout space.
+    if (const auto sizeIt = item.find("size"); sizeIt != item.end()
+        && sizeIt->is_array()
+        && sizeIt->size() >= 2
+        && (*sizeIt)[0].is_number()
+        && (*sizeIt)[1].is_number()) {
+      state.width = std::max((*sizeIt)[0].get<std::int32_t>(), 0);
+      state.height = std::max((*sizeIt)[1].get<std::int32_t>(), 0);
     }
 
     bool urgent = false;

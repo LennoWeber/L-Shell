@@ -817,6 +817,7 @@ void Application::reconcileOutputSurfaces() {
   m_notificationToast.onOutputChange();
   m_osdOverlay.onOutputChange();
   m_windowSwitcher.onOutputChange();
+  m_expo.onOutputChange();
 }
 
 void Application::initWaylandCallbacks() {
@@ -856,6 +857,7 @@ void Application::initWaylandCallbacks() {
     m_gestureHandle.onWorkspaceChanged();
     m_bar.refresh();
     m_windowSwitcher.onToplevelChange();
+    m_expo.onWindowsChanged();
   });
   m_compositorPlatform.setKeyboardLayoutChangeCallback([this]() {
     m_bar.refresh();
@@ -876,6 +878,7 @@ void Application::initWaylandCallbacks() {
     m_bar.refresh();
     m_dock.refresh();
     m_windowSwitcher.onToplevelChange();
+    m_expo.onWindowsChanged();
   });
   if constexpr (kLockKeysEnabled) {
     if (lockKeysConsumersEnabled(m_configService)) {

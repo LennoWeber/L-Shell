@@ -40,6 +40,8 @@ public:
   void onOutputChange();
   void onToplevelChange();
   void show(wl_output* output);
+  // Dismisses the switcher or overview without switching windows.
+  void close() { hide(); }
   // Mission-Control-style overview: grid of the current workspace's windows plus a
   // workspace bar. Independent of the configured alt-tab style.
   void toggleOverview(wl_output* output);

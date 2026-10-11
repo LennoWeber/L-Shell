@@ -50,5 +50,15 @@ int main() {
     TEST_CHECK(std::ranges::contains(modeChoices, option.key));
   }
 
+  // expo takes the same optional toggle/close action as overview.
+  for (const std::string_view name : {std::string_view{"overview"}, std::string_view{"expo"}}) {
+    const noctalia::cli::Command* command = noctalia::cli::findMsgCommand(name);
+    TEST_CHECK(command != nullptr);
+    TEST_CHECK(command->positionals.size() == 1);
+    TEST_CHECK(!command->positionals.front().required);
+    TEST_CHECK(std::ranges::contains(command->positionals.front().choices, std::string_view{"toggle"}));
+    TEST_CHECK(std::ranges::contains(command->positionals.front().choices, std::string_view{"close"}));
+  }
+
   return EXIT_SUCCESS;
 }
