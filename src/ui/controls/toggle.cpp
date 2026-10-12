@@ -12,6 +12,11 @@
 #include <algorithm>
 #include <memory>
 
+namespace {
+  // A switch flick: snappy, barely bouncy.
+  constexpr Spring kKnobSpring{.durationMs = 250.0F, .bounce = 0.15F};
+} // namespace
+
 Toggle::Toggle() {
   setAlign(FlexAlign::Center);
   setDirection(FlexDirection::Horizontal);
@@ -58,14 +63,15 @@ void Toggle::setChecked(bool checked) {
   m_checked = checked;
 
   if (animationManager() != nullptr) {
+    // The knob springs over, from wherever it is and at its current speed when flicked back.
+    const float velocity = animationManager()->velocity(m_animId);
     if (m_animId != 0) {
       animationManager()->cancel(m_animId);
     }
-    float from = m_checked ? 0.0F : 1.0F;
-    float to = m_checked ? 1.0F : 0.0F;
-    m_animId = animationManager()->animate(
-        from, to, Style::animFast, Easing::EaseOutCubic, [this](float t) { applyAnimatedState(t); },
-        [this]() { m_animId = 0; }, this
+    const float from = m_animId != 0 ? m_animationProgress : (m_checked ? 0.0F : 1.0F);
+    const float to = m_checked ? 1.0F : 0.0F;
+    m_animId = animationManager()->animateSpring(
+        from, to, kKnobSpring, [this](float t) { applyAnimatedState(t); }, [this]() { m_animId = 0; }, this, velocity
     );
     // Mark dirty so the surface's frame loop restarts and ticks the animation
     markPaintDirty();
@@ -175,8 +181,10 @@ void Toggle::applyState() { applyAnimatedState(m_checked ? 1.0F : 0.0F); }
 
 void Toggle::applyAnimatedState(float t) {
   m_animationProgress = t;
-  const Color trackColor = lerpColor(colorForRole(ColorRole::Outline), colorForRole(ColorRole::Primary), t);
-  const Color thumbColor = lerpColor(colorForRole(ColorRole::OnPrimary), colorForRole(ColorRole::OnPrimary), t);
+  // The knob may overshoot a hair on its spring; colors stay within their range.
+  const float colorT = std::clamp(t, 0.0F, 1.0F);
+  const Color trackColor = lerpColor(colorForRole(ColorRole::Outline), colorForRole(ColorRole::Primary), colorT);
+  const Color thumbColor = lerpColor(colorForRole(ColorRole::OnPrimary), colorForRole(ColorRole::OnPrimary), colorT);
   const float thumbX = m_inset + m_travel * (Style::rtl() ? 1.0F - t : t);
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
 

@@ -146,6 +146,10 @@ private:
   Color m_targetBg{};
   Color m_targetBorder{};
   Color m_targetLabel{};
+  // Colors currently on screen (mid-transition included).
+  Color m_shownBg{};
+  Color m_shownBorder{};
+  Color m_shownLabel{};
   ButtonContentAlign m_contentAlign = ButtonContentAlign::Center;
   float m_surfaceOpacity = 1.0F;
   bool m_enabled = true;

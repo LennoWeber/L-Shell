@@ -9,6 +9,7 @@
 #include "cursor-shape-v1-client-protocol.h"
 #include "ipc/ipc_service.h"
 #include "render/animation/animation.h"
+#include "render/animation/motion_service.h"
 #include "render/backend/render_backend.h"
 #include "render/core/render_styles.h"
 #include "render/core/shared_texture_cache.h"
@@ -1431,8 +1432,10 @@ void Wallpaper::startTransition(WallpaperInstance& instance) {
   }
 
   const auto& transitions = wpConfig.transitions;
-  const auto picked =
-      transitions[static_cast<std::size_t>(std::floor(randomFloat(0.0F, static_cast<float>(transitions.size()))))];
+  // Reduce Motion: wipes, discs and zooms become a crossfade.
+  const auto picked = MotionService::instance().reduced()
+      ? WallpaperTransition::Fade
+      : transitions[static_cast<std::size_t>(std::floor(randomFloat(0.0F, static_cast<float>(transitions.size()))))];
   instance.activeTransition = picked;
   instance.transitionParams = randomizeParams(picked, wpConfig.edgeSmoothness, aspectRatio);
   startTransitionAnimation(instance, 0.0F, WallpaperTransitionDirection::Forward);

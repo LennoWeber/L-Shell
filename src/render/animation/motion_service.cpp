@@ -28,8 +28,22 @@ void MotionService::setEnabled(bool enabled) {
   if (m_enabled == enabled) {
     return;
   }
+  const bool wasReduced = reduced();
   m_enabled = enabled;
-  if (!m_enabled) {
+  applyReducedChange(wasReduced);
+}
+
+void MotionService::setSystemReducedMotion(bool reduced) {
+  if (m_systemReduced == reduced) {
+    return;
+  }
+  const bool wasReduced = this->reduced();
+  m_systemReduced = reduced;
+  applyReducedChange(wasReduced);
+}
+
+void MotionService::applyReducedChange(bool wasReduced) {
+  if (!wasReduced && reduced()) {
     const std::vector<AnimationManager*> managers(m_managers.begin(), m_managers.end());
     for (auto* manager : managers) {
       if (manager != nullptr && m_managers.contains(manager)) {

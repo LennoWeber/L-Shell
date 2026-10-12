@@ -10,9 +10,11 @@
 
 namespace {
 
+  // Must match RenderContext's nodeLocalTransform: hit testing and mapping use the same
+  // pivot as drawing, or a node scaled from a custom origin is clickable where it is not drawn.
   Mat3 localTransform(const Node* node) {
-    const float cx = node->width() * 0.5F;
-    const float cy = node->height() * 0.5F;
+    const float cx = node->transformOriginX();
+    const float cy = node->transformOriginY();
     return Mat3::translation(node->x(), node->y())
         * Mat3::translation(cx, cy)
         * Mat3::rotation(node->rotation())

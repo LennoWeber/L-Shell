@@ -99,6 +99,12 @@ then the home line is left out (in Flow and in Handle).
 `panel-toggle status-overlay` opens a full-screen glance at the time, battery, network, Bluetooth, volume,
 brightness and the playing track. Escape or a click anywhere closes it.
 
+## Recording indicators
+
+While an app uses the microphone, the camera or screen capture, the island's pill shows a dot at its trailing
+end, like macOS: green for the camera, orange for the microphone, purple for screen capture. It follows the
+same `[shell.privacy]` filters as the privacy OSD, so apps you filter out there do not light it.
+
 ## Blur
 
 The island is drawn as Liquid Glass and needs compositor blur behind it. Add `island` to your blur rule (see

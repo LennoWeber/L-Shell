@@ -12,6 +12,7 @@
 #include "i18n/i18n.h"
 #include "ipc/ipc_service.h"
 #include "render/animation/animation_manager.h"
+#include "render/animation/motion_service.h"
 #include "render/core/renderer.h"
 #include "render/render_context.h"
 #include "render/scene/input_area.h"
@@ -46,6 +47,8 @@ namespace {
 
   // Same frosted, dimmed desktop as the window switcher's overview.
   constexpr float kDimOpacity = 0.7F;
+  // Closing is quicker than opening and accelerates away.
+  constexpr float kCloseMs = 170.0F;
   constexpr int kThumbnailMaxWidth = 640;
   constexpr int kThumbnailMaxHeight = 400;
   // Resolve icon theme entries large enough for the icon drawn on a snapshot-less tile.
@@ -315,6 +318,12 @@ void Expo::open(wl_output* output) {
   if (m_onOpen) {
     m_onOpen();
   }
+  // Reopened while animating closed: keep the surface (same output) and turn the reveal around.
+  const bool resumingClose = m_closing && m_instance != nullptr && m_instance->output == output;
+  if (m_closing && !resumingClose) {
+    closeNow();
+  }
+  m_closing = false;
   ++m_session;
   m_output = output;
   m_refreshScheduled = false;
@@ -359,8 +368,18 @@ void Expo::open(wl_output* output) {
   m_active = true;
   ensureSurface();
   if (m_instance == nullptr) {
-    close();
+    closeNow();
     return;
+  }
+  if (resumingClose) {
+    m_instance->animations.cancelAll();
+    m_instance->surface->setKeyboardInteractivity(LayerShellKeyboard::Exclusive);
+    m_instance->surface->setClickThrough(false);
+    // The rebuild resumes the reveal from where the close left it.
+    m_instance->sceneDirty = true;
+    for (const auto& catcher : m_catchers) {
+      fadeCatcher(*catcher, kDimOpacity);
+    }
   }
   syncCatchers();
   requestSceneUpdate();
@@ -368,9 +387,52 @@ void Expo::open(wl_output* output) {
 }
 
 void Expo::close() {
-  if (!m_active && m_instance == nullptr) {
+  if (m_closing || (!m_active && m_instance == nullptr)) {
     return;
   }
+  Instance* instance = m_instance.get();
+  if (!m_active
+      || instance == nullptr
+      || instance->surface == nullptr
+      || instance->sceneRoot == nullptr
+      || instance->content == nullptr
+      || instance->dimmer == nullptr) {
+    closeNow();
+    return;
+  }
+
+  // Reverse of the open: fade and shrink back, then go. The session is over at once: input is
+  // ignored, the keyboard and clicks go back to the apps, and model work stops.
+  m_active = false;
+  m_closing = true;
+  m_refreshScheduled = false;
+  cancelThumbnailCaptures();
+  m_failedCaptureKeys.clear();
+  instance->inputDispatcher.setSceneRoot(nullptr);
+  instance->pointerInside = false;
+  instance->surface->setKeyboardInteractivity(LayerShellKeyboard::None);
+  instance->surface->setClickThrough(true);
+  for (const auto& catcher : m_catchers) {
+    fadeCatcher(*catcher, 0.0F);
+  }
+  instance->animations.cancelAll();
+  const float from = instance->revealProgress;
+  instance->animations.animateFade(
+      from, 0.0F, kCloseMs * from, Easing::EaseInCubic, revealSetter(*instance),
+      [this, session = m_session]() {
+        DeferredCall::callLater([this, session]() {
+          if (m_closing && m_session == session) {
+            closeNow();
+          }
+        });
+      },
+      instance->content
+  );
+  instance->surface->requestRedraw();
+}
+
+void Expo::closeNow() {
+  m_closing = false;
   m_active = false;
   m_refreshScheduled = false;
   cancelThumbnailCaptures();
@@ -670,7 +732,7 @@ void Expo::ensureSurface() {
     DeferredCall::callLater([this, session]() {
       // Only the session whose surface the compositor closed, not one opened since.
       if (m_session == session) {
-        close();
+        closeNow();
       }
     });
   });
@@ -748,6 +810,37 @@ void Expo::syncCatchers() {
 
 void Expo::destroyCatchers() { m_catchers.clear(); }
 
+std::function<void(float)> Expo::revealSetter(Instance& instance) {
+  return [&instance, contentNode = instance.content, dimmer = instance.dimmer](float value) {
+    instance.revealProgress = value;
+    contentNode->setOpacity(value);
+    // Reduce Motion: the expo only fades.
+    const float scale = MotionService::instance().reduced()
+        ? 1.0F
+        : Style::windowSwitcherRevealScale + ((1.0F - Style::windowSwitcherRevealScale) * value);
+    contentNode->setScale(scale);
+    dimmer->setOpacity(kDimOpacity * value);
+  };
+}
+
+void Expo::fadeCatcher(Catcher& catcher, float targetOpacity) {
+  catcher.animations.cancelAll();
+  if (catcher.surface != nullptr) {
+    // Dismissing: clicks on the other outputs reach the apps again right away.
+    catcher.surface->setClickThrough(targetOpacity <= 0.0F);
+    catcher.surface->requestRedraw();
+  }
+  if (catcher.dimmer == nullptr) {
+    return;
+  }
+  const float from = catcher.dimmer->opacity();
+  const float durationMs = targetOpacity > from ? static_cast<float>(Style::animNormal) : kCloseMs;
+  catcher.animations.animateFade(
+      from, targetOpacity, durationMs, targetOpacity > from ? Easing::EaseOutCubic : Easing::EaseInCubic,
+      [dimmer = catcher.dimmer](float value) { dimmer->setOpacity(value); }, {}, catcher.dimmer
+  );
+}
+
 void Expo::prepareCatcherFrame(Catcher& catcher) {
   if (!m_active || m_renderContext == nullptr || catcher.surface == nullptr) {
     return;
@@ -787,7 +880,7 @@ void Expo::prepareCatcherFrame(Catcher& catcher) {
   if (!catcher.revealed) {
     // Fades in with the expo, then nothing runs per frame.
     catcher.revealed = true;
-    catcher.animations.animate(
+    catcher.animations.animateFade(
         0.0F, kDimOpacity, Style::animNormal, Easing::EaseOutCubic,
         [dimmer = catcher.dimmer](float value) { dimmer->setOpacity(value); }, {}, catcher.dimmer
     );
@@ -1155,17 +1248,14 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
   // after opening) replaced the nodes it animated.
   if (instance.revealProgress < 1.0F && instance.content != nullptr && instance.dimmer != nullptr) {
     const float from = instance.revealProgress;
-    const auto apply = [&instance, contentNode = instance.content, dimmer = instance.dimmer](float value) {
-      instance.revealProgress = value;
-      contentNode->setOpacity(value);
-      contentNode->setScale(Style::windowSwitcherRevealScale + ((1.0F - Style::windowSwitcherRevealScale) * value));
-      dimmer->setOpacity(kDimOpacity * value);
-    };
+    auto apply = revealSetter(instance);
     apply(from);
-    instance.animations.animate(
-        from, 1.0F, static_cast<float>(Style::animNormal) * (1.0F - from), Easing::EaseOutCubic, apply,
+    instance.animations.animateFade(
+        from, 1.0F, static_cast<float>(Style::animNormal) * (1.0F - from), Easing::EaseOutCubic, std::move(apply),
         [&instance]() { instance.revealProgress = 1.0F; }, instance.content
     );
+  } else if (instance.content != nullptr && instance.dimmer != nullptr) {
+    revealSetter(instance)(instance.revealProgress);
   }
 }
 
@@ -1367,8 +1457,9 @@ void Expo::activateWindow(std::size_t index) {
   const WindowSwitcherEntry entry = m_windows[index].entry;
   CompositorPlatform* platform = m_platform;
   // Hyprland ignores zwlr_foreign_toplevel_handle_v1.activate while an exclusive keyboard
-  // layer surface is mapped (hyprwm/Hyprland#4829): close first, activate on the next tick.
-  close();
+  // layer surface is mapped (hyprwm/Hyprland#4829): close first (at once, so the surface is
+  // gone), activate on the next tick.
+  closeNow();
   DeferredCall::callLater([platform, entry]() { activateWindowSwitcherEntry(*platform, entry); });
 }
 
@@ -1382,7 +1473,7 @@ void Expo::activateCard(std::size_t card) {
   // Re-selecting the focused monitor's own desktop would flip back to the previous one on
   // compositors with workspace back-and-forth (Hyprland binds:workspace_back_and_forth).
   const bool alreadyFocused = target.workspace.active && target.output == m_output;
-  close();
+  closeNow();
   if (!target.hasWorkspace || alreadyFocused || platform == nullptr || wayland == nullptr) {
     return;
   }

@@ -8,6 +8,7 @@
 #include "core/ui_phase.h"
 #include "ipc/ipc_arg_parse.h"
 #include "ipc/ipc_service.h"
+#include "render/animation/motion_service.h"
 #include "render/core/renderer.h"
 #include "render/render_context.h"
 #include "render/scene/node.h"
@@ -20,21 +21,17 @@
 #include "wayland/wayland_connection.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace {
 
   constexpr Logger kLog("osd");
 
-  enum class OsdRevealDir { FromLeft, FromRight, FromTop, FromBottom };
-
-  [[nodiscard]] float osdContentOpacity(float reveal) {
-    const float v = std::clamp(reveal, 0.0F, 1.0F);
-    if (v <= 0.15F) {
-      return 0.0F;
-    }
-    return std::clamp((v - 0.15F) / 0.85F, 0.0F, 1.0F);
-  }
+  // Materialize: scale up from 92% while fading in, on a quick, barely bouncy spring.
+  constexpr float kOsdHiddenScale = 0.92F;
+  constexpr Spring kOsdShowSpring{.durationMs = 200.0F, .bounce = 0.15F};
+  constexpr float kOsdBlurMinOpacity = 0.3F;
 
   [[nodiscard]] float osdUiScale(const ConfigService* config) {
     if (config == nullptr) {
@@ -192,19 +189,6 @@ namespace {
       return (surfaceHeight - cardH) * 0.5F;
     }
     return 0.0F;
-  }
-
-  OsdRevealDir revealDirForPosition(const std::string& position) {
-    if (isLeftPosition(position)) {
-      return OsdRevealDir::FromLeft;
-    }
-    if (isRightPosition(position)) {
-      return OsdRevealDir::FromRight;
-    }
-    if (isBottomPosition(position)) {
-      return OsdRevealDir::FromBottom;
-    }
-    return OsdRevealDir::FromTop;
   }
 
 } // namespace
@@ -615,6 +599,10 @@ void OsdOverlay::prepareFrame(Instance& inst, bool needsUpdate, bool needsLayout
   if ((needsUpdate || needsLayout || needsSceneBuild) && inst.sceneRoot != nullptr) {
     UiPhaseScope layoutPhase(UiPhase::Layout);
     updateInstanceContent(inst);
+    if (needsSceneBuild) {
+      // Fresh nodes start at rest; put them where the reveal currently is.
+      applyReveal(inst);
+    }
   }
 
   if (inst.sceneRoot != nullptr && inst.background != nullptr) {
@@ -828,15 +816,27 @@ void OsdOverlay::updateBlurRegion(Instance& inst) const {
     return;
   }
 
-  const int rx = static_cast<int>(std::floor(inst.background->x()));
-  const int ry = static_cast<int>(std::floor(inst.background->y()));
-  const int rw = std::max(1, static_cast<int>(std::ceil(inst.background->width())));
-  const int rh = std::max(1, static_cast<int>(std::ceil(inst.background->height())));
-  const float radius = osdCardRadius(inst.background->width(), inst.background->height(), inst.uiLayoutScale);
+  // The compositor blur cannot fade: keep it off while the card is nearly transparent so no
+  // frosted halo shows around a card that is not there yet.
+  if (inst.revealOpacity < kOsdBlurMinOpacity) {
+    inst.surface->clearBlurRegion();
+    return;
+  }
+
+  // Follow the materialize scale so the blur never sticks out past the drawn card.
+  const Box& bg = *inst.background;
+  const float scale = bg.scaleX();
+  const float left = bg.x() + bg.transformOriginX() * (1.0F - scale);
+  const float top = bg.y() + bg.transformOriginY() * (1.0F - scale);
+  const int rx = static_cast<int>(std::ceil(left));
+  const int ry = static_cast<int>(std::ceil(top));
+  const int rw = std::max(1, static_cast<int>(std::floor(left + bg.width() * scale)) - rx);
+  const int rh = std::max(1, static_cast<int>(std::floor(top + bg.height() * scale)) - ry);
+  const float radius = osdCardRadius(bg.width(), bg.height(), inst.uiLayoutScale) * scale;
   inst.surface->setBlurRegion(Surface::tessellateRoundedRect(rx, ry, rw, rh, radius));
 }
 
-void OsdOverlay::applyReveal(Instance& inst, float reveal) {
+void OsdOverlay::applyReveal(Instance& inst) {
   if (inst.card == nullptr || inst.background == nullptr || inst.sceneRoot == nullptr) {
     return;
   }
@@ -846,55 +846,26 @@ void OsdOverlay::applyReveal(Instance& inst, float reveal) {
   const float ch = cardHeight(s, m_lastOrientation, m_lastShowProgress);
   const float baseX = cardBaseX(inst.sceneRoot->width(), cw);
   const float baseY = cardBaseYForPosition(m_lastPosition, inst.sceneRoot->height(), ch);
-  const float r = std::clamp(reveal, 0.0F, 1.0F);
 
+  // Liquid Glass "materialize": the card scales up from its anchored edge while fading in. The
+  // scale stays inside the card's resting rect, so nothing crosses the surface buffer edge.
+  const float scale = MotionService::instance().reduced() ? 1.0F : std::clamp(inst.revealScale, 0.5F, 1.05F);
+  // Grow from the edge the card hangs off: top/bottom centre, or the side for center_left/right.
+  const bool center = isCenterPosition(m_lastPosition);
+  const float originX = center && isLeftPosition(m_lastPosition) ? 0.0F
+      : center && isRightPosition(m_lastPosition)                ? cw
+                                                                 : cw * 0.5F;
+  const float originY = isBottomPosition(m_lastPosition) ? ch : center ? ch * 0.5F : 0.0F;
+  for (Node* node : {static_cast<Node*>(inst.background), inst.card}) {
+    node->setPosition(baseX, baseY);
+    node->setFrameSize(cw, ch);
+    node->setTransformOrigin(originX, originY);
+    node->setScale(scale);
+  }
   if (inst.row != nullptr) {
-    inst.row->setOpacity(osdContentOpacity(r));
-  }
-
-  // Grow the card from its anchored edge by clipping the visible extent; the rounded
-  // background and content stay at the resting position so nothing slides past the
-  // surface buffer (which the compositor would hard-clip into a flat edge).
-  switch (revealDirForPosition(m_lastPosition)) {
-  case OsdRevealDir::FromLeft: {
-    const float vw = std::round(cw * r);
-    inst.background->setPosition(baseX, baseY);
-    inst.background->setFrameSize(vw, ch);
-    inst.card->setPosition(baseX, baseY);
-    inst.card->setFrameSize(vw, ch);
     inst.row->setPosition(inst.rowBaseX, inst.rowBaseY);
-    break;
   }
-  case OsdRevealDir::FromRight: {
-    const float vw = std::round(cw * r);
-    const float hw = cw - vw;
-    inst.background->setPosition(baseX + hw, baseY);
-    inst.background->setFrameSize(vw, ch);
-    inst.card->setPosition(baseX + hw, baseY);
-    inst.card->setFrameSize(vw, ch);
-    inst.row->setPosition(inst.rowBaseX - hw, inst.rowBaseY);
-    break;
-  }
-  case OsdRevealDir::FromTop: {
-    const float vh = std::round(ch * r);
-    inst.background->setPosition(baseX, baseY);
-    inst.background->setFrameSize(cw, vh);
-    inst.card->setPosition(baseX, baseY);
-    inst.card->setFrameSize(cw, vh);
-    inst.row->setPosition(inst.rowBaseX, inst.rowBaseY);
-    break;
-  }
-  case OsdRevealDir::FromBottom: {
-    const float vh = std::round(ch * r);
-    const float hh = ch - vh;
-    inst.background->setPosition(baseX, baseY + hh);
-    inst.background->setFrameSize(cw, vh);
-    inst.card->setPosition(baseX, baseY + hh);
-    inst.card->setFrameSize(cw, vh);
-    inst.row->setPosition(inst.rowBaseX, inst.rowBaseY - hh);
-    break;
-  }
-  }
+  inst.sceneRoot->setOpacity(std::clamp(inst.revealOpacity, 0.0F, 1.0F));
 }
 
 void OsdOverlay::animateInstance(Instance& inst) {
@@ -902,50 +873,73 @@ void OsdOverlay::animateInstance(Instance& inst) {
     return;
   }
 
+  // A new event while fading out turns the fade around from where it is instead of popping in.
   if (inst.hideAnimId != 0) {
     inst.animations.cancel(inst.hideAnimId);
     inst.hideAnimId = 0;
+    inst.visible = false;
   }
 
   if (!inst.visible) {
     // During fast updates (e.g. slider drag), don't restart the show animation
     // every tick; keep the current show motion and only extend hide timing.
     if (inst.showAnimId == 0) {
-      inst.sceneRoot->setOpacity(1.0F);
-      applyReveal(inst, 0.0F);
-      inst.showAnimId = inst.animations.animate(
-          0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic, [this, &inst](float v) { applyReveal(inst, v); },
-          [&inst]() {
-            inst.showAnimId = 0;
-            inst.visible = true;
-          }
-      );
+      if (inst.revealOpacity <= 0.0F) {
+        inst.revealScale = kOsdHiddenScale;
+      }
+      const float fromOpacity = inst.revealOpacity;
+      const float fromScale = inst.revealScale;
+      applyReveal(inst);
+      auto setter = [this, &inst, fromOpacity, fromScale](float p) {
+        inst.revealOpacity = fromOpacity + (1.0F - fromOpacity) * p;
+        inst.revealScale = fromScale + (1.0F - fromScale) * p;
+        applyReveal(inst);
+      };
+      auto done = [&inst]() {
+        inst.showAnimId = 0;
+        inst.visible = true;
+      };
+      // Under Reduce Motion the scale is ignored and only the fade runs.
+      inst.showAnimId = MotionService::instance().reduced()
+          ? inst.animations.animateFade(0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic, setter, done)
+          : inst.animations.animateSpring(0.0F, 1.0F, kOsdShowSpring, setter, done);
     }
   } else {
-    applyReveal(inst, 1.0F);
+    inst.revealOpacity = 1.0F;
+    inst.revealScale = 1.0F;
+    applyReveal(inst);
   }
 
-  const float hideDelayMs =
-      static_cast<float>(m_config != nullptr ? m_config->config().osd.hideDelayMs : OsdConfig{}.hideDelayMs);
-  inst.hideAnimId = inst.animations.animateTimer(
-      1.0F, 0.0F, hideDelayMs, Easing::Linear, [](float /*v*/) {},
-      [this, &inst]() {
-        inst.hideAnimId = inst.animations.animate(
-            1.0F, 0.0F, Style::animNormal, Easing::EaseInQuad, [this, &inst](float v) { applyReveal(inst, v); },
-            [this, &inst]() {
-              inst.hideAnimId = 0;
-              inst.visible = false;
-              DeferredCall::callLater([this]() {
-                const bool allIdle = std::ranges::all_of(m_instances, [](const auto& i) {
-                  return !i->visible && !i->showPending && i->showAnimId == 0 && i->hideAnimId == 0;
-                });
-                if (allIdle) {
-                  destroySurfaces();
-                  m_targetOutput = nullptr;
-                }
-              });
+  // A real timer, not an animation: an empty animation would repaint every frame of the delay.
+  const auto hideDelay =
+      std::chrono::milliseconds(m_config != nullptr ? m_config->config().osd.hideDelayMs : OsdConfig{}.hideDelayMs);
+  inst.hideTimer.start(hideDelay, [this, &inst]() {
+    if (inst.showAnimId != 0) {
+      inst.animations.cancel(inst.showAnimId);
+      inst.showAnimId = 0;
+      inst.visible = true;
+    }
+    const float fromOpacity = inst.revealOpacity;
+    // Fade-only exit: the card dissolves in place.
+    inst.hideAnimId = inst.animations.animateFade(
+        fromOpacity, 0.0F, Style::animNormal, Easing::EaseInQuad,
+        [this, &inst](float v) {
+          inst.revealOpacity = v;
+          applyReveal(inst);
+        },
+        [this, &inst]() {
+          inst.hideAnimId = 0;
+          inst.visible = false;
+          DeferredCall::callLater([this]() {
+            const bool allIdle = std::ranges::all_of(m_instances, [](const auto& i) {
+              return !i->visible && !i->showPending && i->showAnimId == 0 && i->hideAnimId == 0;
+            });
+            if (allIdle) {
+              destroySurfaces();
+              m_targetOutput = nullptr;
             }
-        );
-      }
-  );
+          });
+        }
+    );
+  });
 }

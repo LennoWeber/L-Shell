@@ -1,5 +1,6 @@
 #pragma once
 
+#include "render/animation/animation.h"
 #include "ui/signal.h"
 
 namespace Style {
@@ -9,6 +10,14 @@ namespace Style {
   inline constexpr int animFast = 100;
   inline constexpr int animNormal = 200;
   inline constexpr int animSlow = 400;
+  // Exits are shorter than entrances and accelerate away (use with Easing::EaseInCubic).
+  inline constexpr int animExit = 150;
+
+  // Springs (see Spring in animation.h). Snappy for moves, smooth (no bounce) for exits and
+  // resizes, island for the Dynamic Island morph.
+  inline constexpr Spring springSnappy{.durationMs = 300.0F, .bounce = 0.15F};
+  inline constexpr Spring springSmooth{.durationMs = 300.0F, .bounce = 0.0F};
+  inline constexpr Spring springIsland{.durationMs = 400.0F, .bounce = 0.25F};
 
   // macOS Tahoe radii (before [shell].corner_radius_scale): small controls, controls and rows, cards and menus,
   // popovers and panels.

@@ -12,6 +12,7 @@
 #include "core/random.h"
 #include "ext-session-lock-v1-client-protocol.h"
 #include "i18n/i18n.h"
+#include "render/animation/motion_service.h"
 #include "render/render_context.h"
 #include "shell/desktop/desktop_widget_layout.h"
 #include "shell/keyboard_layout_label.h"
@@ -254,7 +255,9 @@ void LockScreen::unlock() {
     }
     tryFinishAnimatedUnlock();
     if (m_unlocking) {
-      const auto timeoutMs = static_cast<std::int64_t>(std::ceil(m_transitionDurationMs)) + 1000;
+      // The transition runs on the motion clock ([shell.animation].speed stretches it).
+      const auto timeoutMs =
+          static_cast<std::int64_t>(std::ceil(m_transitionDurationMs / MotionService::instance().speed())) + 1000;
       m_unlockTransitionTimer.start(std::chrono::milliseconds(timeoutMs), [this]() {
         if (!m_unlocking) {
           return;
@@ -895,7 +898,7 @@ bool LockScreen::captureDesktopSnapshots() {
 void LockScreen::chooseTransition() {
   m_activeTransition.reset();
   m_transitionParams = {};
-  m_transitionDurationMs = 1500.0F;
+  m_transitionDurationMs = LockscreenConfig{}.transitionDurationMs;
   if (m_configService == nullptr || m_wayland == nullptr || !m_wayland->hasScreencopy()) {
     return;
   }

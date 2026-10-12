@@ -587,6 +587,9 @@ void Button::ensureGlyph() {
 }
 
 void Button::applyColors(const Color& bg, const Color& border, const Color& label) {
+  m_shownBg = bg;
+  m_shownBorder = border;
+  m_shownLabel = label;
   setFill(bg);
   setBorder(border, effectiveBorderWidth());
   if (m_label != nullptr) {
@@ -686,19 +689,31 @@ void Button::applyVisualState() {
     return;
   }
 
-  // Snapshot current display colors as the animation start point
-  m_fromBg = m_targetBg;
-  m_fromBorder = m_targetBorder;
-  m_fromLabel = m_targetLabel;
+  // Start from what is on screen, not from the previous target: a press released mid-fade
+  // must not jump.
+  m_fromBg = m_shownBg;
+  m_fromBorder = m_shownBorder;
+  m_fromLabel = m_shownLabel;
   m_targetBg = targetBg;
   m_targetBorder = targetBorder;
   m_targetLabel = targetLabel;
 
   if (m_animId != 0) {
     animationManager()->cancel(m_animId);
+    m_animId = 0;
   }
 
-  m_animId = animationManager()->animate(
+  // Pressing reacts instantly (Liquid Glass "flexes" under the finger); every other change,
+  // release included, eases over quickly.
+  const bool pressing = m_enabled && (m_pressedVisual || pressed());
+  if (pressing) {
+    applyColors(targetBg, targetBorder, targetLabel);
+    markPaintDirty();
+    return;
+  }
+
+  // A color change, not motion: it still runs (briefly) under Reduce Motion.
+  m_animId = animationManager()->animateFade(
       0.0F, 1.0F, Style::animFast, Easing::EaseOutCubic,
       [this](float t) {
         applyColors(
@@ -706,7 +721,7 @@ void Button::applyVisualState() {
             lerpColor(m_fromLabel, m_targetLabel, t)
         );
       },
-      [this]() { m_animId = 0; }
+      [this]() { m_animId = 0; }, this
   );
   markPaintDirty();
 }

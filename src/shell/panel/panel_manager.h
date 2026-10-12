@@ -95,6 +95,8 @@ public:
   void setPanelOpenedCallback(std::function<void()> callback);
   // Runs before any panel (persistent ones included) starts opening.
   void setPanelOpeningCallback(std::function<void()> callback) { m_panelOpeningCallback = std::move(callback); }
+  // Runs as a close starts (the closed callback only runs once its animation is over).
+  void setPanelClosingCallback(std::function<void()> callback) { m_panelClosingCallback = std::move(callback); }
   void setAttachedPanelAvailabilityCallback(std::function<bool(wl_output*, std::string_view)> callback);
   void setBarConfigProvider(std::function<std::optional<BarConfig>(wl_output*, std::string_view)> provider);
   void setAttachedPanelBarSettledCallback(std::function<bool(wl_output*, std::string_view)> callback);
@@ -110,6 +112,9 @@ public:
 
   void openPanel(const std::string& panelId, PanelOpenRequest request = {});
   void closePanel(bool animateClose = true);
+  // Turns a panel that is animating closed back around from where it is; false when there is
+  // nothing to resume (not closing, or a different panel/output).
+  bool resumeClosingPanel(std::string_view panelId, wl_output* output = nullptr);
   void togglePanel(const std::string& panelId, PanelOpenRequest request);
   // IPC-friendly overload: asks CompositorPlatform for preferred interactive output.
   void togglePanel(const std::string& panelId);
@@ -236,6 +241,7 @@ private:
   std::function<void()> m_panelClosedCallback;
   std::function<void()> m_panelOpenedCallback;
   std::function<void()> m_panelOpeningCallback;
+  std::function<void()> m_panelClosingCallback;
   std::function<bool(wl_output*, std::string_view)> m_attachedPanelAvailabilityCallback;
   std::function<std::optional<BarConfig>(wl_output*, std::string_view)> m_barConfigProvider;
   std::function<bool(wl_output*, std::string_view)> m_attachedPanelBarSettledCallback;
@@ -304,6 +310,15 @@ private:
   bool m_closing = false;
   bool m_attachedToBar = false;
   bool m_attachedOpenAnimationPending = false;
+  // Switching from one open panel to another shows the new one at once (no replayed reveal).
+  bool m_skipOpenAnimation = false;
+  // Floating panels grow from their source (the clicked bar widget, or the screen corner they
+  // hang from), in panel-body coordinates; a non-zero slide replaces the scale (Notification
+  // Center slides in from the right edge).
+  float m_detachedOriginX = 0.0F;
+  float m_detachedOriginY = 0.0F;
+  float m_detachedSlideX = 0.0F;
+  float m_detachedSlideY = 0.0F;
   std::size_t m_attachedPopupCount = 0;
   ContextMenuPopup* m_activePopup = nullptr;
   std::unique_ptr<SelectDropdownPopup> m_selectPopup;

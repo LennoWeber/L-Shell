@@ -50,6 +50,7 @@ public:
   // Windows opened, closed, moved or retitled, or a workspace changed.
   void onWindowsChanged();
   void toggle(wl_output* output);
+  // Animates closed (reverse of the open); input is ignored meanwhile and reopening turns it around.
   void close();
 
   [[nodiscard]] bool isActive() const noexcept { return m_active; }
@@ -103,6 +104,10 @@ private:
   void destroySurface();
   void syncCatchers();
   void destroyCatchers();
+  // Tears everything down at once (activation, compositor-closed surface, end of the close fade).
+  void closeNow();
+  [[nodiscard]] std::function<void(float)> revealSetter(Instance& instance);
+  void fadeCatcher(Catcher& catcher, float targetOpacity);
   void prepareCatcherFrame(Catcher& catcher);
   [[nodiscard]] Catcher* catcherForSurface(const wl_surface* surface) const;
   void requestSceneUpdate();
@@ -157,6 +162,8 @@ private:
   // Bumped on every open; deferred work checks it still belongs to the same session.
   std::uint64_t m_session = 0;
   bool m_active = false;
+  // Animating closed: m_active is already false, the surface still fades out.
+  bool m_closing = false;
   bool m_refreshScheduled = false;
   bool m_refreshing = false;
   bool m_hoverSelects = false;

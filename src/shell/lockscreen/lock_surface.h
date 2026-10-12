@@ -125,6 +125,10 @@ private:
   void layoutTransitionCover();
   void syncTransitionCover();
   void cancelTransitionAnimation();
+  AnimationManager::Id startTransitionAnimation(
+      float from, float to, float durationMs, std::function<void(float)> setter, std::function<void()> onComplete,
+      const void* owner
+  );
   void beginEnterAnimation();
   void notifyTransitionStateChanged();
   void applyWallpaperTexture();
@@ -202,7 +206,7 @@ private:
   TransitionPhase m_transitionPhase = TransitionPhase::Disabled;
   AnimationManager::Id m_transitionAnimation = 0;
   float m_transitionProgress = 1.0F;
-  float m_transitionDurationMs = 1500.0F;
+  float m_transitionDurationMs = 350.0F;
   float m_blurIntensity = 0.5F;
   float m_tintIntensity = 0.3F;
   bool m_blackout = false;
