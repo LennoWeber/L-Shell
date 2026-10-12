@@ -212,15 +212,17 @@ namespace noctalia::cli {
         "  COMPREPLY=( $(compgen -W \"$words\" -- \"$cur\") )\n"
         "}\n\n"
         "_noctalia_plugins_enabled() {\n"
-        "  local words=\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1}')\"\n"
+        "  local words=\"$(" NOCTALIA_APP_NAME " msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1}')\"\n"
         "  COMPREPLY=( $(compgen -W \"$words\" -- \"$cur\") )\n"
         "}\n\n"
         "_noctalia_plugins_disabled() {\n"
-        "  local words=\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"disabled\" {print $1}')\"\n"
+        "  local words=\"$(" NOCTALIA_APP_NAME
+        " msg plugins list 2>/dev/null | awk '$4 == \"disabled\" {print $1}')\"\n"
         "  COMPREPLY=( $(compgen -W \"$words\" -- \"$cur\") )\n"
         "}\n\n"
         "_noctalia_plugin_prefix() {\n"
-        "  local words=\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1\":\"}')\"\n"
+        "  local words=\"$(" NOCTALIA_APP_NAME
+        " msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1\":\"}')\"\n"
         "  compopt -o nospace 2>/dev/null\n"
         "  COMPREPLY=( $(compgen -W \"$words\" -- \"$cur\") )\n"
         "}\n\n"
@@ -354,41 +356,43 @@ namespace noctalia::cli {
       }
       output.append("          ;;\n      esac\n      ;;\n");
     }
-    output.append("  esac\n}\n\ncomplete -F _noctalia_completions noctalia\n");
+    output.append("  esac\n}\n\ncomplete -F _noctalia_completions " NOCTALIA_APP_NAME "\n");
     return output;
   }
 
   std::string generateZsh(const Command& root) {
     const auto states = collectStates(root);
-    std::string output =
-        "#compdef noctalia\n# generated from the live CLI schema\n\n"
-        "_noctalia_plugins_enabled() {\n"
-        "  local -a plugins\n"
-        "  plugins=(${(f)\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1}')\"})\n"
-        "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
-        "    _values 'enabled plugin' $plugins\n"
-        "  else\n"
-        "    _message 'no enabled plugins found'\n"
-        "  fi\n"
-        "}\n\n"
-        "_noctalia_plugins_disabled() {\n"
-        "  local -a plugins\n"
-        "  plugins=(${(f)\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"disabled\" {print $1}')\"})\n"
-        "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
-        "    _values 'disabled plugin' $plugins\n"
-        "  else\n"
-        "    _message 'no disabled plugins found'\n"
-        "  fi\n"
-        "}\n\n"
-        "_noctalia_plugin_prefix() {\n"
-        "  local -a plugins\n"
-        "  plugins=(${(f)\"$(noctalia msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1\":\"}')\"})\n"
-        "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
-        "    compadd -S '' -a plugins\n"
-        "  else\n"
-        "    _message 'no enabled plugins found'\n"
-        "  fi\n"
-        "}\n\n";
+    std::string output = "#compdef " NOCTALIA_APP_NAME "\n# generated from the live CLI schema\n\n"
+                         "_noctalia_plugins_enabled() {\n"
+                         "  local -a plugins\n"
+                         "  plugins=(${(f)\"$(" NOCTALIA_APP_NAME
+                         " msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1}')\"})\n"
+                         "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
+                         "    _values 'enabled plugin' $plugins\n"
+                         "  else\n"
+                         "    _message 'no enabled plugins found'\n"
+                         "  fi\n"
+                         "}\n\n"
+                         "_noctalia_plugins_disabled() {\n"
+                         "  local -a plugins\n"
+                         "  plugins=(${(f)\"$(" NOCTALIA_APP_NAME
+                         " msg plugins list 2>/dev/null | awk '$4 == \"disabled\" {print $1}')\"})\n"
+                         "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
+                         "    _values 'disabled plugin' $plugins\n"
+                         "  else\n"
+                         "    _message 'no disabled plugins found'\n"
+                         "  fi\n"
+                         "}\n\n"
+                         "_noctalia_plugin_prefix() {\n"
+                         "  local -a plugins\n"
+                         "  plugins=(${(f)\"$(" NOCTALIA_APP_NAME
+                         " msg plugins list 2>/dev/null | awk '$4 == \"enabled\" {print $1\":\"}')\"})\n"
+                         "  if [[ ${#plugins[@]} -gt 0 ]]; then\n"
+                         "    compadd -S '' -a plugins\n"
+                         "  else\n"
+                         "    _message 'no enabled plugins found'\n"
+                         "  fi\n"
+                         "}\n\n";
 
     for (const CommandState& state : states) {
       const Command& command = *state.command;
@@ -533,7 +537,7 @@ namespace noctalia::cli {
       for (const Command& child : command.subcommands) {
         if (child.hidden)
           continue;
-        output.append("complete -c noctalia -n ");
+        output.append("complete -c " NOCTALIA_APP_NAME " -n ");
         output.append(shellSingleQuote(exactCondition));
         output.append(" -f -a ");
         output.append(shellSingleQuote(child.name));
@@ -545,7 +549,7 @@ namespace noctalia::cli {
       }
 
       for (const Flag& flag : command.flags) {
-        output.append("complete -c noctalia -n ");
+        output.append("complete -c " NOCTALIA_APP_NAME " -n ");
         output.append(shellSingleQuote(prefixCondition));
         if (!flag.shortName.empty()) {
           output.append(" -s ");
@@ -570,7 +574,7 @@ namespace noctalia::cli {
         }
         output.push_back('\n');
       }
-      output.append("complete -c noctalia -n ");
+      output.append("complete -c " NOCTALIA_APP_NAME " -n ");
       output.append(shellSingleQuote(prefixCondition));
       output.append(" -s h -l help -d 'Show this help message'\n");
 
@@ -584,7 +588,7 @@ namespace noctalia::cli {
           condition.push_back(' ');
           condition.append(path);
         }
-        output.append("complete -c noctalia -n ");
+        output.append("complete -c " NOCTALIA_APP_NAME " -n ");
         output.append(shellSingleQuote(condition));
         output.append(" -f -a ");
 

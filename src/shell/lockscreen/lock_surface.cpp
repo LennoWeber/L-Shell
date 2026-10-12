@@ -94,6 +94,12 @@ namespace {
 
   [[nodiscard]] Color white(float alpha) { return rgba(1.0F, 1.0F, 1.0F, alpha); }
 
+  // The lock screen must hide the session in every pixel: the blurred wallpaper fades out at the screen edges
+  // and a fill color may be translucent, so the base under it is always opaque (the fill over black).
+  [[nodiscard]] Color opaqueBackdropColor(const Color& fill) {
+    return rgba(fill.r * fill.a, fill.g * fill.a, fill.b * fill.a, 1.0F);
+  }
+
   // Neutral glass for controls that sit directly on the dimmed wallpaper.
   [[nodiscard]] Button::ButtonPalette wallpaperGlassPalette() {
     const auto state = [](float fill, float label) {
@@ -702,10 +708,10 @@ void LockSurface::setWallpaperFillColor(Color fillColor) {
     m_wallpaper->setFillColor(m_wallpaperFillColor);
   }
   if (m_backdrop != nullptr) {
-    m_backdrop->setVisible(m_wallpaperFillColor.a > 0.0F);
+    m_backdrop->setVisible(true);
     m_backdrop->setStyle(
         RoundedRectStyle{
-            .fill = m_wallpaperFillColor,
+            .fill = opaqueBackdropColor(m_wallpaperFillColor),
             .fillMode = FillMode::Solid,
         }
     );
@@ -1138,10 +1144,10 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
 
   m_backdrop->setPosition(0.0F, 0.0F);
   m_backdrop->setSize(sw, sh);
-  m_backdrop->setVisible(m_wallpaperFillColor.a > 0.0F);
+  m_backdrop->setVisible(true);
   m_backdrop->setStyle(
       RoundedRectStyle{
-          .fill = m_wallpaperFillColor,
+          .fill = opaqueBackdropColor(m_wallpaperFillColor),
           .fillMode = FillMode::Solid,
       }
   );
@@ -1728,7 +1734,9 @@ void LockSurface::applyBlurredDesktopTexture() {
   m_wallpaper->setTransition(WallpaperTransition::Fade, 0.0F, TransitionParams{});
   m_wallpaper->setFillMode(m_wallpaperFillMode);
   m_wallpaper->setFillColor(rgba(0.0F, 0.0F, 0.0F, 0.0F));
-  m_backdrop->setVisible(false);
+  // Black under the blurred capture: its edges fade out, and the live session must never show through.
+  m_backdrop->setVisible(true);
+  m_backdrop->setStyle(RoundedRectStyle{.fill = rgba(0.0F, 0.0F, 0.0F, 1.0F), .fillMode = FillMode::Solid});
   m_captureDirty = false;
   m_wallpaperDirty = false;
 }

@@ -436,7 +436,9 @@ namespace noctalia::theme {
     }
 
     if (!imagePath && !themeJsonPath) {
-      std::println(stderr, "error: theme requires an image path or --theme-json (try: noctalia theme --help)");
+      std::println(
+          stderr, "error: theme requires an image path or --theme-json (try: " NOCTALIA_APP_NAME " theme --help)"
+      );
       return 1;
     }
 
