@@ -372,6 +372,17 @@ namespace noctalia::config {
       }
     }
 
+    // Settings a widget type no longer reads but older configs still carry: accepted without a warning.
+    std::unordered_set<std::string> legacyIgnoredSettings(std::string_view type) {
+      std::unordered_set<std::string> keys;
+      if (type == lockscreen_login_box::kWidgetType) {
+        for (const std::string_view key : lockscreen_login_box::kLegacyStyleKeys) {
+          keys.emplace(key);
+        }
+      }
+      return keys;
+    }
+
     // Validate a free-form setting map (bar/desktop widget settings) against a
     // per-type schema. Unknown keys are errors only for `flagUnknown` types
     // (built-in, non-scripted); scripted widgets carry user-defined settings.
@@ -587,7 +598,7 @@ namespace noctalia::config {
         }
         validateSettingsMap(
             *settingsTbl, desktop_settings::desktopWidgetSettingSchema(type, &pluginRegistry), base + ".settings",
-            /*flagUnknown=*/true, diag, {}, base
+            /*flagUnknown=*/true, diag, legacyIgnoredSettings(type), base
         );
         if (type == "clock") {
           if (const auto timezone = (*settingsTbl)["timezone"].value<std::string>();
@@ -668,7 +679,7 @@ namespace noctalia::config {
         }
         validateSettingsMap(
             *settingsTbl, desktop_settings::desktopWidgetSettingSchema(type, &pluginRegistry), base + ".settings",
-            /*flagUnknown=*/true, diag, {}, base
+            /*flagUnknown=*/true, diag, legacyIgnoredSettings(type), base
         );
         if (type == "clock") {
           if (const auto timezone = (*settingsTbl)["timezone"].value<std::string>();

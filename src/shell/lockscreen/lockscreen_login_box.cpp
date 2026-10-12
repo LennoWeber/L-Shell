@@ -40,36 +40,6 @@ namespace lockscreen_login_box {
       return std::string(fallback);
     }
 
-    void clampOpacitySetting(std::unordered_map<std::string, WidgetSettingValue>& settings, std::string_view key) {
-      const std::string keyStr(key);
-      const auto it = settings.find(keyStr);
-      if (it == settings.end()) {
-        return;
-      }
-      if (const auto* doubleValue = std::get_if<double>(&it->second)) {
-        settings.insert_or_assign(keyStr, std::clamp(*doubleValue, 0.0, 1.0));
-        return;
-      }
-      if (const auto* intValue = std::get_if<std::int64_t>(&it->second)) {
-        settings.insert_or_assign(keyStr, std::clamp(static_cast<double>(*intValue), 0.0, 1.0));
-      }
-    }
-
-    void clampRadiusSetting(std::unordered_map<std::string, WidgetSettingValue>& settings, std::string_view key) {
-      const std::string keyStr(key);
-      const auto it = settings.find(keyStr);
-      if (it == settings.end()) {
-        return;
-      }
-      if (const auto* doubleValue = std::get_if<double>(&it->second)) {
-        settings.insert_or_assign(keyStr, std::clamp(*doubleValue, 0.0, 32.0));
-        return;
-      }
-      if (const auto* intValue = std::get_if<std::int64_t>(&it->second)) {
-        settings.insert_or_assign(keyStr, std::clamp(static_cast<double>(*intValue), 0.0, 32.0));
-      }
-    }
-
     struct OutputSize {
       float width = 1920.0F;
       float height = 1080.0F;
@@ -196,15 +166,9 @@ namespace lockscreen_login_box {
       settings.insert_or_assign(std::string(kShowCapsLockKey), true);
       settings.insert_or_assign(std::string(kShowKeyboardLayoutKey), true);
       settings.insert_or_assign(std::string(kShowUnlockHintKey), true);
-      settings.insert_or_assign(std::string(kInputOpacityKey), 1.0);
-      settings.insert_or_assign(std::string(kInputRadiusKey), 6.0);
       settings.insert_or_assign(std::string(kCenterPasswordTextKey), false);
     }
-    if (scope == desktop_settings::DesktopWidgetSettingsScope::Background) {
-      settings.insert_or_assign("background_color", std::string("surface_variant"));
-      settings.insert_or_assign("background_opacity", 0.88);
-      settings.insert_or_assign("background_radius", 12.0);
-    }
+    // The glass login block has no card background to style (see kLegacyStyleKeys).
   }
 
   void applyAllDefaultSettings(std::unordered_map<std::string, WidgetSettingValue>& settings) {
@@ -245,10 +209,10 @@ namespace lockscreen_login_box {
     if (!settings.contains(std::string(kCenterPasswordTextKey))) {
       settings.insert_or_assign(std::string(kCenterPasswordTextKey), false);
     }
-    clampOpacitySetting(settings, "background_opacity");
-    clampRadiusSetting(settings, "background_radius");
-    clampOpacitySetting(settings, kInputOpacityKey);
-    clampRadiusSetting(settings, kInputRadiusKey);
+    // Styling for the old boxed card; dropped so saved configs stop carrying settings nothing reads.
+    for (const std::string_view key : kLegacyStyleKeys) {
+      settings.erase(std::string(key));
+    }
   }
 
   void ensureWidgets(std::vector<DesktopWidgetState>& widgets, const WaylandConnection& wayland) {

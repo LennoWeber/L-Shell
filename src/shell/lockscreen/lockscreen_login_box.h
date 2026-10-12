@@ -39,8 +39,12 @@ namespace lockscreen_login_box {
     Regular,
   };
 
-  // The background_* and input_opacity/input_radius settings styled the old boxed card. They are still
-  // normalized for config compatibility, but the glass look does not read them.
+  // Settings of the old boxed card. The glass look reads none of them: normalizing drops them and the
+  // config validator accepts them silently, so configs written before the redesign load without warnings.
+  constexpr std::string_view kLegacyStyleKeys[] = {
+      "background_color", "background_opacity", "background_radius", kInputOpacityKey, kInputRadiusKey,
+  };
+
   struct LoginBoxStyle {
     LayoutMode layout = LayoutMode::Regular;
     bool centerPasswordText = false;
