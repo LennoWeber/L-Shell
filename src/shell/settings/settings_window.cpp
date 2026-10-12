@@ -386,6 +386,8 @@ std::optional<LayerPopupParentContext> SettingsWindow::popupParentContextForSurf
 void SettingsWindow::open(std::string context) {
   TooltipManager::instance().forceDestroy();
 
+  // An already open window must follow a new page request (settings-open <section>, links from panels).
+  const bool switchSection = !context.empty() && context != m_selectedSection;
   if (!context.empty()) {
     m_selectedSection = std::move(context);
   }
@@ -399,6 +401,12 @@ void SettingsWindow::open(std::string context) {
   }
 
   if (isOpen()) {
+    if (switchSection) {
+      clearTransientSettingsState();
+      m_searchQuery.clear();
+      m_contentScrollState.offset = 0.0F;
+      requestSceneRebuild();
+    }
     const auto refocus = [this]() {
       if (m_wayland != nullptr && m_surface != nullptr) {
         focusExistingSettingsWindow(*m_wayland, m_surface->wlSurface());

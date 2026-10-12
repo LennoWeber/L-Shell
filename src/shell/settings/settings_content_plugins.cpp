@@ -693,15 +693,11 @@ namespace settings {
     Flex* section = sectionCol.get();
     content.addChild(std::move(sectionCol));
 
+    // The page title like every other page's: in the toolbar, in the window's own color (no glyph, no accent).
     auto titleRow = ui::row(
         {.align = FlexAlign::Center, .gap = Style::spaceSm * scale, .fillWidth = true},
-        ui::glyph({
-            .glyph = "puzzle",
-            .glyphSize = Style::fontSizeHeader * scale,
-            .color = colorSpecFromRole(ColorRole::Primary),
-        }),
         makeLabel(
-            i18n::tr("settings.navigation.sections.plugins"), Style::fontSizeHeader * scale, ColorRole::Primary,
+            i18n::tr("settings.navigation.sections.plugins"), Style::fontSizeTitle * scale, ColorRole::OnSurface,
             FontWeight::Bold
         )
     );
@@ -730,7 +726,7 @@ namespace settings {
               .out = &sourcesPill,
               .text = sourcesTitle,
               .fontSize = Style::fontSizeCaption * scale,
-              .variant = expandedGroups.contains("sources") ? ButtonVariant::Primary : ButtonVariant::Default,
+              .variant = ButtonVariant::Default,
               .radius = Style::scaledRadiusMd(scale),
           })
       );
@@ -739,7 +735,7 @@ namespace settings {
               .out = &pluginsPill,
               .text = pluginsTitle,
               .fontSize = Style::fontSizeCaption * scale,
-              .variant = expandedGroups.contains("plugins") ? ButtonVariant::Primary : ButtonVariant::Default,
+              .variant = ButtonVariant::Default,
               .radius = Style::scaledRadiusMd(scale),
           })
       );
