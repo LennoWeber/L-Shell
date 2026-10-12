@@ -706,7 +706,7 @@ namespace noctalia::theme {
 
   int runFirefoxThemeCli(int argc, char* argv[]) {
     auto parsed = cli::parseOrReport(
-        cli::kFirefoxThemeCmd, "noctalia firefox-theme",
+        cli::kFirefoxThemeCmd, NOCTALIA_APP_NAME " firefox-theme",
         std::span<char* const>{argv + 2, static_cast<std::size_t>(argc - 2)}
     );
     if (!parsed)

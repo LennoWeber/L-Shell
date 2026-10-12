@@ -8,12 +8,17 @@ local on_secondary = "rgb({{colors.on_secondary.default.hex_stripped}})"
 local error = "rgb({{colors.error.default.hex_stripped}})"
 local on_error = "rgb({{colors.on_error.default.hex_stripped}})"
 
+-- macOS windows carry a neutral hairline, never the accent: the text colour at low alpha reads as a light
+-- edge in dark mode and a dark one in light mode.
+local hairline_active = "rgba({{colors.on_surface.default.hex_stripped}}2e)"
+local hairline_inactive = "rgba({{colors.on_surface.default.hex_stripped}}14)"
+
 local function apply_theme()
     hl.config({
         general = {
             col = {
-                active_border = primary,
-                inactive_border = surface,
+                active_border = hairline_active,
+                inactive_border = hairline_inactive,
             },
         },
         group = {

@@ -607,7 +607,8 @@ namespace noctalia::cli {
 
   int runCompletionsCli(int argc, char* argv[]) {
     auto parsed = parseOrReport(
-        kCompletionsCmd, "noctalia completions", std::span<char* const>{argv + 2, static_cast<std::size_t>(argc - 2)}
+        kCompletionsCmd, NOCTALIA_APP_NAME " completions",
+        std::span<char* const>{argv + 2, static_cast<std::size_t>(argc - 2)}
     );
     if (!parsed)
       return 1;
