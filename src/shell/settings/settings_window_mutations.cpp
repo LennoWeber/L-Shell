@@ -57,6 +57,7 @@ void SettingsWindow::warnOnUnusableCustomSchedule(const std::vector<std::string>
 }
 
 void SettingsWindow::markSettingsWriteSuccess(bool requestRebuild) {
+  m_unclaimedReload = false;
   if (m_editorSheetModal != nullptr && m_editorSheetModal->isOpen()) {
     m_editorSheetModal->clearStatusMessage();
   }
@@ -70,6 +71,7 @@ void SettingsWindow::markSettingsWriteSuccess(bool requestRebuild) {
 }
 
 void SettingsWindow::markSettingsWriteError(std::string message) {
+  m_unclaimedReload = false;
   if (m_editorSheetModal != nullptr && m_editorSheetModal->isOpen()) {
     m_editorSheetModal->setStatusMessage(std::move(message), true);
     return;

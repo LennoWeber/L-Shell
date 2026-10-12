@@ -1693,7 +1693,7 @@
       },
       "layout": {
         "mode": {
-          "classic": "Classic (configured bars)",
+          "classic": "Classic",
           "smart-bar": "Smart Bar",
           "minimal-bar": "Minimal Bar",
           "island": "Island",

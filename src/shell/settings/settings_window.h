@@ -141,6 +141,9 @@ public:
 
   void onSecondTick();
   void onIdleLiveStatusChanged();
+  // Config reloaded: refreshes the open page when the change came from outside the window
+  // (the config file, IPC, a keybind, a dotfiles sync), so it never shows stale values.
+  void onConfigReloaded();
   void markSettingsWriteSuccess(bool requestRebuild = true);
   void markSettingsWriteError(std::string message);
   void warnOnUnusableCustomSchedule(const std::vector<std::string>& path);
@@ -328,6 +331,9 @@ private:
   bool m_settingsRegistryRefreshRequested = false;
   bool m_filterRowRefreshRequested = false;
   bool m_deferredRebuildQueued = false;
+  // A config reload not yet claimed by one of this window's own writes (see onConfigReloaded).
+  bool m_unclaimedReload = false;
+  bool m_unclaimedReloadCheckQueued = false;
   bool m_deferredSceneRebuild = false;
   bool m_deferredRefreshRegistry = false;
   bool m_deferredRefreshFilterRow = false;

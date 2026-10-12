@@ -1546,7 +1546,7 @@
       },
       "layout": {
         "mode": {
-          "classic": "Klassisch (eigene Leisten)",
+          "classic": "Klassisch",
           "smart-bar": "Intelligente Leiste",
           "minimal-bar": "Minimale Leiste",
           "island": "Island",

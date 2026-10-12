@@ -181,6 +181,9 @@ void SettingsWindow::initialize(
   m_upower = upower;
   m_accounts = accounts;
   m_showAdvanced = m_config != nullptr ? m_config->config().shell.settingsShowAdvanced : false;
+  if (m_config != nullptr) {
+    m_config->addReloadCallback([this]() { onConfigReloaded(); }, "settings-window");
+  }
   m_modalHost.initialize(
       m_inputDispatcher,
       [this]() {
@@ -854,6 +857,28 @@ void SettingsWindow::maybeOpenPendingEditor() {
   // resolve which lane this widget lives in so it isn't a 2-element path that mislocates the bar name.
   std::vector<std::string> lanePath = barWidgetLanePath(m_config->config(), m_selectedBarName, widgetName);
   openWidgetInspectorEditor(std::move(lanePath), std::move(widgetName));
+}
+
+void SettingsWindow::onConfigReloaded() {
+  if (m_surface == nullptr) {
+    return;
+  }
+  // The window's own writes reload synchronously and then claim the reload in
+  // markSettingsWriteSuccess/Error, patching or rebuilding exactly what they changed (a dragged slider
+  // must not rebuild its page). Whatever is still unclaimed once the current call returns came from
+  // outside.
+  m_unclaimedReload = true;
+  if (m_unclaimedReloadCheckQueued) {
+    return;
+  }
+  m_unclaimedReloadCheckQueued = true;
+  DeferredCall::callLater([this]() {
+    m_unclaimedReloadCheckQueued = false;
+    if (!std::exchange(m_unclaimedReload, false) || m_surface == nullptr) {
+      return;
+    }
+    requestContentRebuild(true, true, true);
+  });
 }
 
 void SettingsWindow::requestSceneRebuild() {
