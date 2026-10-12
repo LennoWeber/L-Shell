@@ -620,6 +620,7 @@ _noctalia_sources = files(
   'src/security/storage_key_provider.cpp',
   'src/system/battery_warning_monitor.cpp',
   'src/shell/bar/bar.cpp',
+  'src/shell/bar/wallpaper_tone.cpp',
   'src/shell/clipboard/clipboard_paste.cpp',
   'src/shell/dock/dock.cpp',
   'src/shell/dock/dock_context_menu.cpp',

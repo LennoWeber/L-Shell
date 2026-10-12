@@ -4,12 +4,14 @@
 #include "ipc/ipc_invocation_context.h"
 #include "shell/bar/bar_instance.h"
 #include "shell/bar/bar_services.h"
+#include "shell/bar/wallpaper_tone.h"
 #include "shell/bar/widget_action_dispatcher.h"
 #include "shell/bar/widget_factory.h"
 #include "ui/dialogs/layer_popup_host.h"
 #include "wayland/surface.h"
 
 #include <functional>
+#include <future>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -73,6 +75,8 @@ public:
   void scheduleSmartAutoHideReevaluation();
   void onSecondTick();
   void refresh();
+  // The wallpaper changed: re-sample its tone under transparent menu bars (text color like macOS).
+  void onWallpaperChanged();
   void requestLayout();
   void setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)> callback);
   // Re-run auto-hide after a panel closes so unrelated bars are not left visible.
@@ -226,4 +230,20 @@ private:
   bool m_overlayDisplaySuppressed = false;
   bool m_wasVisibleBeforeOverlaySuppress = false;
   bool m_smartAutoHideReevalQueued = false;
+
+  // Wallpaper tone under transparent menu bars, per output connector, sampled off the UI thread.
+  struct ToneJob {
+    std::string connector;
+    std::string path;
+    std::future<shell::bar::WallpaperTone> result;
+  };
+  void refreshWallpaperTones();
+  void pollWallpaperTones();
+  void applyWallpaperTone(const std::string& connector);
+  [[nodiscard]] std::string connectorFor(const BarInstance& instance) const;
+  [[nodiscard]] static std::optional<ColorSpec> adaptiveForeground(const BarInstance& instance);
+  std::unordered_map<std::string, shell::bar::WallpaperTone> m_wallpaperTones;
+  std::unordered_map<std::string, std::string> m_wallpaperTonePaths;
+  std::vector<ToneJob> m_toneJobs;
+  Timer m_tonePollTimer;
 };

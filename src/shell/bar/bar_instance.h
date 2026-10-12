@@ -5,6 +5,7 @@
 #include "render/scene/input_area.h"
 #include "render/scene/input_dispatcher.h"
 #include "render/scene/node.h"
+#include "shell/bar/wallpaper_tone.h"
 #include "shell/bar/widget.h"
 #include "shell/panel/attached_panel_context.h"
 #include "ui/signal.h"
@@ -85,6 +86,8 @@ struct BarInstance {
   Box* glassRim = nullptr;
   // BarConfig::legibilityScrim: the gradient behind the items of a transparent menu bar.
   Box* scrim = nullptr;
+  // Brightness of the wallpaper under a transparent menu bar; Unknown until sampled (then the theme decides).
+  shell::bar::WallpaperTone wallpaperTone = shell::bar::WallpaperTone::Unknown;
   Box* shadow = nullptr;
   Node* shadowLeftClip = nullptr;
   Node* shadowRightClip = nullptr;

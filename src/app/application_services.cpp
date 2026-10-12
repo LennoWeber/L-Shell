@@ -948,6 +948,7 @@ void Application::initAuxServicesAndHooks() {
       m_syncScriptApiOutputs();
     }
     m_backdrop.onStateChange();
+    m_bar.onWallpaperChanged();
     m_lockScreen.onWallpaperChanged();
     m_themeService.onWallpaperChange();
     if (m_panelManager.isOpenPanel("control-center")) {
