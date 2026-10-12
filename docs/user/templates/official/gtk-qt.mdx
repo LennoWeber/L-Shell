@@ -60,6 +60,19 @@ Enabling those built-in templates writes `noctalia.css` and runs the shipped
 templates, so the same full hook runs again; you do not need a separate hook
 for that path.
 
+### Window buttons like macOS
+
+The GTK template also draws the title bar buttons as macOS traffic lights: red close, yellow
+minimize and green maximize, 12 px wide, with their symbols shown only while the pointer is over
+them and grey while the window is in the background. Their order comes from the desktop's button
+layout; to put them on the left like on the Mac:
+
+```bash
+gsettings set org.gnome.desktop.wm.preferences button-layout 'close,maximize:'
+```
+
+Hyprland has no minimizing, so the layout above leaves the yellow button out.
+
 ### Optional: appearance sync without GTK templates
 
 If you are **not** using the GTK templates but still want GNOME’s
