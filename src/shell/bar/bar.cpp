@@ -2574,6 +2574,8 @@ void Bar::createInstance(const WaylandOutput& output, std::size_t barIndex, cons
 
   m_surfaceMap[instance->surface->wlSurface()] = instance.get();
   m_instances.push_back(std::move(instance));
+  // populateWidgets ran before the instance was listed, so its wallpaper was not sampled yet.
+  refreshWallpaperTones();
 }
 
 void Bar::destroyInstance(std::uint32_t outputName) {
