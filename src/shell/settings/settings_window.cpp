@@ -877,7 +877,8 @@ void SettingsWindow::onConfigReloaded() {
     if (!std::exchange(m_unclaimedReload, false) || m_surface == nullptr) {
       return;
     }
-    requestContentRebuild(true, true, true);
+    // The whole scene: an outside change can also change the sidebar (the classic mode's bars).
+    requestSceneRebuild();
   });
 }
 
