@@ -7,6 +7,7 @@
 #include "dbus/mpris/mpris_service.h"
 #include "ext-session-lock-v1-client-protocol.h"
 #include "i18n/i18n.h"
+#include "render/animation/motion_service.h"
 #include "render/core/blur_cache.h"
 #include "render/core/render_styles.h"
 #include "render/core/shared_texture_cache.h"
@@ -48,6 +49,8 @@
 namespace {
 
   constexpr Logger kLog("lockscreen");
+  // Unlock runs at this share of the lock transition's duration.
+  constexpr float kUnlockDurationScale = 0.7F;
 
   const ext_session_lock_surface_v1_listener kLockSurfaceListener = {
       .configure = &LockSurface::handleConfigure,
@@ -789,9 +792,10 @@ void LockSurface::startExitTransition() {
 
   m_transitionPhase = TransitionPhase::Exiting;
   syncTransitionCover();
-  const float durationMs = m_transitionDurationMs * m_transitionProgress;
-  m_transitionAnimation = m_animations.animateTimer(
-      m_transitionProgress, 0.0F, durationMs, Easing::EaseInOutCubic,
+  // Unlocking is a little quicker than locking (exits are shorter than entrances).
+  const float durationMs = m_transitionDurationMs * kUnlockDurationScale * m_transitionProgress;
+  m_transitionAnimation = startTransitionAnimation(
+      m_transitionProgress, 0.0F, durationMs,
       [this](float progress) {
         m_transitionProgress = progress;
         syncTransitionCover();
@@ -1033,9 +1037,13 @@ void LockSurface::beginEnterAnimation() {
   cancelTransitionAnimation();
   m_transitionPhase = TransitionPhase::Entering;
   m_transitionProgress = 0.0F;
+  // Reduce Motion: wipes, discs and zooms become a crossfade.
+  if (MotionService::instance().reduced()) {
+    m_transition = LockscreenTransitionKind::Fade;
+  }
   syncTransitionCover();
-  m_transitionAnimation = m_animations.animateTimer(
-      0.0F, 1.0F, m_transitionDurationMs, Easing::EaseInOutCubic,
+  m_transitionAnimation = startTransitionAnimation(
+      0.0F, 1.0F, m_transitionDurationMs,
       [this](float progress) {
         m_transitionProgress = progress;
         syncTransitionCover();
@@ -1051,6 +1059,22 @@ void LockSurface::beginEnterAnimation() {
       this
   );
   requestRedraw();
+}
+
+AnimationManager::Id LockSurface::startTransitionAnimation(
+    float from, float to, float durationMs, std::function<void(float)> setter, std::function<void()> onComplete,
+    const void* owner
+) {
+  // On the motion clock, so [shell.animation] speed and Reduce Motion apply. The cover is drawn
+  // by this opaque lock surface from a frozen capture: the live session is never shown.
+  if (m_transition == LockscreenTransitionKind::Fade) {
+    return m_animations.animateFade(
+        from, to, durationMs, Easing::EaseInOutCubic, std::move(setter), std::move(onComplete), owner
+    );
+  }
+  return m_animations.animate(
+      from, to, durationMs, Easing::EaseInOutCubic, std::move(setter), std::move(onComplete), owner
+  );
 }
 
 void LockSurface::notifyTransitionStateChanged() {

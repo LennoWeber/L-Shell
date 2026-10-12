@@ -9,11 +9,13 @@
 #include "core/ui_phase.h"
 #include "ipc/ipc_arg_parse.h"
 #include "ipc/ipc_service.h"
+#include "render/animation/motion_service.h"
 #include "render/render_context.h"
 #include "render/scene/input_area.h"
 #include "scripting/plugin_id.h"
 #include "shell/bar/bar_corner_shape.h"
 #include "shell/bar/bar_reserved_zone.h"
+#include "shell/notification_center/notification_center_panel.h"
 #include "shell/panel/panel.h"
 #include "shell/panel/panel_surface_style.h"
 #include "shell/screen_position.h"
@@ -321,6 +323,8 @@ namespace {
   constexpr float kDetachedOpenMs = 100.0F;
   constexpr float kDetachedCloseMs = 80.0F;
   constexpr float kDetachedRevealScale = 0.96F;
+  // Notification Center slides in from the right screen edge instead of scaling.
+  constexpr float kEdgeSlideDistance = 20.0F;
 
   [[nodiscard]] bool glassPanels(const ConfigService* config) {
     return config != nullptr && config->config().shell.panel.transparencyMode == PanelTransparencyMode::Glass;
@@ -695,11 +699,15 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
 
   // If a panel is open or closing, destroy it immediately with no close animation.
   // Bump the generation first so any in-flight deferred destroyPanel is a no-op.
+  // Switching from a fully shown panel shows the next one at once, like moving along the
+  // macOS menu bar with a menu open; nothing replays.
+  const bool switchingFromShownPanel = isOpen() && !m_closing;
   if (isOpen() || m_closing) {
     ++m_destroyGeneration;
     m_closing = false;
     destroyPanel();
   }
+  m_skipOpenAnimation = switchingFromShownPanel;
 
   auto it = m_panels.find(panelId);
   if (it == m_panels.end()) {
@@ -823,6 +831,52 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
       request.anchorY - static_cast<float>(panelHeight) * 0.5F, static_cast<std::int32_t>(panelHeight), outputHeight,
       screenPadding
   );
+
+  // Where the floating panel grows from, in body coordinates: the clicked widget along the bar,
+  // otherwise the edge or corner the panel hangs from.
+  {
+    const auto pw = static_cast<float>(panelWidth);
+    const auto ph = static_cast<float>(panelHeight);
+    const bool horizontalBar = !isLeft && !isRight;
+    float originX = pw * 0.5F;
+    float originY = ph * 0.5F;
+    switch (detachedDirection) {
+    case AttachedRevealDirection::Down:
+      originY = 0.0F;
+      break;
+    case AttachedRevealDirection::Up:
+      originY = ph;
+      break;
+    case AttachedRevealDirection::Right:
+      originX = 0.0F;
+      break;
+    case AttachedRevealDirection::Left:
+      originX = pw;
+      break;
+    }
+    if (panelPosition.ends_with("_left")) {
+      originX = 0.0F;
+    } else if (panelPosition.ends_with("_right")) {
+      originX = pw;
+    } else if (panelPosition == "center") {
+      originX = pw * 0.5F;
+      originY = ph * 0.5F;
+    }
+    if (useFloatingAnchor && !useScreenPosition) {
+      if (horizontalBar) {
+        originX = std::clamp(request.anchorX - static_cast<float>(marginLeftFromAnchor), 0.0F, pw);
+      } else {
+        originY = std::clamp(request.anchorY - static_cast<float>(marginTopFromAnchor), 0.0F, ph);
+      }
+    }
+    m_detachedOriginX = originX;
+    m_detachedOriginY = originY;
+    m_detachedSlideX = 0.0F;
+    m_detachedSlideY = 0.0F;
+    if (panelId == NotificationCenterPanel::kPanelId) {
+      m_detachedSlideX = panelPosition.ends_with("_left") ? -kEdgeSlideDistance : kEdgeSlideDistance;
+    }
+  }
 
   std::uint32_t standaloneAnchor = 0;
   std::int32_t standaloneMarginTop = 0;
@@ -1356,6 +1410,12 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   m_panelVisualHeight = panelHeight;
   m_detachedBleedRight = detachedShadowBleed.right;
   m_detachedBleedBottom = detachedShadowBleed.down;
+  // The edge slide must stay inside the surface, or the panel's outer edge is cut off mid-slide.
+  if (m_detachedSlideX > 0.0F) {
+    m_detachedSlideX = std::min(m_detachedSlideX, static_cast<float>(detachedShadowBleed.right));
+  } else if (m_detachedSlideX < 0.0F) {
+    m_detachedSlideX = -std::min(-m_detachedSlideX, static_cast<float>(detachedShadowBleed.left));
+  }
   m_attachedBackgroundOpacity = 1.0F;
   m_attachedContactShadow = false;
   m_attachedRevealProgress = 1.0F;
@@ -1567,13 +1627,17 @@ void PanelManager::closePanel(bool animateClose) {
   m_inputDispatcher.setSceneRoot(nullptr);
   m_closing = true;
   m_attachedOpenAnimationPending = false;
+  if (m_panelClosingCallback) {
+    m_panelClosingCallback();
+  }
 
   if (animateClose && m_sceneRoot != nullptr && m_activePanel != nullptr && m_activePanel->wantsCloseAnimation()) {
     const std::uint64_t gen = ++m_destroyGeneration;
     if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
       m_animations.cancelForOwner(m_attachedRevealClipNode);
+      // Exits are shorter than entrances and accelerate away.
       m_animations.animate(
-          m_attachedRevealProgress, 0.0F, Style::animNormal, Easing::EaseInOutQuad,
+          m_attachedRevealProgress, 0.0F, Style::animExit, Easing::EaseInCubic,
           [this](float v) { applyAttachedReveal(v); },
           [this, gen]() {
             DeferredCall::callLater([this, gen]() {
@@ -1586,7 +1650,8 @@ void PanelManager::closePanel(bool animateClose) {
       );
     } else {
       m_animations.cancelForOwner(m_sceneRoot.get());
-      m_animations.animate(
+      // A fade at heart (the scale is dropped under Reduce Motion), so it still runs there.
+      m_animations.animateFade(
           m_detachedRevealProgress, 0.0F, kDetachedCloseMs, Easing::EaseInQuad,
           [this](float v) { applyDetachedReveal(v); },
           [this, gen]() {
@@ -1667,12 +1732,72 @@ void PanelManager::destroyPanel() {
   m_attachedPanelGeometry.reset();
   m_attachedToBar = false;
   m_attachedOpenAnimationPending = false;
+  m_skipOpenAnimation = false;
   if (m_platform != nullptr) {
     m_platform->stopKeyRepeat();
   }
   if (m_panelClosedCallback) {
     m_panelClosedCallback();
   }
+}
+
+bool PanelManager::resumeClosingPanel(std::string_view panelId, wl_output* output) {
+  if (!m_closing
+      || m_inTransition
+      || m_activePanelId != panelId
+      || m_activePanel == nullptr
+      || m_sceneRoot == nullptr
+      || m_surface == nullptr
+      || (output != nullptr && output != m_output)) {
+    return false;
+  }
+
+  kLog.debug("panel manager: reopening \"{}\" during its close", m_activePanelId);
+  if (m_panelOpeningCallback) {
+    m_panelOpeningCallback();
+  }
+  // The close animation's deferred destroyPanel is now stale.
+  ++m_destroyGeneration;
+  m_closing = false;
+  m_inputDispatcher.setSceneRoot(m_sceneRoot.get());
+
+  // Restore what closePanel dropped: outside-click dismissal and the unvisited-drawer timeout.
+  const bool wantsOutsideDismiss =
+      m_activePanel->dismissOnOutsideClick() && m_activePanel->keyboardMode() != LayerShellKeyboard::None;
+  if (wantsOutsideDismiss) {
+    activateClickShield(m_panelLayer);
+    if (m_panelOutputInputRect.has_value()) {
+      m_clickShield.setPanelInputRect(m_output, *m_panelOutputInputRect);
+    }
+    activateFocusGrab();
+  }
+  if (m_dismissOnPointerLeave && !m_pointerEnteredSinceOpen) {
+    m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
+      if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
+        closePanel();
+      }
+    });
+  }
+
+  if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
+    m_animations.cancelForOwner(m_attachedRevealClipNode);
+    m_animations.animate(
+        m_attachedRevealProgress, 1.0F, Style::animNormal, Easing::EaseOutCubic,
+        [this](float v) { applyAttachedReveal(v); }, {}, m_attachedRevealClipNode
+    );
+  } else {
+    m_animations.cancelForOwner(m_sceneRoot.get());
+    m_animations.animateFade(
+        m_detachedRevealProgress, 1.0F, kDetachedOpenMs, Easing::EaseOutCubic,
+        [this](float v) { applyDetachedReveal(v); }, {}, m_sceneRoot.get()
+    );
+  }
+  m_surface->requestRedraw();
+  // Listeners told of the close (closing callback) learn the panel is open again.
+  if (m_panelOpenedCallback) {
+    m_panelOpenedCallback();
+  }
+  return true;
 }
 
 void PanelManager::togglePanel(const std::string& panelId, PanelOpenRequest request) {
@@ -1684,7 +1809,12 @@ void PanelManager::togglePanel(const std::string& panelId, PanelOpenRequest requ
     openPanel(panelId, request);
     return;
   }
-  // Treat a closing panel as closed: re-clicking while it animates out reopens it immediately.
+  // Re-clicking while the panel animates out turns it around from where it is.
+  if (m_closing
+      && (request.context.empty() || (m_activePanel != nullptr && m_activePanel->isContextActive(request.context)))
+      && resumeClosingPanel(panelId, request.output)) {
+    return;
+  }
   if (isOpen() && !m_closing && m_activePanelId == panelId) {
     if (!request.context.empty() && m_activePanel != nullptr) {
       if (m_activePanel->isContextActive(request.context)) {
@@ -1718,6 +1848,9 @@ void PanelManager::togglePanel(const std::string& panelId) {
   }
   if (isOpen() && !m_closing && m_activePanelId == panelId) {
     closePanel();
+    return;
+  }
+  if (resumeClosingPanel(panelId)) {
     return;
   }
   // Output left unset: openPanel resolves it (focus source, else compositor probe).
@@ -2320,29 +2453,44 @@ void PanelManager::applyDetachedReveal(float progress) {
   float clipW = surfaceW;
   float clipH = surfaceH;
 
-  // macOS-style: the whole floating panel fades in while growing slightly from its center,
-  // fast enough to feel instant (no edge wipe).
+  // macOS-style: the whole floating panel fades in while growing slightly from where it came
+  // from (or sliding in from its screen edge), fast enough to feel instant (no edge wipe).
+  // Reduce Motion keeps only the fade.
+  const float reveal = m_detachedRevealProgress;
+  const bool reduced = MotionService::instance().reduced();
+  const bool slides = m_detachedSlideX != 0.0F || m_detachedSlideY != 0.0F;
+  const float scale = (slides || reduced) ? 1.0F : kDetachedRevealScale + (1.0F - kDetachedRevealScale) * reveal;
+  const float offsetX = reduced ? 0.0F : std::round(m_detachedSlideX * (1.0F - reveal));
+  const float offsetY = reduced ? 0.0F : std::round(m_detachedSlideY * (1.0F - reveal));
+  const float originX = static_cast<float>(m_panelInsetX) + m_detachedOriginX;
+  const float originY = static_cast<float>(m_panelInsetY) + m_detachedOriginY;
   if (m_detachedRevealClipNode != nullptr && m_detachedRevealContentNode != nullptr) {
     m_detachedRevealClipNode->setPosition(0.0F, 0.0F);
     m_detachedRevealClipNode->setFrameSize(surfaceW, surfaceH);
-    m_detachedRevealContentNode->setPosition(0.0F, 0.0F);
+    m_detachedRevealContentNode->setPosition(offsetX, offsetY);
     m_detachedRevealContentNode->setFrameSize(surfaceW, surfaceH);
-    m_detachedRevealContentNode->setOpacity(m_detachedRevealProgress);
-    m_detachedRevealContentNode->setScale(
-        kDetachedRevealScale + (1.0F - kDetachedRevealScale) * m_detachedRevealProgress
-    );
+    m_detachedRevealContentNode->setOpacity(reveal);
+    m_detachedRevealContentNode->setTransformOrigin(originX, originY);
+    m_detachedRevealContentNode->setScale(scale);
   }
 
   if (m_contentNode != nullptr) {
     m_contentNode->setOpacity(1.0F);
   }
   // Blur only once the panel is visible, so no empty frosted rectangle flashes ahead of it.
-  if (m_detachedRevealProgress < 0.2F) {
+  if (reveal < 0.2F) {
     clipW = 0.0F;
     clipH = 0.0F;
   }
+  // The blur follows the drawn body (scaled about the same origin, slid by the same offset), so
+  // no frosted halo shows around a panel that is still growing.
+  const auto bodyW = static_cast<float>(m_panelVisualWidth);
+  const auto bodyH = static_cast<float>(m_panelVisualHeight);
+  const float bodyX = originX + (static_cast<float>(m_panelInsetX) - originX) * scale + offsetX;
+  const float bodyY = originY + (static_cast<float>(m_panelInsetY) - originY) * scale + offsetY;
   applyPanelCompositorBlur(
-      m_panelInsetX, m_panelInsetY, static_cast<int>(m_panelVisualWidth), static_cast<int>(m_panelVisualHeight),
+      static_cast<int>(std::lround(bodyX)), static_cast<int>(std::lround(bodyY)),
+      static_cast<int>(std::lround(bodyW * scale)), static_cast<int>(std::lround(bodyH * scale)),
       static_cast<int>(std::lround(clipX)), static_cast<int>(std::lround(clipY)), static_cast<int>(std::lround(clipW)),
       static_cast<int>(std::lround(clipH))
   );
@@ -2774,13 +2922,22 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
       }
     });
 
+    // Only along a bar that is already shown: an attached panel on an auto-hidden bar still waits
+    // for the bar to slide in (see m_attachedOpenAnimationPending).
+    const bool skipOpenAnimation = m_skipOpenAnimation
+        && (!m_attachedToBar
+            || m_attachedPanelBarSettledCallback == nullptr
+            || m_attachedPanelBarSettledCallback(m_output, m_sourceBarName));
+    m_skipOpenAnimation = false;
     if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
       m_sceneRoot->setOpacity(1.0F);
-      applyAttachedReveal(0.0F);
-      m_attachedOpenAnimationPending = true;
+      applyAttachedReveal(skipOpenAnimation ? 1.0F : 0.0F);
+      m_attachedOpenAnimationPending = !skipOpenAnimation;
+    } else if (skipOpenAnimation) {
+      applyDetachedReveal(1.0F);
     } else {
       applyDetachedReveal(0.0F);
-      m_animations.animate(
+      m_animations.animateFade(
           0.0F, 1.0F, kDetachedOpenMs, Easing::EaseOutCubic, [this](float v) { applyDetachedReveal(v); }, {},
           m_sceneRoot.get()
       );

@@ -14,7 +14,6 @@ public:
   void onConfigReload(const Config& config, const PipeWireService* service);
   void onPrivacyStateChanged(const PipeWireService& service);
 
-private:
   struct State {
     bool mic = false;
     bool camera = false;
@@ -22,7 +21,10 @@ private:
 
     bool operator==(const State&) const = default;
   };
+  // Captures in use after the privacy filters, as of the last update.
+  [[nodiscard]] const State& state() const noexcept { return m_lastState; }
 
+private:
   [[nodiscard]] State fromPipewireState(const PrivacyState& privacyState) const;
 
   OsdOverlay* m_overlay = nullptr;

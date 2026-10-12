@@ -29,6 +29,7 @@
 #include "dbus/polkit/polkit_agent.h"
 #include "dbus/polkit/polkit_poll_source.h"
 #include "dbus/polkit/polkit_session_support.h"
+#include "dbus/portal/reduced_motion_portal.h"
 #include "dbus/power/power_profiles_service.h"
 #include "dbus/secret/secret_collection_probe.h"
 #include "dbus/session_bus.h"
@@ -1536,6 +1537,15 @@ void Application::initSessionBusServices() {
     } catch (const std::exception& e) {
       kLog.warn("debug service disabled: {}", e.what());
       m_debugService.reset();
+    }
+
+    try {
+      m_reducedMotionPortal = std::make_unique<ReducedMotionPortal>(*m_bus, [](bool reduced) {
+        MotionService::instance().setSystemReducedMotion(reduced);
+      });
+    } catch (const std::exception& e) {
+      kLog.debug("reduced-motion portal unavailable: {}", e.what());
+      m_reducedMotionPortal.reset();
     }
 
     try {

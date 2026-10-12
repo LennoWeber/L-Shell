@@ -125,6 +125,7 @@ class LogindService;
 class MainLoop;
 class ModemManagerService;
 class MprisService;
+class ReducedMotionPortal;
 class NetworkSecretAgent;
 class NotificationDBusHost;
 class PipeWirePollSource;
@@ -179,6 +180,8 @@ private:
   void initEarlySessionBusAndTray();
   void initSessionBusServices();
   void initUi();
+  // Mirrors the filtered privacy state (mic, camera, screen capture) into the island's recording dot.
+  void syncIslandPrivacy();
   // Sub-phases of initUi(), called in order.
   void initUiRenderSurfacesAndSettings();
   void initLockScreenAndSession();
@@ -290,6 +293,8 @@ private:
       m_wayland, m_compositorPlatform, m_configService, m_notificationManager, &m_clipboardService
   };
   std::unique_ptr<MprisService> m_mprisService;
+  // Desktop Reduce Motion preference (xdg-desktop-portal), combined with [shell.animation].enabled.
+  std::unique_ptr<ReducedMotionPortal> m_reducedMotionPortal;
   std::unique_ptr<PowerProfilesService> m_powerProfilesService;
   std::unique_ptr<INetworkService> m_networkService;
   std::unique_ptr<NetworkSecretAgent> m_networkSecretAgent;

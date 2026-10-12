@@ -10,9 +10,11 @@
 #include "i18n/i18n.h"
 #include "notification/notification.h"
 #include "notification/notification_manager.h"
+#include "render/animation/motion_service.h"
 #include "render/render_context.h"
 #include "render/scene/input_area.h"
 #include "render/scene/node.h"
+#include "render/scene/rect_node.h"
 #include "shell/bar/widget_action_dispatcher.h"
 #include "shell/osd/osd_overlay.h"
 #include "shell/panel/panel_manager.h"
@@ -48,9 +50,17 @@ namespace {
   constexpr float kBleed = 20.0F;
   // Extra width the compact state gets for its ambient indicator.
   constexpr float kCompactExtra = 44.0F;
-  constexpr float kExpandMs = 380.0F;
-  constexpr float kCollapseMs = 300.0F;
+  // macOS recording indicators: green camera (wins over the mic), orange microphone, purple screen.
+  constexpr float kPrivacyDotSize = 7.0F;
+  constexpr Color kPrivacyCamera = rgba(0.188F, 0.820F, 0.345F, 1.0F);
+  constexpr Color kPrivacyMic = rgba(1.0F, 0.624F, 0.039F, 1.0F);
+  constexpr Color kPrivacyScreen = rgba(0.749F, 0.353F, 0.949F, 1.0F);
   constexpr float kFadeMs = 220.0F;
+  // Content crossfade during the morph: the compact content is gone by 35% expansion and the
+  // expanded content starts at 25%, so the capsule is never empty mid-morph; it grows from 92%.
+  constexpr float kCollapsedFadeEnd = 0.35F;
+  constexpr float kExpandedFadeStart = 0.25F;
+  constexpr float kExpandedContentScale = 0.92F;
   // Hidden islands slide this far up while fading.
   constexpr float kHideLift = 10.0F;
   constexpr float kLowBattery = 20.0F;
@@ -332,6 +342,9 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
   instance.animations.cancelAll();
   instance.expansionAnim = 0;
   instance.visibilityAnim = 0;
+  instance.ambientAnim = 0;
+  instance.ambientTarget = ambientRoomTarget();
+  instance.ambientExtra = instance.ambientTarget;
   const float s = instance.uiScale;
   const bool black = m_islandConfig->material == IslandMaterial::Black;
   const ColorSpec text = black ? fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 1.0F)) : colorSpecFromRole(ColorRole::OnSurface);
@@ -365,6 +378,10 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
           .color = colorSpecFromRole(ColorRole::Primary),
       })
   );
+
+  auto dot = std::make_unique<RectNode>();
+  dot->setVisible(false);
+  instance.privacyDot = static_cast<RectNode*>(instance.capsule->addChild(std::move(dot)));
 
   auto expanded = ui::node({});
   instance.expandedContent = instance.capsule->addChild(std::move(expanded));
@@ -423,15 +440,14 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
 
   const Presentation presentation = m_activities.presentation();
   instance.expansion = presentation == Presentation::Expanded ? 1.0F : 0.0F;
+  instance.expansionTarget = instance.expansion;
 }
 
 float Island::capsuleWidth(const Instance& instance) const noexcept {
   const IslandConfig& config = *m_islandConfig;
   const float s = instance.uiScale;
-  float collapsed = static_cast<float>(config.collapsedWidth);
-  if (m_activities.state().ambient.has_value()) {
-    collapsed += kCompactExtra;
-  }
+  // The ambient indicator's room grows and shrinks with it instead of popping.
+  const float collapsed = static_cast<float>(config.collapsedWidth) + kCompactExtra * instance.ambientExtra;
   return lerp(collapsed, static_cast<float>(config.expandedWidth), instance.expansion) * s;
 }
 
@@ -488,7 +504,9 @@ void Island::layoutCapsule(Instance& instance) {
   const float w = capsuleWidth(instance);
   const float h = capsuleHeight(instance);
   const float x = std::round((rootW - w) * 0.5F);
-  const float y = std::round((static_cast<float>(config.marginTop) - (kHideLift * (1.0F - instance.visibility))) * s);
+  // Reduce Motion: the island only fades, without the lift.
+  const float lift = MotionService::instance().reduced() ? 0.0F : kHideLift * (1.0F - instance.visibility);
+  const float y = std::round((static_cast<float>(config.marginTop) - lift) * s);
 
   instance.capsule->setPosition(x, y);
   instance.capsule->setSize(w, h);
@@ -504,8 +522,8 @@ void Island::layoutCapsule(Instance& instance) {
   shell::glass::layoutGlass(instance.glass, 0.0F, 0.0F, w, h, s);
 
   const float e = instance.expansion;
-  const float collapsedOpacity = std::clamp(1.0F - (e * 2.0F), 0.0F, 1.0F);
-  const float expandedOpacity = std::clamp((e * 2.0F) - 1.0F, 0.0F, 1.0F);
+  const float collapsedOpacity = std::clamp(1.0F - (e / kCollapsedFadeEnd), 0.0F, 1.0F);
+  const float expandedOpacity = std::clamp((e - kExpandedFadeStart) / (1.0F - kExpandedFadeStart), 0.0F, 1.0F);
 
   instance.clock->measure(renderer);
   const float collapsedH = static_cast<float>(config.height) * s;
@@ -514,15 +532,27 @@ void Island::layoutCapsule(Instance& instance) {
       std::round((w - instance.clock->width()) * 0.5F), std::round((collapsedH - instance.clock->height()) * 0.5F)
   );
 
-  const bool ambient = m_activities.state().ambient.has_value();
+  // The track glyph fades out with the extra room, unless a privacy dot keeps the room open.
+  const bool ambient = m_activities.state().ambient.has_value() || (!m_privacy.any() && instance.ambientExtra > 0.01F);
   instance.ambientIndicator->setVisible(ambient);
   if (ambient) {
     // Glyphs have no size until measured; centering against an unmeasured one puts it at the top.
     static_cast<Glyph*>(instance.ambientIndicator)->measure(renderer);
-    instance.ambientIndicator->setOpacity(collapsedOpacity);
+    instance.ambientIndicator->setOpacity(collapsedOpacity * std::clamp(instance.ambientExtra, 0.0F, 1.0F));
     instance.ambientIndicator->setPosition(
         std::round(14.0F * s), std::round((collapsedH - instance.ambientIndicator->height()) * 0.5F)
     );
+  }
+  instance.privacyDot->setVisible(m_privacy.any());
+  if (m_privacy.any()) {
+    const float dot = std::round(kPrivacyDotSize * s);
+    RoundedRectStyle dotStyle;
+    dotStyle.fill = m_privacy.camera ? kPrivacyCamera : (m_privacy.mic ? kPrivacyMic : kPrivacyScreen);
+    dotStyle.radius = Radii(dot * 0.5F);
+    instance.privacyDot->setStyle(dotStyle);
+    instance.privacyDot->setSize(dot, dot);
+    instance.privacyDot->setOpacity(collapsedOpacity * std::clamp(instance.ambientExtra, 0.0F, 1.0F));
+    instance.privacyDot->setPosition(std::round(w - (17.0F * s) - dot), std::round((collapsedH - dot) * 0.5F));
   }
 
   // Expanded content: glyph | title over subtitle (over the level bar).
@@ -531,6 +561,11 @@ void Island::layoutCapsule(Instance& instance) {
   instance.expandedContent->setVisible(expandedOpacity > 0.0F);
   instance.expandedContent->setPosition(0.0F, 0.0F);
   instance.expandedContent->setSize(w, h);
+  // The expanded content grows in with the capsule rather than just appearing.
+  instance.expandedContent->setScale(
+      MotionService::instance().reduced() ? 1.0F
+                                          : kExpandedContentScale + (1.0F - kExpandedContentScale) * expandedOpacity
+  );
   if (expandedOpacity > 0.0F) {
     const float glyphSize = 26.0F * s;
     const float textX = pad + glyphSize + (14.0F * s);
@@ -608,32 +643,72 @@ void Island::syncBlurRegion(Instance& instance) {
 }
 
 void Island::animatePresentation(Instance& instance) {
+  if (instance.surface == nullptr) {
+    return;
+  }
+  animateAmbientRoom(instance);
   const Presentation presentation = m_activities.presentation();
   const float target = presentation == Presentation::Expanded ? 1.0F : 0.0F;
+  instance.surface->requestUpdate();
+  if (instance.expansionAnim != 0 && instance.expansionTarget == target) {
+    return; // already heading there
+  }
+  // Retarget from the current velocity, so hovering in and out mid-morph bends the motion
+  // instead of restarting it.
+  const float velocity = instance.animations.velocity(instance.expansionAnim);
   if (instance.expansionAnim != 0) {
     instance.animations.cancel(instance.expansionAnim);
     instance.expansionAnim = 0;
   }
-  if (instance.surface == nullptr) {
-    return;
-  }
-  instance.surface->requestUpdate();
-  if (std::abs(instance.expansion - target) < 1.0e-3F) {
+  instance.expansionTarget = target;
+  if (std::abs(instance.expansion - target) < 1.0e-3F && std::abs(velocity) < 1.0e-4F) {
+    instance.expansion = target;
     instance.surface->requestLayout();
     return;
   }
   Instance* instancePtr = &instance;
   const bool expanding = target > instance.expansion;
-  // Expanding overshoots a touch, like the island's spring; collapsing settles without a bounce.
-  instance.expansionAnim = instance.animations.animate(
-      instance.expansion, target, expanding ? kExpandMs : kCollapseMs,
-      expanding ? Easing::EaseOutBack : Easing::EaseOutCubic,
+  // Expanding springs with a little bounce, like the Dynamic Island; collapsing settles without one.
+  instance.expansionAnim = instance.animations.animateSpring(
+      instance.expansion, target, expanding ? Style::springIsland : Style::springSmooth,
       [instancePtr](float value) { instancePtr->expansion = std::max(value, 0.0F); },
       [this, instancePtr]() {
         instancePtr->expansionAnim = 0;
         layoutCapsule(*instancePtr);
       },
-      instance.capsule
+      instance.capsule, velocity
+  );
+  instance.surface->requestRedraw();
+}
+
+float Island::ambientRoomTarget() const noexcept {
+  return m_activities.state().ambient.has_value() || m_privacy.any() ? 1.0F : 0.0F;
+}
+
+void Island::animateAmbientRoom(Instance& instance) {
+  const float target = ambientRoomTarget();
+  if (instance.ambientTarget == target) {
+    return;
+  }
+  instance.ambientTarget = target;
+  const float velocity = instance.animations.velocity(instance.ambientAnim);
+  if (instance.ambientAnim != 0) {
+    instance.animations.cancel(instance.ambientAnim);
+    instance.ambientAnim = 0;
+  }
+  if (instance.capsule == nullptr) {
+    instance.ambientExtra = target;
+    return;
+  }
+  Instance* instancePtr = &instance;
+  instance.ambientAnim = instance.animations.animateSpring(
+      instance.ambientExtra, target, Style::springSmooth,
+      [instancePtr](float value) { instancePtr->ambientExtra = std::max(value, 0.0F); },
+      [this, instancePtr]() {
+        instancePtr->ambientAnim = 0;
+        layoutCapsule(*instancePtr);
+      },
+      instance.capsule, velocity
   );
   instance.surface->requestRedraw();
 }
@@ -657,7 +732,8 @@ void Island::animateVisibility(Instance& instance) {
     return;
   }
   Instance* instancePtr = &instance;
-  instance.visibilityAnim = instance.animations.animate(
+  // A fade (the lift is skipped under Reduce Motion), so it still runs there.
+  instance.visibilityAnim = instance.animations.animateFade(
       instance.visibility, target, kFadeMs, Easing::EaseOutCubic,
       [instancePtr](float value) { instancePtr->visibility = value; },
       [this, instancePtr]() {
@@ -803,6 +879,15 @@ void Island::onMediaChanged() {
   } else {
     refreshAll();
   }
+}
+
+void Island::setPrivacy(bool mic, bool camera, bool screen) {
+  const Privacy privacy{.mic = mic, .camera = camera, .screen = screen};
+  if (m_privacy == privacy) {
+    return;
+  }
+  m_privacy = privacy;
+  refreshAll();
 }
 
 void Island::onNotificationEvent(const Notification& notification, NotificationEvent event) {

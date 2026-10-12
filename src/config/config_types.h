@@ -543,9 +543,8 @@ struct WallpaperConfig {
   bool enabled = true;
   WallpaperFillMode fillMode = WallpaperFillMode::Crop;
   std::optional<ColorSpec> fillColor;
-  std::vector<WallpaperTransition> transitions = {WallpaperTransition::Fade, WallpaperTransition::Wipe,
-                                                  WallpaperTransition::Disc, WallpaperTransition::Stripes,
-                                                  WallpaperTransition::Zoom, WallpaperTransition::Honeycomb};
+  // macOS crossfades the desktop picture; the other effects stay available as opt-ins.
+  std::vector<WallpaperTransition> transitions = {WallpaperTransition::Fade};
   float transitionDurationMs = 1500.0F;
   float edgeSmoothness = 0.3F;
   bool transitionOnStartup = false;
@@ -581,10 +580,9 @@ struct LockscreenConfig {
   bool fingerprint = true;
   bool allowEmptyPassword = false;
   bool blurredDesktop = false;
-  std::vector<LockscreenTransition> transitions = {LockscreenTransition::Fade, LockscreenTransition::Wipe,
-                                                   LockscreenTransition::Disc, LockscreenTransition::Stripes,
-                                                   LockscreenTransition::Zoom, LockscreenTransition::Honeycomb};
-  float transitionDurationMs = 1500.0F;
+  // A quick crossfade, like macOS; unlocking runs a little faster than locking (see LockSurface).
+  std::vector<LockscreenTransition> transitions = {LockscreenTransition::Fade};
+  float transitionDurationMs = 350.0F;
   float edgeSmoothness = 0.3F;
   float blurIntensity = 0.5F;
   float tintIntensity = 0.3F;

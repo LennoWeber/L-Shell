@@ -4,6 +4,7 @@
 #include "core/log.h"
 #include "render/animation/animation.h"
 #include "render/animation/animation_manager.h"
+#include "render/animation/motion_service.h"
 #include "render/core/renderer.h"
 #include "ui/palette.h"
 #include "ui/style.h"
@@ -353,7 +354,8 @@ void Label::startSnapToZero() {
 }
 
 void Label::startMarqueeLoop() {
-  if (!m_autoScroll || animationManager() == nullptr) {
+  // Reduce Motion: no scrolling text (peripheral motion); the label stays at its start.
+  if (!m_autoScroll || animationManager() == nullptr || MotionService::instance().reduced()) {
     return;
   }
   if (m_autoScrollHoverOnly && !hovered()) {

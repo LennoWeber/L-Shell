@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/timer_manager.h"
 #include "render/animation/animation_manager.h"
 #include "wayland/layer_surface.h"
 
@@ -107,6 +108,9 @@ private:
     float rowBaseY = 0.0F;
     AnimationManager::Id showAnimId = 0;
     AnimationManager::Id hideAnimId = 0;
+    Timer hideTimer;
+    float revealOpacity = 0.0F;
+    float revealScale = 1.0F;
     bool showPending = false;
     bool visible = false;
     float appliedCornerRadiusScale = -1.0F;
@@ -122,7 +126,7 @@ private:
   void buildScene(Instance& inst, std::uint32_t width, std::uint32_t height);
   void updateInstanceContent(Instance& inst);
   void updateBlurRegion(Instance& inst) const;
-  void applyReveal(Instance& inst, float reveal);
+  void applyReveal(Instance& inst);
   void animateInstance(Instance& inst);
 
   WaylandConnection* m_wayland = nullptr;

@@ -3391,6 +3391,16 @@ void Bar::startHideFadeOut(BarInstance& instance) {
   if (instance.autoHideDisablePending || instance.smartAutoHidePinnedVisible) {
     return;
   }
+  // A panel hangs from this bar: keep it (cancelling its reveal below would also drop the
+  // panel's "bar revealed" notice and leave the panel waiting).
+  if (m_autoHideSuppressionCallback != nullptr && m_autoHideSuppressionCallback(instance)) {
+    return;
+  }
+  // Replace a reveal still in flight (like revealAutoHideBar does for a hide): running both
+  // made the bar flicker between them and fired the attached-panel "revealed" notice late.
+  if (instance.slideRoot != nullptr) {
+    instance.animations.cancelForOwner(instance.slideRoot);
+  }
   const float current = instance.hideOpacity;
   instance.animations.animate(
       current, 0.0F, Style::animNormal, Easing::EaseInQuad,

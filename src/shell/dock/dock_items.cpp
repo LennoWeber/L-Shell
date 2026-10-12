@@ -3,6 +3,7 @@
 #include "config/config_service.h"
 #include "core/ui_phase.h"
 #include "i18n/i18n.h"
+#include "render/animation/motion_service.h"
 #include "render/core/renderer.h"
 #include "render/scene/input_area.h"
 #include "render/scene/node.h"
@@ -146,7 +147,12 @@ namespace {
   }
 
   [[nodiscard]] float hoverZoomFrameLerp(float deltaMs) {
-    const float clampedMs = std::clamp(deltaMs, 1.0F, 50.0F);
+    // Reduce Motion: magnification follows the pointer directly, without the glide.
+    const auto& motion = MotionService::instance();
+    if (motion.reduced()) {
+      return 1.0F;
+    }
+    const float clampedMs = std::clamp(deltaMs * motion.speed(), 1.0F, 50.0F);
     return 1.0F - std::pow(1.0F - kHoverZoomLerp, clampedMs / kHoverZoomReferenceFrameMs);
   }
 

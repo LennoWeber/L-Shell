@@ -8,6 +8,7 @@
 #include "core/input/key_symbols.h"
 #include "core/input/keybind_matcher.h"
 #include "core/log.h"
+#include "core/timer_manager.h"
 #include "core/ui_phase.h"
 #include "i18n/i18n.h"
 #include "ipc/ipc_service.h"
@@ -37,6 +38,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <deque>
 #include <limits>
@@ -58,6 +60,10 @@ namespace {
   constexpr Logger kLog("window-switcher");
   constexpr std::size_t kVisibleCards = 5;
   constexpr float kVisibleOpacityThreshold = 0.01F;
+  constexpr auto kSwitcherHoldDelay = std::chrono::milliseconds(120);
+  constexpr float kSwitcherFadeMs = 120.0F;
+  // Carousel steps spring and keep their speed when Tab is pressed again mid-step.
+  constexpr float kMaxCarriedStepVelocity = 0.02F; // progress per ms
 
   [[nodiscard]] WindowSwitcherStyleLayout computeSwitcherLayout(
       float screenWidth, float screenHeight, float scale, std::size_t windowCount, std::size_t selectedIndex,
@@ -358,6 +364,8 @@ struct WindowSwitcher::Instance {
   bool contentSyncPending = false;
   bool pointerInside = false;
   bool revealStarted = false;
+  // Command-Tab style hold: the switcher appears only once the shortcut is held this long.
+  Timer revealDelay;
   ShellConfig::WindowSwitcherStyle style = ShellConfig::WindowSwitcherStyle::Carousel;
   bool showCaption = true;
   bool showCount = true;
@@ -929,6 +937,8 @@ void WindowSwitcher::syncSelection(bool animate) {
 
   const std::vector<WindowSwitcherCardTarget> previousTargets = m_instance->styleLayout.cards;
   const bool interrupted = m_instance->carouselAnimId != 0;
+  const float carriedVelocity =
+      std::clamp(m_instance->animations.velocity(m_instance->carouselAnimId), 0.0F, kMaxCarriedStepVelocity);
   if (interrupted) {
     m_instance->animations.cancel(m_instance->carouselAnimId);
     m_instance->carouselAnimId = 0;
@@ -1066,8 +1076,8 @@ void WindowSwitcher::syncSelection(bool animate) {
 
   Instance* instance = m_instance;
   InputArea* animationOwner = instance->strip;
-  instance->carouselAnimId = instance->animations.animate(
-      0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
+  instance->carouselAnimId = instance->animations.animateSpring(
+      0.0F, 1.0F, Style::springSnappy,
       [instance, transitions](float progress) {
         for (const CardTransition& transition : transitions) {
           transition.tile->setPosition(
@@ -1078,7 +1088,9 @@ void WindowSwitcher::syncSelection(bool animate) {
               std::lerp(transition.fromScaleX, transition.toScaleX, progress),
               std::lerp(transition.fromScaleY, transition.toScaleY, progress)
           );
-          transition.tile->setOpacity(std::lerp(transition.fromOpacity, transition.toOpacity, progress));
+          transition.tile->setOpacity(
+              std::clamp(std::lerp(transition.fromOpacity, transition.toOpacity, progress), 0.0F, 1.0F)
+          );
         }
         if (instance->pointerInside) {
           instance->inputDispatcher.syncPointerHover();
@@ -1102,7 +1114,7 @@ void WindowSwitcher::syncSelection(bool animate) {
           requestSceneUpdate();
         }
       },
-      animationOwner
+      animationOwner, carriedVelocity
   );
 }
 
@@ -1305,6 +1317,15 @@ bool WindowSwitcher::onPointerEvent(const PointerEvent& event) {
   Instance* target = m_instance;
   const bool onTarget =
       event.surface != nullptr && target->surface != nullptr && event.surface == target->surface->wlSurface();
+
+  // Still invisible (hold delay): a click dismisses instead of picking a tile nobody can see.
+  if (target->revealDelay.active() && event.type == PointerEvent::Type::Button) {
+    if (event.pressed && onTarget) {
+      hide();
+      return true;
+    }
+    return onTarget;
+  }
 
   switch (event.type) {
   case PointerEvent::Type::Enter:
@@ -1529,6 +1550,11 @@ void WindowSwitcher::positionPanel(Instance& instance, float screenW, float scre
   }
 
   std::vector<InputRect> blurRects;
+  // Nothing frosted while the switcher is still invisible (hold delay) or mostly faded.
+  if (!m_overviewMode && instance.panel->opacity() < 0.3F) {
+    instance.surface->clearBlurRegion();
+    return;
+  }
   if (m_overviewMode) {
     // Frosted desktop behind the whole overview, like Mission Control.
     instance.surface->setBlurRegion(
@@ -1808,16 +1834,42 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
   if (!instance.revealStarted && instance.panel != nullptr && instance.dimmer != nullptr) {
     instance.revealStarted = true;
     instance.panel->setOpacity(0.0F);
-    instance.panel->setScale(Style::windowSwitcherRevealScale);
     instance.dimmer->setOpacity(0.0F);
-    instance.animations.animate(
-        0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
-        [panelNode = instance.panel, dimmer = instance.dimmer, dimOpacity](float value) {
-          panelNode->setOpacity(value);
-          panelNode->setScale(Style::windowSwitcherRevealScale + (1.0F - Style::windowSwitcherRevealScale) * value);
-          dimmer->setOpacity(dimOpacity * value);
-        },
-        {}, instance.panel
-    );
+    if (m_overviewMode) {
+      // The overview opens at once, growing slightly, like Mission Control.
+      instance.panel->setScale(Style::windowSwitcherRevealScale);
+      instance.animations.animate(
+          0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
+          [panelNode = instance.panel, dimmer = instance.dimmer, dimOpacity](float value) {
+            panelNode->setOpacity(value);
+            panelNode->setScale(Style::windowSwitcherRevealScale + (1.0F - Style::windowSwitcherRevealScale) * value);
+            dimmer->setOpacity(dimOpacity * value);
+          },
+          {}, instance.panel
+      );
+    } else {
+      // Command-Tab: a quick tap switches without any UI; held, the switcher fades in (no scale).
+      Instance* instPtr = &instance;
+      instance.revealDelay.start(kSwitcherHoldDelay, [instPtr, dimOpacity]() {
+        if (instPtr->panel == nullptr || instPtr->dimmer == nullptr || instPtr->surface == nullptr) {
+          return;
+        }
+        instPtr->animations.animateFade(
+            0.0F, 1.0F, kSwitcherFadeMs, Easing::EaseOutCubic,
+            [panelNode = instPtr->panel, dimmer = instPtr->dimmer, dimOpacity](float value) {
+              panelNode->setOpacity(value);
+              dimmer->setOpacity(dimOpacity * value);
+            },
+            {}, instPtr->panel
+        );
+        instPtr->surface->requestRedraw();
+      });
+    }
+  } else if (instance.revealDelay.active() && instance.panel != nullptr && instance.dimmer != nullptr) {
+    // Rebuilt during the hold: stay invisible until it ends.
+    instance.panel->setOpacity(0.0F);
+    instance.dimmer->setOpacity(0.0F);
   }
+  // Again now that the reveal set the opacity: no frosted rectangle shows during the hold delay.
+  positionPanel(instance, w, h);
 }

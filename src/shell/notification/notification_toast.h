@@ -6,6 +6,8 @@
 #include "render/scene/input_dispatcher.h"
 #include "system/icon_resolver.h"
 
+#include <chrono>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -46,6 +48,9 @@ public:
   void onConfigReload();
   void onOutputChange();
   void hideDndSuppressed();
+  // Like macOS: while Notification Center is open, banners step aside (they stay in its list)
+  // and new ones do not pop up over it.
+  void setNotificationCenterOpen(bool open);
   void requestLayout();
   void requestRedraw();
 
@@ -69,7 +74,12 @@ private:
     int displayDurationMs = 0; // -1 = persistent (no auto-dismiss)
     int32_t rawTimeoutMs = 0;  // raw DBus timeout; >0 means manager has an auto-expire timer we must coordinate with
     wl_output* targetOutput = nullptr;
+    // Share of displayDurationMs still to go when the countdown last stopped (or started).
     float remainingProgress = 1.0F;
+    // Expiry is a plain timer, per entry: no countdown bar repaints while a banner waits.
+    Timer expiryTimer;
+    std::chrono::steady_clock::time_point countdownStartedAt;
+    bool countdownRunning = false;
     float y = -1.0F; // stable top position while visible; negative = queued/off-screen
     float height = 0.0F;
     // Planned toast chrome (refreshEntryGeometry); buildCard must match these for placement vs paint.
@@ -110,7 +120,6 @@ private:
       // scale in buildCard(). The reveal clip uses this, not the shared entry.height,
       // which is measured once at whatever scale was current on arrival.
       float clipHeight = 0.0F;
-      AnimationManager::Id countdownAnimId = 0;
       AnimationManager::Id entryAnimId = 0;
       AnimationManager::Id slideAnimId = 0;
       AnimationManager::Id exitAnimId = 0;
@@ -148,6 +157,15 @@ private:
       ProgressBar** outProgress, Node** outActionsRow, Node** outInlineReplyRow, Input** outInlineReplyInput
   );
   void applyCardReveal(Instance::CardState& cs, float reveal, float y, float cardHeight) const;
+  AnimationManager::Id startEntryReveal(
+      Instance& inst, Instance::CardState& cs, float fromReveal, float targetY, float velocity,
+      std::function<void()> onDone
+  );
+  // Card x at rest, and how far a side banner travels to be fully past the screen edge.
+  [[nodiscard]] float cardRestX() const;
+  [[nodiscard]] float slideTravel() const;
+  // Layer margin folded into the surface so side banners can slide from the screen edge.
+  [[nodiscard]] float edgeSlack() const;
   [[nodiscard]] float cardReveal(const Instance::CardState& cs, float cardHeight) const;
   void addCardToInstance(Instance& inst, std::size_t entryIndex);
   void removeCardFromInstance(Instance& inst, std::size_t entryIndex);
@@ -156,14 +174,18 @@ private:
 
   PopupEntry* findEntry(uint32_t notificationId);
   Instance::CardState* findCardState(Instance& inst, uint32_t notificationId);
-  void beginPopupHover(uint32_t notificationId, const ProgressBar* progressBar = nullptr);
-  void endPopupHover(uint32_t notificationId, int totalDuration, const ProgressBar* progressBar = nullptr);
+  void beginPopupHover(uint32_t notificationId);
+  void endPopupHover(uint32_t notificationId, int totalDuration);
   void resetPopupHover(uint32_t notificationId, int totalDuration, bool resumeTimer);
   void resetInstanceHover(Instance& inst, bool resumeTimers);
-  void pauseTimeout(uint32_t notificationId, const ProgressBar* progressBar = nullptr);
+  void pauseTimeout(uint32_t notificationId);
   void resumeTimeout(uint32_t notificationId, int totalDuration);
   void pauseCountdowns(uint32_t notificationId);
   void resumeCountdowns(uint32_t notificationId);
+  void startCountdown(PopupEntry& entry);
+  void stopCountdown(PopupEntry& entry);
+  [[nodiscard]] static float remainingProgress(const PopupEntry& entry);
+  [[nodiscard]] bool entryHasCard(std::size_t entryIndex) const;
   void revealQueuedEntries();
   void enforceMaxVisible();
   void collapseStack();
@@ -219,4 +241,5 @@ private:
   std::vector<std::string> m_lastMonitorSelectors;
   bool m_followFocusedOutput = false;
   wl_output* m_focusedOutput = nullptr;
+  bool m_notificationCenterOpen = false;
 };

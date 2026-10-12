@@ -27,6 +27,7 @@ class Node;
 class NotificationManager;
 class PanelManager;
 class ProgressBar;
+class RectNode;
 class RenderContext;
 class UPowerService;
 enum class NotificationEvent;
@@ -76,6 +77,9 @@ public:
   void onPowerChanged(const UPowerChange& change);
   // MPRIS state changed (Application owns MPRIS's single callback): refreshes the now-playing indicator.
   void onMediaChanged();
+  // Microphone, camera or screen capture in use (filtered like the privacy OSD): a coloured dot at the
+  // pill's trailing end, like the macOS recording indicators.
+  void setPrivacy(bool mic, bool camera, bool screen);
   void requestLayout();
   void requestRedraw();
   [[nodiscard]] bool isActive() const noexcept;
@@ -110,6 +114,9 @@ private:
   [[nodiscard]] bool shownOn(const Instance& instance) const;
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
+  void animateAmbientRoom(Instance& instance);
+  // 1 while the compact pill needs its extra room (a playing track or a privacy dot), else 0.
+  [[nodiscard]] float ambientRoomTarget() const noexcept;
   [[nodiscard]] float capsuleHeight(const Instance& instance) const noexcept;
 
   struct Instance {
@@ -125,6 +132,7 @@ private:
     Node* capsule = nullptr;
     Label* clock = nullptr;
     Node* ambientIndicator = nullptr;
+    RectNode* privacyDot = nullptr;
     Node* expandedContent = nullptr;
     Glyph* activityGlyph = nullptr;
     Label* activityTitle = nullptr;
@@ -132,7 +140,12 @@ private:
     ProgressBar* activityLevel = nullptr;
     // 0 = collapsed capsule, 1 = fully expanded; animated.
     float expansion = 0.0F;
+    float expansionTarget = 0.0F;
     AnimationManager::Id expansionAnim = 0;
+    // 0..1 share of the compact state's extra room for the ambient indicator; animated.
+    float ambientExtra = 0.0F;
+    float ambientTarget = 0.0F;
+    AnimationManager::Id ambientAnim = 0;
     // 0 = hidden (flow with an empty workspace), 1 = shown; animated.
     float visibility = 1.0F;
     AnimationManager::Id visibilityAnim = 0;
@@ -150,6 +163,16 @@ private:
   MprisService* m_mpris = nullptr;
   NotificationManager* m_notifications = nullptr;
   UPowerService* m_upower = nullptr;
+
+  struct Privacy {
+    bool mic = false;
+    bool camera = false;
+    bool screen = false;
+
+    [[nodiscard]] bool any() const noexcept { return mic || camera || screen; }
+    bool operator==(const Privacy&) const = default;
+  };
+  Privacy m_privacy;
 
   std::optional<IslandConfig> m_islandConfig; // nullopt when the active layout has no island
   noctalia::config::IslandVisibility m_visibility = noctalia::config::IslandVisibility::Always;

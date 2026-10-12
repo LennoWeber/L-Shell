@@ -135,6 +135,11 @@ void Application::initUi() {
   reconcileOutputSurfaces();
 }
 
+void Application::syncIslandPrivacy() {
+  const PrivacyOsd::State& privacy = m_privacyOsd.state();
+  m_island.setPrivacy(privacy.mic, privacy.camera, privacy.screen);
+}
+
 void Application::initUiRenderSurfacesAndSettings() {
 
   m_renderContext.initialize(m_glShared);
@@ -732,14 +737,23 @@ void Application::initPanelManagerAndPanels() {
   m_panelManager.setPanelOpeningCallback([this]() { m_expo.close(); });
   m_panelManager.setPanelOpenedCallback([this]() {
     m_overviewLauncherCapture.sync();
+    m_notificationToast.setNotificationCenterOpen(m_panelManager.isOpenPanel(NotificationCenterPanel::kPanelId));
     if (m_panelManager.isAttachedOpen()) {
       m_bar.revealAutoHideForAttachedPanel(
           m_panelManager.attachedPanelOutput(), m_panelManager.attachedSourceBarName()
       );
     }
   });
+  // Banners may pop up again as soon as Notification Center starts closing.
+  m_panelManager.setPanelClosingCallback([this]() {
+    if (m_panelManager.activePanelId() == NotificationCenterPanel::kPanelId) {
+      m_notificationToast.setNotificationCenterOpen(false);
+    }
+  });
   m_panelManager.setPanelClosedCallback([this]() {
     m_overviewLauncherCapture.sync();
+    // Also runs for persistent panels: only Notification Center itself closing lets banners back.
+    m_notificationToast.setNotificationCenterOpen(m_panelManager.isOpenPanel(NotificationCenterPanel::kPanelId));
     m_bar.rearmTooltipForHoveredWidget();
     m_bar.reevaluateAutoHide();
     // Widgets that stay visible while their panel is open re-evaluate on the next update.
@@ -915,6 +929,7 @@ void Application::initNotificationAndOsd() {
       [this]() {
         if (m_configService.lastChange().shell) {
           m_privacyOsd.onConfigReload(m_configService.config(), m_pipewireService.get());
+          syncIslandPrivacy();
           m_bar.refresh();
         }
       },
@@ -1231,6 +1246,7 @@ void Application::initWidgetControllersAndCallbacks() {
       if (m_pipewireService != nullptr) {
         m_audioOsd.onAudioStateChanged(*m_pipewireService);
         m_privacyOsd.onPrivacyStateChanged(*m_pipewireService);
+        syncIslandPrivacy();
       }
     });
     m_pipewireService->setVolumePreviewCallback([this](bool isInput, std::uint32_t id, float volume, bool muted) {
