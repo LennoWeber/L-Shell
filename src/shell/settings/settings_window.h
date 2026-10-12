@@ -144,6 +144,8 @@ public:
   // Config reloaded: refreshes the open page when the change came from outside the window
   // (the config file, IPC, a keybind, a dotfiles sync), so it never shows stale values.
   void onConfigReloaded();
+  // Keeps the content column centered at its maximum width after a resize.
+  void syncContentPadding();
   void markSettingsWriteSuccess(bool requestRebuild = true);
   void markSettingsWriteError(std::string message);
   void warnOnUnusableCustomSchedule(const std::vector<std::string>& path);

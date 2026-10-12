@@ -799,6 +799,7 @@ void SettingsWindow::prepareFrame(bool needsUpdate, bool needsLayout) {
     const auto w = static_cast<float>(width);
     const auto h = static_cast<float>(height);
     m_sceneRoot->setSize(w, h);
+    syncContentPadding();
     if (m_panelBackground != nullptr) {
       m_panelBackground->setSize(w, h);
     }

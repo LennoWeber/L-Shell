@@ -69,6 +69,13 @@ namespace {
   constexpr float kSidebarPaneMargin = 8.0F;
   constexpr float kSidebarPaneRadius = 18.0F;
   constexpr float kSidebarPaneWidth = 230.0F;
+
+  // Side padding that keeps the content a centered column of at most kContentMaxWidth, like System
+  // Settings' pane.
+  float contentPaddingFor(float sceneWidth, float scale) {
+    const float contentWidth = std::max(0.0F, sceneWidth - (kSidebarPaneWidth + kSidebarPaneMargin * 2.0F) * scale);
+    return std::max(kContentPaddingH * scale, (contentWidth - kContentMaxWidth * scale) * 0.5F);
+  }
   constexpr float kWindowButtonsRowHeight = 44.0F;
   constexpr float kWindowButtonSize = 12.0F;
   constexpr float kWindowButtonGap = 8.0F;
@@ -1602,6 +1609,14 @@ std::unique_ptr<Flex> SettingsWindow::buildStatusRow(float scale) {
   });
 }
 
+void SettingsWindow::syncContentPadding() {
+  // A resize (also the compositor's first one after the window opened) keeps the scene; only the
+  // centered column's side padding follows the new width.
+  if (m_contentScrollView != nullptr && m_sceneRoot != nullptr) {
+    m_contentScrollView->setViewportPaddingH(contentPaddingFor(m_sceneRoot->width(), uiScale()));
+  }
+}
+
 std::unique_ptr<Flex> SettingsWindow::buildBody(
     float scale, const Config& cfg, const std::vector<settings::SettingsSection>& sections,
     const std::vector<std::string>& availableBars
@@ -1635,10 +1650,7 @@ std::unique_ptr<Flex> SettingsWindow::buildBody(
       })
   );
 
-  // Content is a centered column of at most kContentMaxWidth, like System Settings' pane.
-  const float sceneWidth = m_sceneRoot != nullptr ? m_sceneRoot->width() : 0.0F;
-  const float contentWidth = std::max(0.0F, sceneWidth - (kSidebarPaneWidth + kSidebarPaneMargin * 2.0F) * scale);
-  const float paddingH = std::max(kContentPaddingH * scale, (contentWidth - kContentMaxWidth * scale) * 0.5F);
+  const float paddingH = contentPaddingFor(m_sceneRoot != nullptr ? m_sceneRoot->width() : 0.0F, scale);
 
   auto scroll = ui::scrollView({
       .out = &m_contentScrollView,
