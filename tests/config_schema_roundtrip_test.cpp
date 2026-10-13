@@ -351,6 +351,12 @@ location = "https://example.invalid/bad"
         .soundTheme = "freedesktop"
     };
     c.weather = WeatherConfig{false, false, 17, "imperial"};
+    // Design: a non-default id and window look.
+    c.design.id = "meridian";
+    c.design.windows.rounding = 6;
+    c.design.windows.activeBorder = "3ddc97aa";
+    c.design.windows.shadow = false;
+    c.shell.panel.glassOpacity = 0.42F;
     // Island: a non-default value in the table and its activities.
     c.island.enabled = false;
     c.island.material = IslandMaterial::Ink;

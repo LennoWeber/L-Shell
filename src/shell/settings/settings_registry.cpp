@@ -1,6 +1,7 @@
 #include "shell/settings/settings_registry.h"
 
 #include "config/config_types.h"
+#include "config/design_presets.h"
 #include "config/schema/config_schema.h"
 #include "config/schema/ranges.h"
 #include "core/files/directory_scanner.h"
@@ -587,6 +588,20 @@ namespace settings {
         asSegmented(enumSelect(kShellThemeModes, cfg.theme.shellMode)),
         "dark light auto follow shell apps templates colors"
     ));
+    {
+      // The whole-desktop design first: it brings its own palette, typeface and layout.
+      std::vector<SelectOption> designs;
+      for (const auto& preset : noctalia::config::designPresets()) {
+        designs.push_back(SelectOption{.value = std::string(preset.id), .label = std::string(preset.name)});
+      }
+      entries.push_back(makeEntry(
+          SettingsSection::Appearance, "theme", tr("settings.schema.appearance.design.label"),
+          tr("settings.schema.appearance.design.description"), {"design", "id"},
+          SelectSetting{.options = std::move(designs), .selectedValue = cfg.design.id, .preferredWidth = 240.0F},
+          "design system look layout meridian atelier monolith halo strata hearth glacier avionik folio ma tahoe "
+          "eleven windows macos bruecke kontor"
+      ));
+    }
     entries.push_back(makeEntry(
         SettingsSection::Appearance, "theme", tr("settings.schema.appearance.accent.label"),
         tr("settings.schema.appearance.accent.description"), {"theme", "accent"},

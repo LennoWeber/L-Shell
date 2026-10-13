@@ -349,6 +349,9 @@ namespace {
     if (panelId == "notification-center") {
       return "top_center";
     }
+    if (panelId == "design") {
+      return "center";
+    }
     return "auto";
   }
 

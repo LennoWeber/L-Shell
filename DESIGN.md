@@ -139,7 +139,17 @@ wallpaper-tinted colours, floating OSD pop-ups.
 - **Control Center**: Slate wells with hairlines; circular toggles turn amber when on.
 - **OSD / toasts**: raised Slate cards with the hairline; levels use amber, neutral when muted.
 
-## 10. Checklist for new UI
+## 10. Designs
+
+Slate is the default of a family. `src/config/design_presets.cpp` holds 14 more complete designs (Meridian, Atelier,
+Monolith, Halo, Strata, Hearth, Glacier, Avionik, Folio, Ma, Tahoe, Eleven, Brücke, Kontor). A design is a config
+layer under the user's config: bars and widget instances (named after the design), dock, island, panel positions,
+a fixed palette (`theme.builtin`, same name), a bundled typeface, `corner_radius_scale`, material (`transparency_mode`,
+`glass_opacity`, shadows), motion speed, and `[design.windows]` for the compositor. The rules above hold inside
+every design; what changes is the material, the palette, the type and the layout. The design menu (`panel-toggle
+design`, Super+Alt+D) switches them.
+
+## 11. Checklist for new UI
 
 - Uses `shell::material` (or `Style::slateTint` + `material::applyHairline`), never a custom tint or rim.
 - Accent only on a state carrier; large areas stay neutral.

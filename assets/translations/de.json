@@ -720,7 +720,8 @@
       },
       "panel": {
         "builtin": {
-          "notification-center": "Mitteilungszentrale"
+          "notification-center": "Mitteilungszentrale",
+          "design": "Design"
         }
       }
     },
@@ -1742,6 +1743,10 @@
         "accent": {
           "label": "Akzentfarbe",
           "description": "Farbe für Schalter, Auswahl und Fokus. Hintergrundbild übernimmt den Farbton deines Hintergrundbilds; alles andere bleibt neutral."
+        },
+        "design": {
+          "label": "Design",
+          "description": "Der ganze Desktop: Aufbau, Farben, Schrift und Fensterstil. Auch über Super+Alt+D."
         }
       },
       "backdrop": {
@@ -4298,5 +4303,9 @@
     "title": "Mitteilungen",
     "weather": "Wetter",
     "weather-unavailable": "Keine Wetterdaten"
+  },
+  "design": {
+    "title": "Design",
+    "subtitle": "Ein System für den ganzen Desktop. Deine eigenen Einstellungen bleiben."
   }
 }

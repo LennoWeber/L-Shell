@@ -45,6 +45,9 @@ namespace shell::panel_surface {
   [[nodiscard]] inline float backgroundOpacity(const ConfigService* configService) noexcept {
     const auto mode =
         configService != nullptr ? configService->config().shell.panel.transparencyMode : PanelTransparencyMode::Solid;
+    if (mode == PanelTransparencyMode::Glass) {
+      return std::clamp(configService->config().shell.panel.glassOpacity, 0.0F, 1.0F);
+    }
     return detachedPanelBackgroundOpacityForTransparencyMode(mode);
   }
 

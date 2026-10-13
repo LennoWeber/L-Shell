@@ -5,6 +5,7 @@
 #include "config/config_export.h"
 #include "config/config_merge.h"
 #include "config/config_migrations.h"
+#include "config/design_presets.h"
 #include "config/config_validate.h"
 #include "config/schema/config_schema.h"
 #include "config/schema/config_sections.h"
@@ -1536,6 +1537,8 @@ void ConfigService::loadAll() {
   // normalization must see the final effective values to preserve overlay intent.
   deepMerge(merged, effectiveOverrides);
   merged.erase(noctalia::config::kConfigVersionKey);
+  // The active design's layer goes under everything the user set (files and settings alike).
+  noctalia::config::applyDesignLayer(merged, !configFileBarNames.empty());
   noctalia::config::LegacyConfigIssues legacyIssues;
   noctalia::config::normalizeLegacyConfig(merged, legacyIssues);
   for (auto& issue : legacyIssues) {
@@ -1920,5 +1923,26 @@ void ConfigService::registerIpc(IpcService& ipc) {
   ipc.bind(noctalia::cli::msg::configReload, [this](const std::string&) -> std::string {
     forceReload();
     return "ok\n";
+  });
+  ipc.bind(noctalia::cli::msg::designList, [this](const std::string&) -> std::string {
+    std::string out;
+    for (const auto& preset : noctalia::config::designPresets()) {
+      out += std::format("{}{}\t{}\n", preset.id == m_config.design.id ? "* " : "  ", preset.id, preset.name);
+    }
+    return out;
+  });
+  ipc.bind(noctalia::cli::msg::designSet, [this](const std::string& args) -> std::string {
+    const std::string id = StringUtils::trim(args);
+    if (noctalia::config::findDesignPreset(id) == nullptr) {
+      return "error: unknown design (see design-list)\n";
+    }
+    return setDesign(id) ? "ok\n" : "error: could not save the design (see the log)\n";
+  });
+  ipc.bind(noctalia::cli::msg::designNext, [this](const std::string&) -> std::string {
+    const auto presets = noctalia::config::designPresets();
+    const auto it =
+        std::ranges::find(presets, std::string_view(m_config.design.id), &noctalia::config::DesignPreset::id);
+    const auto next = (it == presets.end() || std::next(it) == presets.end()) ? presets.begin() : std::next(it);
+    return setDesign(next->id) ? std::format("{}\n", next->id) : "error: could not save the design\n";
   });
 }

@@ -109,6 +109,8 @@ void RenderContext::initialize(GlSharedContext& shared) {
   // Pango handles font fallback via Fontconfig automatically — no explicit chain.
   // The bundled UI font must be known to Fontconfig before the first layout.
   text::registerFontFile(paths::assetPath("fonts/InterVariable.ttf"));
+  // The typefaces of the built-in systems (config/system_presets.cpp), all under the SIL Open Font License.
+  text::registerFontDirectory(paths::assetPath("fonts/system"));
   m_backend->textureManager().probeExtensions();
   m_textRenderer.initialize(m_backend.get(), &m_backend->textureManager());
   m_glyphRenderer.initialize(

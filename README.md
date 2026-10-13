@@ -53,6 +53,14 @@ pick: the shell is designed as a whole, the way macOS or Windows are.
 - **Instant key bindings.** `l-shell-msg` is an IPC client that links only libc: bound to a key it answers in about
   2 ms, so Spotlight and Control Center appear the moment you press.
 
+## Designs
+
+Besides Slate, L-Shell ships 14 complete designs you can switch between with **Super+Alt+D** (the design menu),
+`l-shell msg design-set <id>` or Settings → Appearance: Meridian, Atelier, Monolith, Halo, Strata, Hearth, Glacier,
+Avionik, Folio, Ma, plus Tahoe (macOS style), Eleven (Windows 11 style), Brücke (both) and Kontor (distraction-free
+work). Each one brings its own bars, dock, palette, typeface, radii, material, motion and Hyprland window look; your
+own config still wins. See [docs/user/design](docs/user/design/index.mdx).
+
 ## Build and run
 
 L-Shell builds like upstream Noctalia (C++23, Meson). Dependencies are listed in [BUILDING.md](BUILDING.md).

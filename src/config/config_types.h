@@ -1065,6 +1065,7 @@ struct ShellConfig {
 
   struct PanelConfig {
     PanelTransparencyMode transparencyMode = PanelTransparencyMode::Glass;
+    float glassOpacity = Style::slateTint; // panel tint in glass mode; designs set their own material
     bool borders = true; // outline on floating panel surfaces
     ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
     float borderWidth = Style::borderWidth;
@@ -1925,6 +1926,34 @@ struct IslandConfig {
   bool operator==(const IslandConfig&) const = default;
 };
 
+// How the compositor draws windows under a design (Hyprland only): rounding, borders, gaps, shadow and the
+// colour behind the wallpaper. Colours are RRGGBBAA hex without '#'.
+struct DesignWindowsConfig {
+  bool apply = true; // false leaves the compositor's own window look alone
+  std::int32_t rounding = 10;
+  std::int32_t borderSize = 1;
+  std::string activeBorder = "ffffff26";
+  std::string inactiveBorder = "ffffff12";
+  std::int32_t gapsIn = 5;
+  std::int32_t gapsOut = 10;
+  bool shadow = true;
+  std::int32_t shadowRange = 22;
+  std::string shadowOffset = "0 6";
+  std::string shadowColor = "00000057";
+  std::string background = "141518ff"; // shown where no wallpaper is drawn
+
+  bool operator==(const DesignWindowsConfig&) const = default;
+};
+
+// [design]: the active L-Shell design (one of the built-in systems, see config/design_presets.h). Its preset sits
+// under the user's config, so everything the user sets still wins; its window look styles the compositor.
+struct DesignConfig {
+  std::string id = "slate";
+  DesignWindowsConfig windows;
+
+  bool operator==(const DesignConfig&) const = default;
+};
+
 struct Config {
   std::vector<BarConfig> bars;
   std::unordered_map<std::string, WidgetConfig> widgets;
@@ -1936,6 +1965,7 @@ struct Config {
   DesktopWidgetsConfig desktopWidgets;
   HotCornersConfig hotCorners;
   IslandConfig island;
+  DesignConfig design;
   StorageConfig storage;
   ShellConfig shell;
   OsdConfig osd;
@@ -1987,6 +2017,7 @@ struct ConfigChangeSet {
   bool plugins = true;
   bool hotCorners = true;
   bool island = true;
+  bool design = true;
   bool storage = true;
   bool accessibility = true;
 
@@ -2018,6 +2049,7 @@ struct ConfigChangeSet {
         || plugins
         || hotCorners
         || island
+        || design
         || storage
         || accessibility;
   }

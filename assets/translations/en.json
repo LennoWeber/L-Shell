@@ -794,7 +794,8 @@
           "test": "Test Panel",
           "tray-drawer": "Tray Drawer",
           "wallpaper": "Wallpaper",
-          "notification-center": "Notification Center"
+          "notification-center": "Notification Center",
+          "design": "Design"
         },
         "title": "Panels"
       },
@@ -1917,6 +1918,10 @@
         "accent": {
           "label": "Accent Color",
           "description": "Color of switches, selections and focus. Wallpaper takes the hue of your wallpaper; everything else stays neutral."
+        },
+        "design": {
+          "label": "Design",
+          "description": "The whole desktop: layout, colours, typeface and window look. Also under Super+Alt+D."
         }
       },
       "backdrop": {
@@ -5178,5 +5183,9 @@
     "title": "Notifications",
     "weather": "Weather",
     "weather-unavailable": "No weather data"
+  },
+  "design": {
+    "title": "Design",
+    "subtitle": "One system for the whole desktop. Your own settings stay."
   }
 }

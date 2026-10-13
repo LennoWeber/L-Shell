@@ -25,6 +25,7 @@ namespace panel_catalog {
     constexpr std::array kBuiltinPanels = {
         BuiltinPanelMeta{"clipboard", "launcher.providers.panel.builtin.clipboard", "clipboard"},
         BuiltinPanelMeta{"control-center", "launcher.providers.panel.builtin.control-center", "adjustments"},
+        BuiltinPanelMeta{"design", "launcher.providers.panel.builtin.design", "palette"},
         BuiltinPanelMeta{"launcher", "launcher.providers.panel.builtin.launcher", "search"},
         BuiltinPanelMeta{
             "notification-center", "launcher.providers.panel.builtin.notification-center", "layout-sidebar-right"

@@ -129,6 +129,8 @@ public:
 
   // Persist a theme-mode override to settings.toml and trigger the reload pipeline.
   void setThemeMode(ThemeMode mode);
+  // Switches the active design ([design].id, a built-in preset) and reloads. False for an unknown id.
+  [[nodiscard]] bool setDesign(std::string_view id);
   // Persist `[theme].source` and the palette field for that source, then reload.
   [[nodiscard]] bool setThemeColorScheme(PaletteSource source, std::string_view value);
   // Persist dock enabled override to settings.toml and trigger the reload pipeline.

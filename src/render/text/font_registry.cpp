@@ -17,6 +17,11 @@ namespace text {
       return s;
     }
 
+    std::unordered_set<std::string>& registeredFontDirectories() {
+      static std::unordered_set<std::string> s;
+      return s;
+    }
+
     std::atomic<std::uint64_t>& generation() {
       static std::atomic<std::uint64_t> g{0};
       return g;
@@ -61,6 +66,20 @@ namespace text {
     FcStrSetDestroy(dirs);
     FcFontSetDestroy(fontSet);
     return result;
+  }
+
+  bool registerFontDirectory(const std::filesystem::path& directory) {
+    const auto pathStr = directory.string();
+    if (registeredFontDirectories().contains(pathStr)) {
+      return true;
+    }
+    if (!FcConfigAppFontAddDir(nullptr, reinterpret_cast<const FcChar8*>(pathStr.c_str()))) {
+      kLog.warn("failed to register font directory: {}", pathStr);
+      return false;
+    }
+    registeredFontDirectories().insert(pathStr);
+    generation().fetch_add(1, std::memory_order_relaxed);
+    return true;
   }
 
   std::uint64_t fontConfigGeneration() { return generation().load(std::memory_order_relaxed); }

@@ -66,6 +66,8 @@
 #include "shell/clipboard/clipboard_panel.h"
 #include "shell/clipboard/clipboard_paste.h"
 #include "shell/control_center/control_center_panel.h"
+#include "shell/design/design_picker_panel.h"
+#include "shell/design/window_look.h"
 #include "shell/greeter/greeter_appearance_sync.h"
 #include "shell/launcher/launcher_panel.h"
 #include "shell/notification_center/notification_center_panel.h"
@@ -777,6 +779,10 @@ void Application::initPanelManagerAndPanels() {
   );
 
 
+  m_panelManager.registerPanel(
+      std::string(DesignPickerPanel::kPanelId), std::make_unique<DesignPickerPanel>(&m_configService)
+  );
+
   if (SetupWizardPanel::isFirstRun(m_configService)) {
     DeferredCall::callLater([]() { PanelManager::instance().togglePanel("setup-wizard"); });
   }
@@ -1251,6 +1257,16 @@ void Application::initWidgetControllersAndCallbacks() {
       .bar = &m_bar,
   });
   m_osdOverlay.setRedirect([this](const OsdContent& content) { return m_island.takeOsdContent(content); });
+  // The design's window look (Hyprland): at startup and whenever the design changes.
+  shell::design::applyWindowLook(m_configService.config().design.windows);
+  m_configService.addReloadCallback(
+      [this]() {
+        if (m_configService.lastChange().design) {
+          shell::design::applyWindowLook(m_configService.config().design.windows);
+        }
+      },
+      "design-window-look"
+  );
   m_configService.addReloadCallback(
       [this]() {
         // The island sits in the top bar: a bar change moves it, and rebuilt bar surfaces would stack above it

@@ -466,6 +466,28 @@ namespace noctalia::config::schema {
     return s;
   }
 
+  const Schema<DesignConfig>& designSchema() {
+    static const Schema<DesignWindowsConfig> windows = {
+        field(&DesignWindowsConfig::apply, "apply"),
+        field(&DesignWindowsConfig::rounding, "rounding", kDesignRoundingRange),
+        field(&DesignWindowsConfig::borderSize, "border_size", kDesignBorderRange),
+        field(&DesignWindowsConfig::activeBorder, "active_border"),
+        field(&DesignWindowsConfig::inactiveBorder, "inactive_border"),
+        field(&DesignWindowsConfig::gapsIn, "gaps_in", kDesignGapsRange),
+        field(&DesignWindowsConfig::gapsOut, "gaps_out", kDesignGapsRange),
+        field(&DesignWindowsConfig::shadow, "shadow"),
+        field(&DesignWindowsConfig::shadowRange, "shadow_range", kDesignShadowRange),
+        field(&DesignWindowsConfig::shadowOffset, "shadow_offset"),
+        field(&DesignWindowsConfig::shadowColor, "shadow_color"),
+        field(&DesignWindowsConfig::background, "background"),
+    };
+    static const Schema<DesignConfig> s = {
+        field(&DesignConfig::id, "id"),
+        subTable(&DesignConfig::windows, "windows", windows),
+    };
+    return s;
+  }
+
   const Schema<IslandConfig>& islandSchema() {
     static const Schema<IslandActivitiesConfig> activities = {
         field(&IslandActivitiesConfig::media, "media"),
@@ -1401,6 +1423,7 @@ namespace noctalia::config::schema {
     const Schema<ShellConfig::PanelConfig>& shellPanelSchema() {
       static const Schema<ShellConfig::PanelConfig> s = {
           enumField(&ShellConfig::PanelConfig::transparencyMode, "transparency_mode", kPanelTransparencyModes),
+          field(&ShellConfig::PanelConfig::glassOpacity, "glass_opacity", kUnitRange),
           field(&ShellConfig::PanelConfig::borders, "borders"),
           colorField(&ShellConfig::PanelConfig::borderColor, "border_color"),
           field(&ShellConfig::PanelConfig::borderWidth, "border_width", kPanelBorderWidthRange),

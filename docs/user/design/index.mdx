@@ -1,0 +1,77 @@
+---
+title: Designs
+description: Switch the whole desktop between L-Shell's built-in designs.
+sidebar:
+  order: 1
+---
+
+L-Shell ships complete designs: each one is a whole desktop — bars and their widgets, dock, island, where panels
+open, palette, typeface, radii, material, motion and how the compositor draws windows. Switching takes one click.
+
+Open the design menu with **Super+Alt+D** (bind `l-shell msg panel-toggle design`), from the launcher ("Design"), or
+pick one in **Settings → Appearance → Design**. The menu stays open, so you can try designs one after another.
+
+| Id | Design | In short |
+|----|--------|----------|
+| `slate` | Slate | The default: menu bar with the island in its middle, dock at the bottom, amber signal accent. |
+| `meridian` | Meridian | One command bar at the bottom: workspaces, apps as text tabs, a search field, status. IBM Plex. |
+| `atelier` | Atelier | Light paper and ink: header strip in serif, a floating shelf of apps on the left. Fraunces, DM Sans. |
+| `monolith` | Monolith | Pure black, no rounding, one rail on the left; panels slide out of it. Space Grotesk, lime. |
+| `halo` | Halo | Floating capsule bar with the island in its middle, a floating dock. Outfit, periwinkle. |
+| `strata` | Strata | The bar shows your windows as tabs; tiled windows with a sky-blue focus frame. Geist. |
+| `hearth` | Hearth | Everything in one floating bar at the bottom; the top of the screen stays free. Plus Jakarta Sans, copper. |
+| `glacier` | Glacier | Light frost, named workspaces, a dock; the control panel opens at the right edge. Hanken Grotesk. |
+| `avionik` | Avionik | An instrument panel: exact readings, seconds, a key-hint strip at the bottom. Barlow, JetBrains Mono. |
+| `folio` | Folio | Workspaces as a strip at the top, a slim status line at the bottom. Sora, rose. |
+| `ma` | Ma | Empty space: the time in Mincho at the top right, the workspace as a red seal bottom left, no wallpaper. |
+| `tahoe` | Tahoe | In the style of macOS Tahoe: glass menu bar, glass Control Center, dock. Inter. |
+| `eleven` | Eleven | In the style of Windows 11: centered taskbar with start and search, two-line clock. Open Sans. |
+| `bruecke` | Brücke | macOS menu bar on top, Windows taskbar at the bottom, glass and soft radii. Manrope. |
+| `kontor` | Kontor | Work without distraction: light grey, text only, no animations, no wallpaper. Atkinson Hyperlegible. |
+
+```toml
+[design]
+id = "meridian"   # one of the ids above
+
+# How the compositor draws windows under the design (Hyprland). Every design sets its own; override here.
+[design.windows]
+apply           = true      # false leaves the compositor's look alone
+rounding        = 6
+border_size     = 1
+active_border   = "3ddc97aa" # RRGGBB or RRGGBBAA
+inactive_border = "2a313cff"
+gaps_in         = 4
+gaps_out        = 8
+shadow          = false
+shadow_range    = 22
+shadow_offset   = "0 6"
+shadow_color    = "00000057"
+background      = "0b0e13ff" # behind the wallpaper (or instead of it)
+```
+
+## How a design applies
+
+A design is a config layer that sits **under** your own config. Anything you set in your config files or in Settings
+still wins, so you can adjust a design without losing it. Two rules keep switching predictable:
+
+- If your config files define their own `[bar.*]` bars, they replace the design's bars.
+- Switching from the menu or `design-set` clears earlier palette, accent, typeface and radius picks from Settings,
+  because the design brings its own.
+
+On Hyprland the window look is applied right away and written to `~/.local/state/l-shell/hyprland-design.lua`. Load
+that file at the end of your `hyprland.lua` so the look survives a Hyprland reload:
+
+```lua
+pcall(dofile, os.getenv("HOME") .. "/.local/state/l-shell/hyprland-design.lua")
+```
+
+All typefaces are bundled (SIL Open Font License) under `assets/fonts/system/`.
+
+## IPC
+
+| Command | Effect |
+|---------|--------|
+| `design-list` | List the designs; `*` marks the active one. |
+| `design-set <id>` | Switch to a design. |
+| `design-next` | Switch to the next design. |
+| `panel-toggle design` | Open or close the design menu. |

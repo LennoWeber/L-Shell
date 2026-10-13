@@ -1,6 +1,8 @@
 #include "config/atomic_file.h"
 #include "config/config_merge.h"
 #include "config/config_service.h"
+
+#include "config/design_presets.h"
 #include "config/config_validate.h"
 #include "config/schema/ranges.h"
 #include "config/widget_config.h"
@@ -395,6 +397,7 @@ namespace {
   bool configEqual(const Config& a, const Config& b) {
     return vectorEqual(a.bars, b.bars, barConfigEqual)
         && a.island == b.island
+        && a.design == b.design
         && widgetMapEqual(a.widgets, b.widgets)
         && desktopWidgetsConfigEqual(a.desktopWidgets, b.desktopWidgets)
         && a.hotCorners == b.hotCorners
@@ -875,6 +878,7 @@ namespace {
 
 ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
   const bool islandChanged = !(prev.island == next.island);
+  const bool designChanged = !(prev.design == next.design);
   return ConfigChangeSet{
       .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual),
       .widgets = !widgetMapEqual(prev.widgets, next.widgets),
@@ -903,6 +907,7 @@ ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
       .plugins = !pluginsConfigEqual(prev.plugins, next.plugins),
       .hotCorners = !(prev.hotCorners == next.hotCorners),
       .island = islandChanged,
+      .design = designChanged,
       .storage = !(prev.storage == next.storage),
       .accessibility = !(prev.accessibility == next.accessibility),
   };
@@ -1064,6 +1069,33 @@ void ConfigService::setThemeMode(ThemeMode mode) {
   // Rebuild Config and fan out reload callbacks so ThemeService transitions.
   loadAll();
   fireReloadCallbacks();
+}
+
+bool ConfigService::setDesign(std::string_view id) {
+  if (m_overridesPath.empty() || noctalia::config::findDesignPreset(id) == nullptr) {
+    return false;
+  }
+  auto* designTbl = ensureTable(m_overridesTable, "design");
+  designTbl->insert_or_assign("id", std::string(id));
+  // A design brings its own palette, typeface and radii; earlier picks of those in Settings would hide them.
+  if (auto* themeTbl = m_overridesTable["theme"].as_table(); themeTbl != nullptr) {
+    themeTbl->erase("source");
+    themeTbl->erase("builtin");
+    themeTbl->erase("accent");
+    themeTbl->erase("mode");
+  }
+  if (auto* shellTbl = m_overridesTable["shell"].as_table(); shellTbl != nullptr) {
+    shellTbl->erase("font_family");
+    shellTbl->erase("corner_radius_scale");
+  }
+  if (!writeOverridesToFile()) {
+    kLog.warn("failed to write {}", m_overridesPath);
+    return false;
+  }
+  m_ownOverridesWritePending = true;
+  loadAll();
+  fireReloadCallbacks();
+  return true;
 }
 
 bool ConfigService::setThemeColorScheme(PaletteSource source, std::string_view valueRaw) {
