@@ -29,6 +29,8 @@ namespace noctalia::config {
     std::optional<HandleConfig> handle;
     // Synthesized bar the handle reveals; empty unless the handle's reveal is "bar".
     std::string handleBarName;
+    // Synthesized bar hovering the island unfolds (flow's home bar, island mode's own bar); empty without one.
+    std::string islandBarName;
 
     bool operator==(const ResolvedLayout&) const = default;
   };
@@ -38,6 +40,7 @@ namespace noctalia::config {
   inline constexpr std::string_view kMinimalBarName = "minimal";
   inline constexpr std::string_view kHandleBarName = "handle";
   inline constexpr std::string_view kFlowBarName = "flow";
+  inline constexpr std::string_view kIslandBarName = "island";
 
   // A bottom dock floating at least this far (logical px) above the edge leaves the handle line room in the gap
   // under it, like the home indicator under the iPad dock; a tighter always-visible dock leaves no room at all.

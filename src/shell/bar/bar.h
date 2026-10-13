@@ -158,8 +158,8 @@ private:
   [[nodiscard]] bool shouldReserveExclusiveZone(const BarInstance& instance) const noexcept;
   [[nodiscard]] bool barContentVisuallyShown(const BarInstance& instance) const noexcept;
   void revealAutoHideBar(BarInstance& instance);
-  // BarConfig::glass: the top sheen always, the lit rim only on floating bars (where every edge shows).
-  static void applyGlassChrome(BarInstance& instance, const Radii& radius);
+  // BarConfig::glass: the Slate hairline around the bar.
+  static void applySlateChrome(BarInstance& instance, const Radii& radius);
   [[nodiscard]] bool isWorkspacePeekActive() const noexcept;
   void applyPendingWorkspaceReveal();
   void reevaluateSmartAutoHide();

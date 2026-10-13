@@ -18,7 +18,7 @@
 #include "render/scene/input_area.h"
 #include "render/scene/input_dispatcher.h"
 #include "render/scene/node.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "shell/surface/shadow.h"
 #include "shell/switcher/window_switcher_apps_style.h"
 #include "shell/switcher/window_switcher_carousel_style.h"
@@ -1685,7 +1685,7 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
 
   // The overview dims the desktop further, like Mission Control.
   constexpr float kOverviewDimOpacity = 0.7F;
-  // Command-Tab leaves the desktop as it is: only the glass panel appears.
+  // Command-Tab leaves the desktop as it is: only the Slate panel appears.
   const float dimOpacity =
       m_overviewMode ? kOverviewDimOpacity : (layout.iconOnly ? 0.0F : Style::windowSwitcherDimOpacity);
   input->addChild(
@@ -1718,10 +1718,8 @@ void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::ui
       })
   );
   if (layout.iconOnly) {
-    // Liquid Glass like the Command-Tab panel: a light tint over the compositor blur, an edge-lit rim.
-    const shell::glass::GlassStyle glass;
-    instance.panelBackground->setFill(colorSpecFromRole(ColorRole::Surface, glass.tintOpacity));
-    shell::glass::applyRim(*instance.panelBackground, glass, isResolvedLightTheme(), scale);
+    instance.panelBackground->setFill(colorSpecFromRole(ColorRole::Surface, shell::material::kTint));
+    shell::material::applyHairline(*instance.panelBackground, isResolvedLightTheme(), scale);
   }
   std::optional<ColorSpec> iconTint;
   if (m_config != nullptr) {

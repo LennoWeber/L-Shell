@@ -15,6 +15,7 @@ class Flex;
 class GridView;
 class InputArea;
 class Label;
+class Node;
 class CountdownRing;
 class Renderer;
 class ConfigService;
@@ -50,6 +51,11 @@ private:
     double totalMs = 0.0;
   };
 
+  // Slate sheet (the default): quiet actions (lock, sleep, log out, custom) as a row of tiles over the power
+  // actions (restart, shut down) as a row of wide buttons, so what ends the session stands apart.
+  static constexpr float kSheetTileWidth = 152.0F;
+  static constexpr float kSheetTileHeight = 84.0F;
+  static constexpr float kSheetPowerHeight = 44.0F;
   static constexpr float kActionButtonMinHeight = 112.0F;
   static constexpr float kButtonMinWidth = 152.0F;
   static constexpr std::size_t kMaxColumns = 5;
@@ -69,19 +75,25 @@ private:
   void layoutCountdownOverlays(Renderer& renderer);
   void restoreEntryBadges();
   void hideCountdownOverlays();
-  void attachCountdownOverlay(Button& button, ActionCountdownOverlay& overlay, float scale);
+  void attachCountdownOverlay(Button& button, ActionCountdownOverlay& overlay, float scale, bool wideButton);
   void syncCountdownOverlayColors(std::size_t index);
   [[nodiscard]] std::vector<SessionPanelActionConfig> effectiveActions() const;
   [[nodiscard]] Button* createActionButton(const SessionPanelActionConfig& cfg, std::size_t index, float scale);
   [[nodiscard]] std::size_t entryCountForLayout() const;
   [[nodiscard]] bool gridEnabled() const;
   [[nodiscard]] bool menuStyle() const;
+  [[nodiscard]] bool sheetStyle() const;
+  // Sheet style: the quiet actions, then the power ones; m_quietCount marks the split.
+  [[nodiscard]] static bool isPowerAction(const SessionPanelActionConfig& action);
+  // Arrow-key target between the sheet's two rows (proportional column), or nullopt to stay.
+  [[nodiscard]] std::optional<std::size_t> sheetVerticalTarget(std::size_t from, bool down) const;
   // Shortcut hint color of a menu row: white on the accent highlight, secondary text otherwise.
   void syncMenuShortcut(std::size_t index);
   [[nodiscard]] std::size_t visibleColumnCount() const;
   [[nodiscard]] std::size_t visibleRowCount() const;
 
-  GridView* m_rootLayout = nullptr;
+  Node* m_rootLayout = nullptr;
+  std::size_t m_quietCount = 0;
   std::vector<SessionPanelActionConfig> m_visibleEntries;
   std::vector<Button*> m_visibleButtons;
   std::vector<ActionCountdownOverlay> m_countdownOverlays;

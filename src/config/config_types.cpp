@@ -103,29 +103,29 @@ bool isValidPluginSourceName(std::string_view name) {
 }
 
 std::vector<SessionPanelActionConfig> defaultSessionPanelActions() {
-  // The Apple menu's order: Sleep, Restart, Shut Down, then Lock Screen and Log Out. Each action keeps the
-  // number key it always had (1 lock … 5 shut down), so muscle memory never powers the machine off by surprise.
+  // Slate order: lock, sleep and log out, then restart and shut down. Each action keeps the number key it always
+  // had (1 lock … 5 shut down), so muscle memory never powers the machine off by surprise.
   return {
-      SessionPanelActionConfig{
-          .action = "lock_and_suspend",
-          .shortcut = KeyChord{.sym = XKB_KEY_3},
-      },
-      SessionPanelActionConfig{
-          .action = "reboot",
-          .shortcut = KeyChord{.sym = XKB_KEY_4},
-      },
-      SessionPanelActionConfig{
-          .action = "shutdown",
-          .variant = SessionActionButtonVariant::Destructive,
-          .shortcut = KeyChord{.sym = XKB_KEY_5},
-      },
       SessionPanelActionConfig{
           .action = "lock",
           .shortcut = KeyChord{.sym = XKB_KEY_1},
       },
       SessionPanelActionConfig{
+          .action = "lock_and_suspend",
+          .shortcut = KeyChord{.sym = XKB_KEY_3},
+      },
+      SessionPanelActionConfig{
           .action = "logout",
           .shortcut = KeyChord{.sym = XKB_KEY_2},
+      },
+      SessionPanelActionConfig{
+          .action = "reboot",
+          .shortcut = KeyChord{.sym = XKB_KEY_4},
+      },
+      // Neutral like the rest: its own row sets it apart, a red fill would be paint, not signal.
+      SessionPanelActionConfig{
+          .action = "shutdown",
+          .shortcut = KeyChord{.sym = XKB_KEY_5},
       },
   };
 }
@@ -199,7 +199,8 @@ float panelCardOpacityForTransparencyMode(PanelTransparencyMode mode, float pane
   case PanelTransparencyMode::Soft:
     return std::clamp(backgroundOpacity + 0.08F, 0.82F, 0.92F);
   case PanelTransparencyMode::Glass:
-    return std::clamp(backgroundOpacity + 0.10F, 0.62F, 0.75F);
+    // Cards inside a Slate panel are wells: a lighter step of the same graphite.
+    return std::clamp(backgroundOpacity * 0.65F, 0.45F, 0.65F);
   }
   return 1.0F;
 }
@@ -211,7 +212,7 @@ float detachedPanelBackgroundOpacityForTransparencyMode(PanelTransparencyMode mo
   case PanelTransparencyMode::Soft:
     return 0.80F;
   case PanelTransparencyMode::Glass:
-    return 0.55F;
+    return Style::slateTint;
   }
   return 1.0F;
 }

@@ -101,7 +101,35 @@ std::vector<SessionPanelActionConfig> SessionPanel::effectiveActions() const {
     }
     out.push_back(row);
   }
+  if (sheetStyle()) {
+    std::ranges::stable_partition(out, [](const auto& action) { return !isPowerAction(action); });
+  }
   return out;
+}
+
+bool SessionPanel::isPowerAction(const SessionPanelActionConfig& action) {
+  return action.action == "reboot" || action.action == "shutdown";
+}
+
+bool SessionPanel::sheetStyle() const { return !menuStyle() && !gridEnabled(); }
+
+std::optional<std::size_t> SessionPanel::sheetVerticalTarget(std::size_t from, bool down) const {
+  const std::size_t quiet = m_quietCount;
+  const std::size_t power = m_visibleEntries.size() - quiet;
+  if (quiet == 0 || power == 0) {
+    return std::nullopt;
+  }
+  const bool inQuiet = from < quiet;
+  if (inQuiet != down) {
+    return std::nullopt; // already on the row the key points to
+  }
+  const std::size_t fromCount = inQuiet ? quiet : power;
+  const std::size_t toCount = inQuiet ? power : quiet;
+  const std::size_t column = inQuiet ? from : from - quiet;
+  // Center of the source cell mapped onto the other row's cells.
+  const float center = (static_cast<float>(column) + 0.5F) / static_cast<float>(fromCount);
+  const auto target = std::min(toCount - 1, static_cast<std::size_t>(center * static_cast<float>(toCount)));
+  return inQuiet ? quiet + target : target;
 }
 
 PanelPlacement SessionPanel::panelPlacement() const noexcept {
@@ -111,6 +139,13 @@ PanelPlacement SessionPanel::panelPlacement() const noexcept {
 float SessionPanel::preferredWidth() const {
   if (menuStyle()) {
     return scaled(kMenuWidth + Style::panelPadding * 2.0F);
+  }
+  if (sheetStyle()) {
+    const auto actions = effectiveActions();
+    const auto quiet =
+        static_cast<float>(std::ranges::count_if(actions, [](const auto& a) { return !isPowerAction(a); }));
+    const float columns = std::max({quiet, static_cast<float>(actions.size()) - quiet, 1.0F});
+    return scaled(kSheetTileWidth * columns + Style::spaceSm * (columns - 1.0F) + Style::panelPadding * 2.0F);
   }
   const std::size_t n = visibleColumnCount();
   const float gap = Style::spaceMd;
@@ -124,6 +159,16 @@ float SessionPanel::preferredHeight() const {
   if (menuStyle()) {
     const auto rows = static_cast<float>(std::max<std::size_t>(1, entryCountForLayout()));
     return std::ceil(scaled(kMenuRowHeight * rows + kMenuRowGap * (rows - 1.0F) + Style::panelPadding * 2.0F));
+  }
+  if (sheetStyle()) {
+    const auto actions = effectiveActions();
+    const bool hasQuiet = std::ranges::any_of(actions, [](const auto& a) { return !isPowerAction(a); });
+    const bool hasPower = std::ranges::any_of(actions, [](const auto& a) { return isPowerAction(a); });
+    const float h = (hasQuiet ? kSheetTileHeight : 0.0F)
+        + (hasPower ? kSheetPowerHeight : 0.0F)
+        + (hasQuiet && hasPower ? Style::spaceSm : 0.0F)
+        + Style::panelPadding * 2.0F;
+    return std::ceil(scaled(h));
   }
   const std::size_t rows = visibleRowCount();
   const float gap = Style::spaceMd;
@@ -171,17 +216,50 @@ std::size_t SessionPanel::visibleRowCount() const {
 void SessionPanel::create() {
   const float scale = contentScale();
   m_visibleEntries = effectiveActions();
+  m_quietCount = static_cast<std::size_t>(
+      std::ranges::count_if(m_visibleEntries, [](const auto& action) { return !isPowerAction(action); })
+  );
   const std::size_t columns = visibleColumnCount();
 
   const bool menu = menuStyle();
-  auto rootLayout = std::make_unique<GridView>();
-  rootLayout->setColumns(columns);
-  rootLayout->setColumnGap(Style::spaceMd * scale);
-  rootLayout->setRowGap((menu ? kMenuRowGap : Style::spaceMd) * scale);
-  rootLayout->setStretchItems(true);
-  rootLayout->setUniformCellSize(true);
-  rootLayout->setMinCellWidth((menu ? kMenuWidth : kButtonMinWidth) * scale);
-  rootLayout->setMinCellHeight((menu ? kMenuRowHeight : kActionButtonMinHeight) * scale);
+  const bool sheet = sheetStyle();
+  const auto makeGrid = [scale](std::size_t gridColumns, float gap, float cellWidth, float cellHeight) {
+    auto grid = std::make_unique<GridView>();
+    grid->setColumns(std::max<std::size_t>(1, gridColumns));
+    grid->setColumnGap(gap * scale);
+    grid->setRowGap(gap * scale);
+    grid->setStretchItems(true);
+    grid->setUniformCellSize(true);
+    grid->setMinCellWidth(cellWidth * scale);
+    grid->setMinCellHeight(cellHeight * scale);
+    return grid;
+  };
+
+  std::unique_ptr<Node> rootLayout;
+  GridView* quietGrid = nullptr;
+  GridView* powerGrid = nullptr;
+  if (sheet) {
+    auto column = ui::column({.align = FlexAlign::Stretch, .gap = Style::spaceSm * scale});
+    if (m_quietCount > 0) {
+      quietGrid = static_cast<GridView*>(
+          column->addChild(makeGrid(m_quietCount, Style::spaceSm, kSheetTileWidth, kSheetTileHeight))
+      );
+    }
+    if (m_visibleEntries.size() > m_quietCount) {
+      powerGrid = static_cast<GridView*>(column->addChild(
+          makeGrid(m_visibleEntries.size() - m_quietCount, Style::spaceSm, kSheetTileWidth, kSheetPowerHeight)
+      ));
+    }
+    rootLayout = std::move(column);
+  } else {
+    auto grid = makeGrid(
+        columns, menu ? kMenuRowGap : Style::spaceMd, menu ? kMenuWidth : kButtonMinWidth,
+        menu ? kMenuRowHeight : kActionButtonMinHeight
+    );
+    grid->setColumnGap(Style::spaceMd * scale);
+    quietGrid = grid.get();
+    rootLayout = std::move(grid);
+  }
   m_rootLayout = rootLayout.get();
 
   m_visibleButtons.clear();
@@ -201,10 +279,11 @@ void SessionPanel::create() {
     }
     if (Button* b = createActionButton(cfg, i, scale); b != nullptr) {
       ActionCountdownOverlay overlay{};
-      attachCountdownOverlay(*b, overlay, scale);
+      attachCountdownOverlay(*b, overlay, scale, sheet && isPowerAction(cfg));
       m_visibleButtons.push_back(b);
       m_countdownOverlays.push_back(overlay);
-      rootLayout->addChild(std::unique_ptr<Button>(b));
+      GridView* target = (sheet && i >= m_quietCount) ? powerGrid : quietGrid;
+      target->addChild(std::unique_ptr<Button>(b));
     }
   }
 
@@ -289,6 +368,38 @@ Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, st
     return row.release();
   }
 
+  if (sheetStyle()) {
+    // Quiet actions: a tile with the glyph over the name. Power actions: a wide button, glyph beside the name.
+    const bool power = isPowerAction(cfg);
+    auto button = ui::button({
+        .text = labelText,
+        .glyph = glyph,
+        .fontSize = Style::fontSizeBody * scale,
+        .glyphSize = (power ? 16.0F : 22.0F) * scale,
+        .contentAlign = ButtonContentAlign::Center,
+        .variant = buttonVariantFor(cfg.variant),
+        .surfaceOpacity = panelCardOpacity(),
+        .badge = badge,
+        .minWidth = kSheetTileWidth * scale,
+        .minHeight = (power ? kSheetPowerHeight : kSheetTileHeight) * scale,
+        .paddingV = Style::spaceSm * scale,
+        .paddingH = Style::spaceMd * scale,
+        .gap = (power ? Style::spaceSm : Style::spaceXs + 2.0F) * scale,
+        .radius = Style::scaledRadiusLg(scale),
+        .flexGrow = 1.0F,
+        .onClick = [this, index]() { armEntry(index); },
+        .configure =
+            [power](Button& control) {
+              control.setDirection(power ? FlexDirection::Horizontal : FlexDirection::Vertical);
+              control.setAlign(FlexAlign::Center);
+              control.setJustify(FlexJustify::Center);
+              control.setFillHeight(true);
+              control.setTabStop(false);
+            },
+    });
+    return button.release();
+  }
+
   auto button = ui::button({
       .text = labelText,
       .glyph = glyph,
@@ -318,9 +429,17 @@ Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, st
   return button.release();
 }
 
-void SessionPanel::attachCountdownOverlay(Button& button, ActionCountdownOverlay& overlay, float scale) {
-  // A menu row shows a small ring where its shortcut sits; a tile a large one in its middle.
-  const float ringSize = (menuStyle() ? kMenuRowHeight - 8.0F : 64.0F) * scale;
+void SessionPanel::attachCountdownOverlay(
+    Button& button, ActionCountdownOverlay& overlay, float scale, bool wideButton
+) {
+  // A menu row shows a small ring where its shortcut sits; a sheet tile a mid-size one, a wide power button one
+  // that fits its height, a large tile a large one in its middle.
+  const bool small = menuStyle() || wideButton;
+  const float ringSize = (menuStyle() ? kMenuRowHeight - 8.0F
+                          : wideButton ? kSheetPowerHeight - 10.0F
+                          : sheetStyle() ? 52.0F
+                                         : 64.0F)
+      * scale;
 
   auto overlayRoot = ui::column({
       .out = &overlay.root,
@@ -341,8 +460,8 @@ void SessionPanel::attachCountdownOverlay(Button& button, ActionCountdownOverlay
 
   auto ring = std::make_unique<CountdownRing>();
   ring->setRingSize(ringSize);
-  ring->setThickness(menuStyle() ? 2.0F * scale : std::max(5.0F, 5.5F * scale));
-  ring->setFontSize((menuStyle() ? Style::fontSizeMini : 22.0F) * scale);
+  ring->setThickness(small ? 2.0F * scale : std::max(4.0F, 4.5F * scale));
+  ring->setFontSize((small ? Style::fontSizeMini : 18.0F) * scale);
   ring->setParticipatesInLayout(false);
   ring->setZIndex(1);
   overlay.ring = ring.get();
@@ -652,6 +771,10 @@ bool SessionPanel::handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, b
     if (!m_selectedIndex.has_value()) {
       return moveSelection(lastIndex);
     }
+    if (sheetStyle()) {
+      const auto target = sheetVerticalTarget(*m_selectedIndex, /*down=*/false);
+      return target.has_value() ? moveSelection(*target) : true;
+    }
     if (*m_selectedIndex >= columns) {
       return moveSelection(*m_selectedIndex - columns);
     }
@@ -662,6 +785,10 @@ bool SessionPanel::handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, b
     const std::size_t columns = visibleColumnCount();
     if (!m_selectedIndex.has_value()) {
       return moveSelection(0);
+    }
+    if (sheetStyle()) {
+      const auto target = sheetVerticalTarget(*m_selectedIndex, /*down=*/true);
+      return target.has_value() ? moveSelection(*target) : true;
     }
     if (*m_selectedIndex + columns <= lastIndex) {
       return moveSelection(*m_selectedIndex + columns);
@@ -741,6 +868,7 @@ void SessionPanel::onClose() {
   m_pendingCountdown.reset();
   m_selectedIndex.reset();
   m_rootLayout = nullptr;
+  m_quietCount = 0;
   m_visibleEntries.clear();
   m_visibleButtons.clear();
   m_countdownOverlays.clear();

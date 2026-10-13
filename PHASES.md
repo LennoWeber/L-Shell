@@ -61,6 +61,9 @@ Classic mode.
 
 ## Design rules (macOS-like)
 
+> Superseded on 2026-10-13 by **Slate**, L-Shell's own design language: see [DESIGN.md](DESIGN.md). The rules
+> below are kept as the history of the layout-mode build.
+
 Apply to everything this feature adds (island, handle, edge drawers, status overlay, mode bar presets):
 
 - **Neutral first, accent rarely.** Surfaces, text, icons and borders use the neutral roles (`surface`,

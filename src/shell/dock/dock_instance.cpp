@@ -9,7 +9,7 @@
 #include "render/scene/node.h"
 #include "shell/dock/dock_geometry.h"
 #include "shell/dock/dock_items.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/workspace_occupancy.h"
@@ -373,10 +373,10 @@ namespace shell::dock {
     const float opacity = cfg.backgroundOpacity;
     instance.panel->setFill(colorSpecFromRole(ColorRole::Surface, opacity));
     instance.panel->setBorder(cfg.border, cfg.borderWidth);
-    // The default outline becomes the Liquid Glass rim, re-lit on every palette change (light/dark).
+    // The default outline becomes the Slate hairline, restyled on every palette change (light/dark).
     static const ColorSpec kDefaultBorder = DockConfig{}.border;
     if (cfg.borderWidth > 0.0F && cfg.border == kDefaultBorder) {
-      shell::glass::applyRim(*instance.panel, {}, isResolvedLightTheme());
+      shell::material::applyHairline(*instance.panel, isResolvedLightTheme());
     }
   }
 

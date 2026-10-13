@@ -1648,6 +1648,7 @@
           "wallpaper": "Wallpaper"
         },
         "accent": {
+          "palette": "Palette",
           "wallpaper": "Wallpaper",
           "blue": "Blue",
           "purple": "Purple",

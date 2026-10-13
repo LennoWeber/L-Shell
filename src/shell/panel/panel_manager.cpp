@@ -19,7 +19,7 @@
 #include "shell/panel/panel.h"
 #include "shell/panel/panel_surface_style.h"
 #include "shell/screen_position.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "ui/builders.h"
@@ -50,6 +50,8 @@ namespace {
   constexpr auto kKeyboardRelaxDelay = std::chrono::milliseconds(100);
   // A screen-edge drawer the pointer never reaches (it brushed the edge and moved on) closes after this.
   constexpr auto kUnvisitedDrawerTimeout = std::chrono::milliseconds(1500);
+  // How long after opening a screen-edge drawer a pointer leave is still part of the drawer settling in.
+  constexpr auto kDrawerSettleTime = std::chrono::milliseconds(350);
 
   // Layer-shell keyboard interactivity for a panel surface: `initial` is applied at
   // map time, `relaxed` (when set) shortly after by m_keyboardRelaxTimer.
@@ -330,12 +332,12 @@ namespace {
     return config != nullptr && config->config().shell.panel.transparencyMode == PanelTransparencyMode::Glass;
   }
 
-  // Liquid Glass chrome for floating panels: a hairline rim instead of the outline border.
-  void applyGlassChrome(Box& background, const ConfigService* config) {
+  // Slate chrome for glass panels: the material's hairline instead of the outline border.
+  void applySlateChrome(Box& background, const ConfigService* config) {
     if (!glassPanels(config) || !config->config().shell.panel.borders) {
       return;
     }
-    shell::glass::applyRim(background, {}, isResolvedLightTheme());
+    shell::material::applyHairline(background, isResolvedLightTheme());
   }
 
   // Floating screen position for a built-in panel (one of kPanelPositions).
@@ -596,6 +598,33 @@ void PanelManager::unregisterPanel(const std::string& id) {
   m_panels.erase(it);
 }
 
+void PanelManager::armUnvisitedDrawerTimer() {
+  m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
+    if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
+      closePanel();
+    }
+  });
+}
+
+void PanelManager::notePointerInPanel(double sx, double sy) {
+  // A screen-edge drawer opens right under the pointer resting on its edge: the surface's shadow bleed, or the
+  // whole surface before its first input region lands, can catch the pointer for a moment. Only the panel body
+  // counts as a visit, so that moment's enter and leave do not close the drawer it just opened.
+  if (m_pointerEnteredSinceOpen) {
+    return;
+  }
+  if (m_bgNode == nullptr) {
+    m_pointerEnteredSinceOpen = true;
+    return;
+  }
+  const auto x = static_cast<float>(sx);
+  const auto y = static_cast<float>(sy);
+  m_pointerEnteredSinceOpen = x >= m_bgNode->x()
+      && y >= m_bgNode->y()
+      && x < m_bgNode->x() + m_bgNode->width()
+      && y < m_bgNode->y() + m_bgNode->height();
+}
+
 bool PanelManager::dismissesOnPointerLeave() const {
   if (!m_pointerEnteredSinceOpen) {
     return false;
@@ -728,13 +757,10 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   m_screenPositionOverride = std::string(request.screenPosition);
   m_dismissOnPointerLeave = request.dismissOnPointerLeave;
   m_pointerEnteredSinceOpen = false;
+  m_drawerOpenedAt = std::chrono::steady_clock::now();
   m_unvisitedDrawerTimer.stop();
   if (m_dismissOnPointerLeave) {
-    m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
-      if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
-        closePanel();
-      }
-    });
+    armUnvisitedDrawerTimer();
   }
   m_activePanel->setContentScale(shell::panel_surface::contentScale(m_config));
   m_pendingOpenContext = std::string(request.context);
@@ -1097,6 +1123,11 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     });
     surface.setPrepareFrameCallback([this](bool needsUpdate, bool needsLayout) {
       prepareFrame(needsUpdate, needsLayout);
+      // A drawer's settle time counts from its latest frame until the pointer visits it: building a panel the
+      // first time can take longer than the settle time itself.
+      if (m_dismissOnPointerLeave && !m_pointerEnteredSinceOpen) {
+        m_drawerOpenedAt = std::chrono::steady_clock::now();
+      }
     });
     surface.setFrameTickCallback([this](float deltaMs) {
       startAttachedOpenAnimation();
@@ -1700,7 +1731,6 @@ void PanelManager::destroyPanel() {
   m_attachedRevealClipNode = nullptr;
   m_attachedRevealContentNode = nullptr;
   m_panelShadowNode = nullptr;
-  m_glassSheenNode = nullptr;
   m_panelContactShadowNode = nullptr;
   m_selectPopup.reset();
   m_sceneRoot.reset();
@@ -1772,11 +1802,7 @@ bool PanelManager::resumeClosingPanel(std::string_view panelId, wl_output* outpu
     activateFocusGrab();
   }
   if (m_dismissOnPointerLeave && !m_pointerEnteredSinceOpen) {
-    m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
-      if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
-        closePanel();
-      }
-    });
+    armUnvisitedDrawerTimer();
   }
 
   if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
@@ -1903,7 +1929,7 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
   case PointerEvent::Type::Enter: {
     if (event.surface == m_wlSurface) {
       m_pointerInside = true;
-      m_pointerEnteredSinceOpen = true;
+      notePointerInPanel(event.sx, event.sy);
       m_inputDispatcher.pointerEnter(static_cast<float>(event.sx), static_cast<float>(event.sy), event.serial);
     }
     break;
@@ -1912,7 +1938,12 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
     if (event.surface == m_wlSurface) {
       m_pointerInside = false;
       m_inputDispatcher.pointerLeave();
-      if (dismissesOnPointerLeave()) {
+      if (m_dismissOnPointerLeave && std::chrono::steady_clock::now() - m_drawerOpenedAt < kDrawerSettleTime) {
+        // The drawer just opened under the pointer resting on its edge: the first configure moves the surface
+        // under the pointer and away again. That is not a visit; the unvisited timer decides instead.
+        m_pointerEnteredSinceOpen = false;
+        armUnvisitedDrawerTimer();
+      } else if (dismissesOnPointerLeave()) {
         closePanel();
       }
     }
@@ -1922,6 +1953,7 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
     if (!m_pointerInside) {
       return false;
     }
+    notePointerInPanel(event.sx, event.sy);
     m_inputDispatcher.pointerMotion(static_cast<float>(event.sx), static_cast<float>(event.sy), 0);
     break;
   }
@@ -2757,7 +2789,7 @@ void PanelManager::onConfigReloaded() {
           shell::panel_surface::borderWidth(m_config)
       );
     }
-    applyGlassChrome(*bg, m_config);
+    applySlateChrome(*bg, m_config);
   }
   if (m_panelShadowNode != nullptr) {
     const auto& shadowConfig = m_config->config().shell.shadow;
@@ -2877,13 +2909,9 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
               shell::panel_surface::borderWidth(m_config)
           );
         }
-        applyGlassChrome(*bg, m_config);
+        applySlateChrome(*bg, m_config);
       }
       m_bgNode = sceneParent->addChild(std::move(bg));
-      if (!m_attachedToBar && glassPanels(m_config)) {
-        auto sheen = ui::box({});
-        m_glassSheenNode = static_cast<Box*>(sceneParent->addChild(std::move(sheen)));
-      }
     }
 
     if (hasDecoration && m_attachedToBar && m_attachedContactShadow) {
@@ -3027,12 +3055,6 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
     if (!m_attachedToBar) {
       static_cast<Box*>(m_bgNode)->setRadius(floatingPanelRadius());
     }
-  }
-  if (m_glassSheenNode != nullptr) {
-    const float radius = floatingPanelRadius();
-    m_glassSheenNode->setStyle(shell::glass::sheenStyle({.radius = Radii{radius, radius, radius, radius}}));
-    m_glassSheenNode->setPosition(bgX, bgY);
-    m_glassSheenNode->setSize(bgW, bgH);
   }
 
   if (m_panelContactShadowNode != nullptr) {

@@ -146,9 +146,9 @@ struct BarConfig {
   bool reserveSpace = true;    // reserve compositor exclusive zone; applies with or without auto_hide
   std::string layer = "top";   // top | overlay; attached panels use the same layer
   std::int32_t thickness = 28; // slim macOS-style menu bar
-  float backgroundOpacity = 0.65F;
+  float backgroundOpacity = Style::slateTint;
   bool compositorBlur = true;
-  // Liquid Glass chrome (top sheen + hairline rim) over the background; set by layout modes, off for [bar.*].
+  // Slate chrome (the material's hairline) over the background; set by layout modes, off for [bar.*].
   bool glass = false;
   // Tahoe's transparent menu bar: a soft gradient from the top edge keeps the items legible on any wallpaper.
   // Set by layout modes with a transparent background, off for [bar.*].
@@ -252,10 +252,10 @@ struct SessionPanelActionConfig {
 
 struct ShellSessionConfig {
   std::vector<SessionPanelActionConfig> actions;
-  // A compact list like the Apple menu (icon, name, shortcut per row) instead of large tiles. Wins over `grid`.
-  bool menu = true;
-  // Lay the session panel actions out over multiple rows of `gridColumns` instead of
-  // fitting them on a single row.
+  // A compact list (icon, name, shortcut per row) instead of the Slate sheet. Wins over `grid`.
+  bool menu = false;
+  // Lay the actions out as a uniform grid of `gridColumns` instead of the Slate sheet (quiet actions as tiles over
+  // the power actions as wide buttons).
   bool grid = false;
   std::int32_t gridColumns = 3;
   bool showShortcuts = true;
@@ -705,19 +705,19 @@ struct DockConfig {
   bool enabled = true;
   DockEdge position = DockEdge::Bottom;
   bool activeMonitorOnly = false;    // render only on preferred active output
-  std::int32_t iconSize = 52;        // icon size in pixels (before ui_scale)
-  std::int32_t mainAxisPadding = 16; // inner padding along the icon row (main axis)
-  std::int32_t crossAxisPadding = 8; // inner padding perpendicular to the icon row
-  std::int32_t itemSpacing = 6;      // gap between items
-  float backgroundOpacity = 0.45F;
-  // Inside outline for the dock background: a Liquid Glass hairline rim by default.
-  ColorSpec border = ColorSpec{.role = std::nullopt, .fixed = rgba(1.0F, 1.0F, 1.0F, 0.16F), .alpha = 1.0F};
+  std::int32_t iconSize = 44;        // icon size in pixels (before ui_scale)
+  std::int32_t mainAxisPadding = 8;  // inner padding along the icon row (main axis)
+  std::int32_t crossAxisPadding = 6; // inner padding perpendicular to the icon row
+  std::int32_t itemSpacing = 4;      // gap between items
+  float backgroundOpacity = Style::slateTint;
+  // Inside outline for the dock background: the Slate hairline by default.
+  ColorSpec border = ColorSpec{.role = std::nullopt, .fixed = rgba(1.0F, 1.0F, 1.0F, 0.09F), .alpha = 1.0F};
   float borderWidth = 1.0F;
-  std::int32_t radius = 24;            // dock background corner radius
-  std::int32_t radiusTopLeft = 24;     // dock background top-left corner radius
-  std::int32_t radiusTopRight = 24;    // dock background top-right corner radius
-  std::int32_t radiusBottomLeft = 24;  // dock background bottom-left corner radius
-  std::int32_t radiusBottomRight = 24; // dock background bottom-right corner radius
+  std::int32_t radius = 16;            // dock background corner radius
+  std::int32_t radiusTopLeft = 16;     // dock background top-left corner radius
+  std::int32_t radiusTopRight = 16;    // dock background top-right corner radius
+  std::int32_t radiusBottomLeft = 16;  // dock background bottom-left corner radius
+  std::int32_t radiusBottomRight = 16; // dock background bottom-right corner radius
   bool concaveEdgeCorners = false;     // carve concave corners on the side that touches the screen edge
   std::int32_t marginEnds = 0;         // inset from each end of the dock along its main axis
   std::int32_t marginEdge = 8;         // distance from the nearest screen edge (floats the dock when > 0)
@@ -731,8 +731,8 @@ struct DockConfig {
   bool reserveSpace = true;         // reserve compositor exclusive zone; applies with or without auto_hide
   float activeScale = 1.0F;         // focused app icon scale
   float inactiveScale = 1.0F;       // non-focused app icon scale
-  bool magnification = true;        // magnify icons near the pointer (macOS-style)
-  float magnificationScale = 1.45F; // max icon scale multiplier at the pointer center
+  bool magnification = true;        // grow icons near the pointer
+  float magnificationScale = 1.18F; // max icon scale multiplier at the pointer center (Slate: a gentle lift)
   float activeOpacity = 1.0F;       // focused app icon opacity
   float inactiveOpacity = 1.0F;     // non-focused app icon opacity
   bool showDots = true;             // show optional running window dots below app icons
@@ -823,7 +823,7 @@ struct OsdConfig {
   std::string orientation = "horizontal";
   std::int32_t hideDelayMs = 1400;
   float scale = 1.0F;
-  float backgroundOpacity = 0.8F;
+  float backgroundOpacity = Style::slateTint;
   bool border = true; // outline around OSD popup cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = Style::borderWidth;
@@ -846,7 +846,7 @@ struct NotificationConfig {
   std::string layer = "top"; // top | overlay
   float scale = 1.0F;
   std::int32_t width = kDefaultWidth;
-  float backgroundOpacity = 0.8F; // toast card background alpha (0.0–1.0)
+  float backgroundOpacity = Style::slateTint; // toast card background alpha (0.0–1.0)
   bool border = true;             // outline around toast cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = Style::borderWidth;
@@ -1226,7 +1226,7 @@ struct ShellConfig {
     bool operator==(const WindowSwitcherConfig&) const = default;
   };
 
-  float cornerRadiusScale = 1.15F;
+  float cornerRadiusScale = 1.0F;
   bool buttonBorders = false;
   bool inputBorders = true;
   bool popupBorders = true;
@@ -1655,9 +1655,11 @@ enum class AccentColor : std::uint8_t {
   Yellow = 6,
   Green = 7,
   Graphite = 8,
+  Palette = 9, // the palette's own accent (Slate's amber for L-Shell)
 };
 
 constexpr EnumOption<AccentColor> kAccentColors[] = {
+    {AccentColor::Palette, "palette", "settings.options.theme.accent.palette"},
     {AccentColor::Wallpaper, "wallpaper", "settings.options.theme.accent.wallpaper"},
     {AccentColor::Blue, "blue", "settings.options.theme.accent.blue"},
     {AccentColor::Purple, "purple", "settings.options.theme.accent.purple"},
@@ -1758,7 +1760,7 @@ struct ThemeConfig {
   std::string wallpaperScheme = "m3-content";
   ThemeMode mode = ThemeMode::Dark;
   ShellThemeMode shellMode = ShellThemeMode::Follow;
-  AccentColor accent = AccentColor::Wallpaper;
+  AccentColor accent = AccentColor::Palette;
   bool pureBlackDark = false;
   TemplatesConfig templates;
 
@@ -1942,7 +1944,7 @@ struct ModeBarConfig {
   float scale = 1.0F;     // content scale for glyphs and text
   float fontScale = 1.0F; // text-only scale on top of `scale`
   ModeBarBackground background = ModeBarBackground::Glass;
-  float backgroundOpacity = 0.55F; // tint opacity for glass and solid backgrounds
+  float backgroundOpacity = Style::slateTint; // tint opacity for glass and solid backgrounds
   bool floating = false;           // detach from the screen edge as a rounded pill
   bool reserveSpace = true;
   bool revealOnHover = true;         // auto-hiding bars: touching the edge reveals the bar
@@ -1979,11 +1981,13 @@ struct IslandActivitiesConfig {
 struct IslandConfig {
   IslandMaterial material = IslandMaterial::Glass;
   std::int32_t height = 32;          // collapsed capsule height
-  std::int32_t collapsedWidth = 150; // collapsed capsule width
+  std::int32_t collapsedWidth = 220; // collapsed capsule width: workspace, date and time, battery
   std::int32_t expandedWidth = 440;  // width while hovered or showing an activity
   std::int32_t expandedHeight = 76;  // height while hovered or showing an activity
   std::int32_t marginTop = 6;        // gap between the screen's top edge and the capsule
   bool reserveSpace = true;          // reserve the collapsed strip so windows start below it
+  // Hovering unfolds the island into its mode's bar (flow: the home bar, island: [layout.island_bar]), so the
+  // whole bar is one gesture away; events still expand the island on their own.
   bool expandOnHover = true;
   std::string clickAction = "panel-toggle control-center"; // widget action grammar
   IslandActivitiesConfig activities;
@@ -2038,15 +2042,14 @@ struct HandleConfig {
   bool operator==(const HandleConfig&) const = default;
 };
 
-// Flow: a menu bar on an empty workspace; with windows open the island takes its strip, the handle appears at
-// the bottom and the side edges open the launcher and Control Center.
+// Flow: the bar on an empty workspace; with windows open it folds into the island in the same strip (hovering
+// the island unfolds it again), the handle appears at the bottom and the side edges open the launcher and
+// Control Center.
 struct FlowConfig {
   // Pinned on an empty workspace only; while windows are open the island owns the top edge, so the bar neither
-  // reveals on hover nor flashes on a workspace switch.
-  // Transparent like the Tahoe menu bar: it only ever sits on the wallpaper (a scrim keeps it legible).
+  // reveals on edge hover nor flashes on a workspace switch. Slate, because the island unfolds it over windows.
   ModeBarConfig bar{
       .thickness = 28,
-      .background = ModeBarBackground::Transparent,
       .reserveSpace = false, // only on screen when there are no windows to push aside
       .revealOnHover = false,
       .showOnWorkspaceSwitch = false,
@@ -2081,15 +2084,23 @@ struct LayoutConfig {
       .centerWidgets = {"clock"},
       .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"},
   };
-  // Always shown over its own reserved strip, never over windows: transparent like the Tahoe menu bar.
+  // Always shown over its own reserved strip, never over windows.
   ModeBarConfig minimalBar{
       .thickness = 24,
       .scale = 0.85F,
-      .background = ModeBarBackground::Transparent,
       .startWidgets = {"logo", "app_name"},
       .endWidgets = {"tray", "network", "battery", "launcher", "control-center", "clock"},
   };
   IslandConfig island;
+  // Island mode's bar: hidden until hovering the island unfolds it over the island's strip.
+  ModeBarConfig islandBar{
+      .thickness = 28,
+      .reserveSpace = false,
+      .revealOnHover = false,
+      .showOnWorkspaceSwitch = false,
+      .startWidgets = {"logo", "workspaces", "app_name"},
+      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
+  };
   EdgesConfig edges;
   HandleConfig handle;
   FlowConfig flow;

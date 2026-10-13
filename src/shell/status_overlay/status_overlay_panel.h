@@ -2,7 +2,7 @@
 
 #include "core/timer_manager.h"
 #include "shell/panel/panel.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "ui/signal.h"
 
 #include <cstdint>
@@ -35,7 +35,7 @@ struct StatusOverlayServices {
 };
 
 // Full-screen glanceable status, Tahoe widget style: a large clock over the dimmed, blurred desktop and a grid of
-// glass tiles (battery, network, Bluetooth, volume, brightness, now playing). Opened by the bottom handle, a
+// Slate tiles (battery, network, Bluetooth, volume, brightness, now playing). Opened by the bottom handle, a
 // screen edge or `panel-toggle status-overlay`.
 class StatusOverlayPanel : public Panel {
 public:
@@ -64,7 +64,7 @@ private:
 
   struct Tile {
     TileKind kind = TileKind::Battery;
-    shell::glass::GlassNodes glass;
+    shell::material::Nodes material;
     Node* root = nullptr;
     Glyph* glyph = nullptr;
     Label* title = nullptr;
@@ -83,7 +83,7 @@ private:
   [[nodiscard]] bool refreshTile(Tile& tile);
   [[nodiscard]] bool refreshClock();
   [[nodiscard]] bool refreshAll();
-  // Scrim fill and tile glass for the current card opacity and light/dark theme.
+  // Scrim fill and tile material for the current card opacity and light/dark theme.
   void applyChrome();
 
   StatusOverlayServices m_services;
@@ -96,5 +96,5 @@ private:
   // Ticks the clock and polls the services while open: service callbacks only refresh the panels they know about.
   Timer m_refreshTimer;
   Signal<>::ScopedConnection m_paletteConn;
-  bool m_glassLightTheme = false;
+  bool m_lightTheme = false;
 };

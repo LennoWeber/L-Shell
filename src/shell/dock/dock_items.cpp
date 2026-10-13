@@ -39,7 +39,11 @@ namespace {
   constexpr float kBadgeCornerInsetY = 0.45F;
   constexpr float kDotSizeRatio = 0.09F;
   constexpr float kDotMinSize = 4.0F;
-  constexpr float kDotGap = 3.0F;
+  // Slate signal line under running apps (DESIGN.md): thickness and length as a share of the icon size.
+  constexpr float kSignalThickness = 3.0F;
+  constexpr float kSignalMinLength = 5.0F;
+  constexpr float kSignalRunningRatio = 0.12F;
+  constexpr float kSignalActiveRatio = 0.34F;
   constexpr float kCellPad = 6.0F;
   constexpr float kLauncherGlyphSizeRatio = 0.8F;
   constexpr float kHoverZoomLerp = 0.28F;
@@ -850,32 +854,34 @@ namespace shell::dock {
       const std::size_t count = model.instanceCount;
 
       if (cfg.showDots) {
-        const std::size_t dotCount = std::min<std::size_t>(count, 3);
+        // Slate signal line: a short neutral line under a running app, a longer accent line under the focused one.
+        // The window count is the badge's job (show_instance_count), so one line per app is enough.
         const auto iSize = static_cast<float>(cfg.iconSize);
         const float cellMain = iSize + 2.0F * kCellPad;
-        const float dot = std::max(kDotMinSize, std::round(iSize * kDotSizeRatio));
-        const float groupLength =
-            dotCount == 0 ? dot : dot * static_cast<float>(dotCount) + kDotGap * static_cast<float>(dotCount - 1);
-        const float groupStart = std::round((cellMain - groupLength) * 0.5F);
-        const bool verticalDots = shell::dock::isVerticalEdge(edge);
+        const float length =
+            std::round(std::max(kSignalMinLength, iSize * (model.active ? kSignalActiveRatio : kSignalRunningRatio)));
+        const bool vertical = shell::dock::isVerticalEdge(edge);
+        const float start = std::round((cellMain - length) * 0.5F);
+        const float edgeOffset = std::round(cellMain - kSignalThickness - 1.0F);
 
-        for (std::size_t dotIndex = 0; dotIndex < item.dotIndicators.size(); ++dotIndex) {
-          if (item.dotIndicators[dotIndex] == nullptr) {
+        for (std::size_t index = 0; index < item.dotIndicators.size(); ++index) {
+          Box* line = item.dotIndicators[index];
+          if (line == nullptr) {
             continue;
           }
-          Box* dotNode = item.dotIndicators[dotIndex];
-          const bool visible = dotIndex < dotCount;
-          dotNode->setVisible(visible);
-          dotNode->setFill(colorSpecFromRole(model.active ? ColorRole::Primary : ColorRole::Secondary));
-          if (visible) {
-            const float main = groupStart + static_cast<float>(dotIndex) * (dot + kDotGap);
-            if (verticalDots) {
-              const float x = edge == DockEdge::Left ? 1.0F : std::round(cellMain - dot - 1.0F);
-              dotNode->setPosition(x, main);
-            } else {
-              const float y = edge == DockEdge::Bottom ? std::round(cellMain - dot - 1.0F) : 1.0F;
-              dotNode->setPosition(main, y);
-            }
+          const bool visible = index == 0 && count > 0;
+          line->setVisible(visible);
+          if (!visible) {
+            continue;
+          }
+          line->setFill(colorSpecFromRole(model.active ? ColorRole::Primary : ColorRole::OnSurfaceVariant));
+          line->setRadius(kSignalThickness * 0.5F);
+          if (vertical) {
+            line->setSize(kSignalThickness, length);
+            line->setPosition(edge == DockEdge::Left ? 1.0F : edgeOffset, start);
+          } else {
+            line->setSize(length, kSignalThickness);
+            line->setPosition(start, edge == DockEdge::Bottom ? edgeOffset : 1.0F);
           }
         }
       }

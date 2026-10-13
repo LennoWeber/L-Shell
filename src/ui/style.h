@@ -13,18 +13,22 @@ namespace Style {
   // Exits are shorter than entrances and accelerate away (use with Easing::EaseInCubic).
   inline constexpr int animExit = 150;
 
-  // Springs (see Spring in animation.h). Snappy for moves, smooth (no bounce) for exits and
-  // resizes, island for the Dynamic Island morph.
-  inline constexpr Spring springSnappy{.durationMs = 300.0F, .bounce = 0.15F};
-  inline constexpr Spring springSmooth{.durationMs = 300.0F, .bounce = 0.0F};
-  inline constexpr Spring springIsland{.durationMs = 400.0F, .bounce = 0.25F};
+  // Springs (see Spring in animation.h). Slate motion is quick and settles without a wobble: snappy for moves,
+  // smooth for exits and resizes, island for the island's unfold.
+  inline constexpr Spring springSnappy{.durationMs = 260.0F, .bounce = 0.05F};
+  inline constexpr Spring springSmooth{.durationMs = 260.0F, .bounce = 0.0F};
+  inline constexpr Spring springIsland{.durationMs = 340.0F, .bounce = 0.08F};
 
-  // macOS Tahoe radii (before [shell].corner_radius_scale): small controls, controls and rows, cards and menus,
-  // popovers and panels.
+  // Slate radii (before [shell].corner_radius_scale), concentric: an inner radius is the outer one minus the
+  // padding between them. Chips and small controls, controls and rows, cards and tiles, surfaces.
   inline constexpr float radiusSm = 5.0F;
   inline constexpr float radiusMd = 8.0F;
   inline constexpr float radiusLg = 12.0F;
   inline constexpr float radiusXl = 16.0F;
+
+  // Slate (DESIGN.md): fill opacity of the one shell material over the compositor blur. Every surface default
+  // (bar, island, dock, panels, OSD, toasts) uses it, so they read as one material.
+  inline constexpr float slateTint = 0.84F;
 
   inline constexpr float borderWidth = 1.0F;
   inline constexpr float emphasizedBorderWidth = 3.0F;

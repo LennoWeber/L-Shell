@@ -630,6 +630,7 @@ namespace settings {
       appendModeBarEntries(entries, {"layout", "smart_bar"}, layout.smartBar, modeIs(LayoutMode::SmartBar));
       appendModeBarEntries(entries, {"layout", "minimal_bar"}, layout.minimalBar, modeIs(LayoutMode::MinimalBar));
       appendIslandEntries(entries, {"layout", "island"}, layout.island, modeIs(LayoutMode::Island));
+      appendModeBarEntries(entries, {"layout", "island_bar"}, layout.islandBar, modeIs(LayoutMode::Island));
       appendEdgesEntries(entries, {"layout", "edges"}, layout.edges, modeIs(LayoutMode::Edges));
       appendHandleEntries(entries, {"layout", "handle"}, layout.handle, modeIs(LayoutMode::Handle));
       appendModeBarEntries(entries, {"layout", "flow", "bar"}, layout.flow.bar, modeIs(LayoutMode::Flow));

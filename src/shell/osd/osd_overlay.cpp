@@ -13,7 +13,7 @@
 #include "render/render_context.h"
 #include "render/scene/node.h"
 #include "shell/surface/edge_inset.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "ui/builders.h"
 #include "ui/palette.h"
 #include "ui/style.h"
@@ -761,12 +761,11 @@ void OsdOverlay::updateInstanceContent(Instance& inst) {
   const float ch = cardHeight(s, m_lastOrientation, m_lastShowProgress);
   inst.background->setFill(colorSpecFromRole(ColorRole::Surface, osdBackgroundOpacity(m_config)));
   inst.background->setBorder(osdBorderColor(m_config), osdBorderWidth(m_config, s));
-  // The default outline becomes the Liquid Glass rim (edge light on dark, hairline on light); a custom border
-  // color stays as configured.
+  // The default outline becomes the Slate hairline; a custom border color stays as configured.
   const bool defaultBorder =
       m_config == nullptr || m_config->config().osd.borderColor == colorSpecFromRole(ColorRole::Outline);
   if (defaultBorder && osdBorderWidth(m_config, s) > 0.0F) {
-    shell::glass::applyRim(*inst.background, {}, isResolvedLightTheme(), s);
+    shell::material::applyHairline(*inst.background, isResolvedLightTheme(), s);
   }
 
   // Like the Tahoe HUD: a neutral icon and level, not the accent; red past the limit, dimmed when muted/off.

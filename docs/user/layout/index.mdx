@@ -39,15 +39,19 @@ end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "cont
 [layout.island]               # also [layout.flow.island]
 material         = "glass"   # glass | black
 height           = 32        # collapsed capsule
-collapsed_width  = 150
+collapsed_width  = 220       # workspace number, date and time, battery
 expanded_width   = 440
 expanded_height  = 76
 margin_top       = 6
 reserve_space    = true
-expand_on_hover  = true
+expand_on_hover  = true      # hovering unfolds the mode's bar (flow: [layout.flow.bar], island: [layout.island_bar])
 click_action     = "panel-toggle control-center"
 activity_ms      = 3000
 suppress_osd     = true      # the island replaces the OSD for what it shows
+
+[layout.island_bar]           # island mode only: the bar hovering the island unfolds (same keys as the bars above)
+start = ["logo", "workspaces", "app_name"]
+end   = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"]
 
 [layout.island.activities]
 media        = true
@@ -107,5 +111,6 @@ same `[shell.privacy]` filters as the privacy OSD, so apps you filter out there 
 
 ## Blur
 
-The island is drawn as Liquid Glass and needs compositor blur behind it. Add `island` to your blur rule (see
+The island is drawn in Slate, L-Shell's one material (see `DESIGN.md`), and needs compositor blur behind it. Add
+`island` to your blur rule (see
 [Hyprland](/user/compositor-settings/hyprland/)); the home line and the edge strips need none.

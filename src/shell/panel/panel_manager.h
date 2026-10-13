@@ -9,6 +9,7 @@
 #include "ui/dialogs/layer_popup_host.h"
 #include "wayland/hyprland/popup_grab_host.h"
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -192,6 +193,9 @@ private:
   // The open panel's floating position: a screen-edge override, a plugin panel's own, or the configured one.
   [[nodiscard]] std::string effectivePanelPosition() const;
   // Screen-edge drawers close when the pointer leaves them, unless a popup or a focused text field holds them.
+  // Marks the drawer visited once the pointer is over the panel body (not its shadow bleed).
+  void notePointerInPanel(double sx, double sy);
+  void armUnvisitedDrawerTimer();
   [[nodiscard]] bool dismissesOnPointerLeave() const;
   // The leave-dismiss conditions apart from "the pointer was inside": no popup in use, no focused text field.
   [[nodiscard]] bool leaveMayDismiss() const;
@@ -265,7 +269,6 @@ private:
   Node* m_attachedRevealClipNode = nullptr;
   Node* m_attachedRevealContentNode = nullptr;
   Box* m_panelShadowNode = nullptr;
-  Box* m_glassSheenNode = nullptr; // Liquid Glass sheen over floating glass panels
   Box* m_panelContactShadowNode = nullptr;
   InputDispatcher m_inputDispatcher;
 
@@ -304,6 +307,7 @@ private:
   bool m_dismissOnPointerLeave = false;
   bool m_pointerEnteredSinceOpen = false;
   Timer m_unvisitedDrawerTimer; // closes a leave-dismiss drawer the pointer never entered
+  std::chrono::steady_clock::time_point m_drawerOpenedAt; // when the current drawer opened (settle grace)
   // PanelOpenRequest::screenPosition of the open panel (screen-edge drawers); empty when it uses its own.
   std::string m_screenPositionOverride;
   bool m_inTransition = false;

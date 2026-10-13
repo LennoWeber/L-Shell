@@ -729,7 +729,7 @@ _noctalia_sources = files(
   'src/shell/notification_center/notification_center_panel.cpp',
   'src/shell/status_overlay/status_overlay_panel.cpp',
   'src/shell/workspace_occupancy.cpp',
-  'src/shell/surface/glass.cpp',
+  'src/shell/surface/material.cpp',
   'src/shell/surface/shadow.cpp',
   'src/system/telemetry_service.cpp',
   'src/shell/settings/bar_widget_editor.cpp',

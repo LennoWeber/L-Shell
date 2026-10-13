@@ -19,7 +19,7 @@
 #include "scripting/plugin_id.h"
 #include "shell/control_center/shortcut_registry.h"
 #include "shell/panel/panel_manager.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "system/brightness_service.h"
 #include "system/gamma_service.h"
 #include "ui/builders.h"
@@ -89,18 +89,14 @@ namespace {
     return kShortcutCircleSize + (labels ? Style::spaceXs + kShortcutLabelHeight : 0.0F);
   }
 
-  // Neutral glass tint for a module tile: a light veil over a dark panel, a near-white pane on a light
-  // one. Soft and glass panels lower the card opacity, which thins the tint so the blur shows through.
+  // Slate well for a module tile: a light step over a dark panel, a near-white pane on a light
+  // one. Soft and glass panels lower the card opacity, which thins the well so the blur shows through.
   ColorSpec tileFill(float cardOpacity, bool light) {
     const float strength = 0.5F + 0.5F * std::clamp(cardOpacity, 0.0F, 1.0F);
     if (light) {
       return fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 0.72F * strength));
     }
     return colorSpecFromRole(ColorRole::OnSurface, 0.10F * strength);
-  }
-
-  shell::glass::GlassStyle tileGlass(float radius) {
-    return shell::glass::GlassStyle{.radius = Radii{radius}, .rimOpacity = 0.14F, .rimLight = 0.6F};
   }
 
   // Round toggle colors: the accent only marks the on state; off is a neutral grey disc.
@@ -797,10 +793,9 @@ void HomeTab::addRowOverlay(ToggleRow& row, std::function<void()> onActivate) {
 
 void HomeTab::applyTileChrome() {
   const float scale = contentScale();
-  const float radius = Style::scaledRadiusXl(scale);
+  const float radius = Style::scaledRadiusLg(scale);
   const bool light = isResolvedLightTheme();
   const ColorSpec fill = tileFill(panelCardOpacity(), light);
-  const shell::glass::GlassStyle glass = tileGlass(radius);
   for (Tile& entry : m_tiles) {
     if (entry.surface == nullptr) {
       continue;
@@ -811,7 +806,7 @@ void HomeTab::applyTileChrome() {
       entry.surface->setBorder(focusRingColorSpec(), Style::focusRingWidth);
       entry.surface->setRimLight(0.0F);
     } else {
-      shell::glass::applyRim(*entry.surface, glass, light, scale);
+      shell::material::applyHairline(*entry.surface, light, scale);
     }
   }
 }

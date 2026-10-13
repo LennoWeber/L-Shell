@@ -13,7 +13,7 @@ mode              = "dark"        # dark | light | auto
 shell_mode        = "follow"      # follow | dark | light | auto
 source            = "builtin"     # builtin | wallpaper | community | custom
 builtin           = "L-Shell"     # bundled palette name
-accent            = "wallpaper"   # wallpaper | blue | purple | pink | red | orange | yellow | green | graphite
+accent            = "palette"     # palette | wallpaper | blue | purple | pink | red | orange | yellow | green | graphite
 community_palette = "Oxocarbon"   # community palette name when source = "community"
 custom_palette    = "MyPalette"   # file name (without .json) when source = "custom"
 wallpaper_scheme  = "m3-content"  # generator used when source = "wallpaper"
@@ -55,18 +55,19 @@ change repaints Noctalia without rewriting a single template.
 
 ## `accent`
 
-The macOS accent color: the color of switches that are on, selected items, sliders' focus and the focus ring. It
+The accent color: the color of switches that are on, selected items, sliders' focus and the focus ring. It
 recolors only the accent families (`primary`, `secondary` and what derives from them, such as the surface tint and the
 terminal selection), so the palette's neutrals and status colors stay as they are, in the shell and in every
 [template](/noctalia/theming/templates/).
 
 | Value | Description |
 |-------|-------------|
-| `wallpaper` | The hue of the current wallpaper, lifted to the saturation of the system accents (default). A near-grey wallpaper gives graphite. With `source = "wallpaper"` the palette already comes from the wallpaper and the accent is left alone. |
-| `blue`, `purple`, `pink`, `red`, `orange`, `yellow`, `green`, `graphite` | macOS's accent colors, in their light and dark variants. |
+| `palette` | The palette's own accent (default). With the `L-Shell` palette this is Slate's amber signal color. |
+| `wallpaper` | The hue of the current wallpaper, lifted to the saturation of the other accents. A near-grey wallpaper gives graphite. With `source = "wallpaper"` the palette already comes from the wallpaper and the accent is left alone. |
+| `blue`, `purple`, `pink`, `red`, `orange`, `yellow`, `green`, `graphite` | Fixed accent colors, in their light and dark variants. |
 
-With the default `L-Shell` palette this is the macOS look: neutral greys everywhere, color only where something is
-on or selected.
+With the default `L-Shell` palette this is Slate, L-Shell's design language (see `DESIGN.md`): graphite neutrals
+everywhere, amber only where something is on, active or selected.
 
 ## `pure_black_dark`
 

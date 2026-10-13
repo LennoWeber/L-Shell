@@ -557,6 +557,7 @@ namespace noctalia::config::schema {
         subTable(&LayoutConfig::smartBar, "smart_bar", modeBarSchema()),
         subTable(&LayoutConfig::minimalBar, "minimal_bar", modeBarSchema()),
         subTable(&LayoutConfig::island, "island", islandSchema()),
+        subTable(&LayoutConfig::islandBar, "island_bar", modeBarSchema()),
         subTable(&LayoutConfig::edges, "edges", edgesSchema()),
         subTable(&LayoutConfig::handle, "handle", handleSchema()),
         subTable(&LayoutConfig::flow, "flow", flowSchema()),

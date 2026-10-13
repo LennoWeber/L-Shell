@@ -555,14 +555,14 @@ shutdown = "sudo -n poweroff"
 
 When an override is set, Noctalia runs that command for the built-in suspend/reboot/shutdown actions (session panel, launcher, IPC, and idle). Per-row `command` still overrides a single menu button when you need one-off behavior (including logout via `noctalia msg session logout`).
 
-Configure under **`[shell.session]`** in TOML, or use **Settings → Power → Session panel**: entries, reorder, and **Show** are listed inline; use the **settings** (cog) control on a row for behavior, label, command, icon, shortcut, countdown, and style. **Add action** appends a custom-command entry by default. The default five actions are assigned keyboard shortcuts **1**–**5** (Lock Screen 1, Log Out 2, Sleep 3, Restart 4, Shut Down 5 — the same keys as before the menu order changed); pressing the key while the panel is open triggers the action (or starts its countdown when configured). **Menu Style** (on by default) shows the actions as a compact list like the Apple menu: Sleep, Restart, Shut Down, Lock Screen and Log Out, each with its icon and shortcut, the highlighted row in the accent color. With Menu Style off, **Grid Layout** and its **Columns** stepper control how the buttons are arranged; with grid off, the panel fits the actions on one row (wrapping to a second row past five). Arrow keys follow the resulting rows and columns.
+Configure under **`[shell.session]`** in TOML, or use **Settings → Power → Session panel**: entries, reorder, and **Show** are listed inline; use the **settings** (cog) control on a row for behavior, label, command, icon, shortcut, countdown, and style. **Add action** appends a custom-command entry by default. The default five actions are assigned keyboard shortcuts **1**–**5** (Lock Screen 1, Log Out 2, Sleep 3, Restart 4, Shut Down 5 — the same keys as before the menu order changed); pressing the key while the panel is open triggers the action (or starts its countdown when configured). By default the panel is the **Slate sheet**: the quiet actions (Lock Screen, Sleep, Log Out and custom commands) as a row of tiles over the power actions (Restart, Shut Down) as a row of wide buttons, so what ends the session stands apart. **Menu Style** shows the actions as a compact list instead (icon, name and shortcut per row). **Grid Layout** and its **Columns** stepper lay them out as a uniform grid. Arrow keys follow the resulting rows and columns.
 
 Panel-level settings under `[shell.session]`:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `menu` | bool | `true` | L-Shell's default: a compact list like the Apple menu on macOS (icon, name and shortcut per row, the selection in the accent color). `false` brings back the large buttons, laid out by `grid`; `grid = true` also keeps the buttons. |
-| `grid` | bool | `false` | When `true` (and `menu` is `false`), lays the session actions out over multiple rows of `grid_columns` instead of fitting them on a single row. |
+| `menu` | bool | `false` | A compact list (icon, name and shortcut per row, the selection in the accent color) instead of the Slate sheet. Wins over `grid`. |
+| `grid` | bool | `false` | When `true` (and `menu` is `false`), lays the session actions out as a uniform grid of `grid_columns` instead of the Slate sheet. |
 | `grid_columns` | number | `3` | Actions per row when `grid` is `true` (1-5). Ignored when `grid` is `false`. |
 | `show_shortcuts` | bool | `true` | When `true`, shows the keyboard shortcut for each session action at the top right corner. |
 
@@ -583,7 +583,7 @@ Omitting `[[shell.session.actions]]` entirely keeps the default five actions. To
 
 ```toml
 [shell.session]
-menu = true
+menu = false
 grid = false
 grid_columns = 3
 actions = []

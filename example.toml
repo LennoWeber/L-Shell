@@ -9,7 +9,7 @@ ui_scale              = 1.0
 high_contrast         = false
 
 [shell]
-corner_radius_scale   = 1.15         # 0 = square, 1.15 = default, 2 = extra rounded
+corner_radius_scale   = 1.0          # 0 = square, 1 = default (Slate), 2 = extra rounded
 font_family           = "Inter Variable" # bundled with L-Shell
 time_format           = "{:%H:%M}"  # default shell UI time format
 date_format           = "%A, %x"    # default shell UI date format
@@ -157,8 +157,8 @@ builtin = "L-Shell"                 # Ayu | Catppuccin | Dracula | Eldritch | Gr
 # wallpaper_scheme  = "m3-content"  # m3-tonal-spot | m3-content | m3-fruit-salad |
                                     # m3-rainbow | m3-monochrome | vibrant | faithful |
                                     # dysfunctional | muted
-accent = "wallpaper"                # wallpaper | blue | purple | pink | red | orange | yellow |
-                                    # green | graphite (macOS accent; neutrals stay neutral)
+accent = "palette"                  # palette | wallpaper | blue | purple | pink | red | orange |
+                                    # yellow | green | graphite (neutrals stay neutral)
 pure_black_dark = false             # anchor dark surfaces to true black (OLED); applies to
                                     # every palette source, not just wallpaper-generated ones
 
@@ -394,7 +394,7 @@ background      = "transparent"     # like the Tahoe menu bar; a soft scrim keep
 [layout.flow.island]
 material        = "glass"           # glass | black
 reserve_space   = true              # windows start below the island, like below the menu bar
-expand_on_hover = true
+expand_on_hover = true              # hovering unfolds the home bar over the island's strip
 suppress_osd    = true              # volume, brightness, … show in the island instead of the OSD
 
 [layout.flow.edges]
@@ -459,18 +459,18 @@ end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "cont
 [dock]
 enabled             = true
 position            = "bottom"      # top | bottom | left | right
-icon_size           = 52
-main_axis_padding   = 16
-cross_axis_padding  = 8
-item_spacing        = 6
-background_opacity  = 0.45
-border              = "#ffffff29"   # Liquid Glass hairline rim
+icon_size           = 44
+main_axis_padding   = 8
+cross_axis_padding  = 6
+item_spacing        = 4
+background_opacity  = 0.84          # Slate tint
+border              = "#ffffff17"   # Slate hairline
 border_width        = 1.0
-radius              = 24
-radius_top_left     = 24
-radius_top_right    = 24
-radius_bottom_left  = 24
-radius_bottom_right = 24
+radius              = 16
+radius_top_left     = 16
+radius_top_right    = 16
+radius_bottom_left  = 16
+radius_bottom_right = 16
 concave_edge_corners = false
 margin_ends         = 0
 margin_edge         = 8
@@ -483,10 +483,10 @@ layer               = "top"         # top | overlay
 active_scale        = 1.0
 inactive_scale      = 1.0
 magnification       = true
-magnification_scale = 1.45
+magnification_scale = 1.18          # a gentle lift
 active_opacity      = 1.0
 inactive_opacity    = 1.0
-show_dots           = true
+show_dots           = true          # Slate signal line under running apps (amber for the focused one)
 show_instance_count = false
 launcher_position   = "start"       # none | start | end
 launcher_icon       = "grid-dots"  # Tabler glyph name

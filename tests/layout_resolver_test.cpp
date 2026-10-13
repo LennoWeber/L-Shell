@@ -31,11 +31,14 @@ int main() {
   auto minimal = resolveLayout(config);
   TEST_CHECK(minimal.bars.size() == 1 && !minimal.bars[0].smartAutoHide);
 
-  // Island and edges: no bars at all.
+  // Island: the island plus its own bar, hidden until hovering the island unfolds it over the island's strip.
   config.layout.mode = LayoutMode::Island;
   auto island = resolveLayout(config);
-  TEST_CHECK(island.bars.empty() && island.island.has_value());
-  TEST_CHECK(island.islandVisibility == IslandVisibility::Always);
+  TEST_CHECK(island.island.has_value() && island.islandVisibility == IslandVisibility::Always);
+  TEST_CHECK(island.bars.size() == 1 && island.bars[0].name == noctalia::config::kIslandBarName);
+  TEST_CHECK(island.islandBarName == noctalia::config::kIslandBarName);
+  TEST_CHECK(island.bars[0].autoHide && !island.bars[0].smartAutoHide && island.bars[0].ignoreOtherZones);
+  // Edges: no bars at all.
   config.layout.mode = LayoutMode::Edges;
   auto edges = resolveLayout(config);
   TEST_CHECK(edges.bars.empty() && edges.edges.has_value() && !edges.island.has_value());
@@ -68,10 +71,11 @@ int main() {
   auto flow = resolveLayout(config);
   TEST_CHECK(flow.bars.size() == 1 && flow.bars[0].name == noctalia::config::kFlowBarName);
   TEST_CHECK(flow.bars[0].smartAutoHide);
-  TEST_CHECK(flow.bars[0].legibilityScrim && !flow.bars[0].compositorBlur); // transparent like the Tahoe menu bar
+  TEST_CHECK(flow.bars[0].glass && flow.bars[0].compositorBlur); // Slate: the island unfolds it over windows
   TEST_CHECK(flow.bars[0].ignoreOtherZones);    // on the top edge, over the island's reserved strip
   TEST_CHECK(!flow.bars[0].autoHideEdgeReveal); // the island owns the top edge while windows are open
   TEST_CHECK(flow.island.has_value() && flow.islandVisibility == IslandVisibility::WhileWindowsOpen);
+  TEST_CHECK(flow.islandBarName == noctalia::config::kFlowBarName); // hovering the island unfolds the home bar
   TEST_CHECK(flow.edges.has_value() && flow.handle.has_value());
 
   // Synthesized bar styling: glass, floating and transparent backgrounds.

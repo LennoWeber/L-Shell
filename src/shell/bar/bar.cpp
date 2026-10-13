@@ -21,7 +21,7 @@
 #include "shell/bar/widgets/taskbar_widget.h"
 #include "shell/bar/widgets/tray_widget.h"
 #include "shell/panel/panel_manager.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "shell/surface/shadow.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/workspace_occupancy.h"
@@ -3220,10 +3220,10 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
   style.border = resolveColorSpec(instance.barConfig.border);
   style.borderWidth = instance.barConfig.borderWidth;
   instance.bg->setStyle(style);
-  applyGlassChrome(instance, style.radius);
+  applySlateChrome(instance, style.radius);
 }
 
-void Bar::applyGlassChrome(BarInstance& instance, const Radii& radius) {
+void Bar::applySlateChrome(BarInstance& instance, const Radii& radius) {
   if (instance.scrim != nullptr) {
     // Darkens the wallpaper under white text or lightens it under black text, fading out downwards. The tone
     // follows the wallpaper's brightness like macOS's transparent menu bar; the theme decides until it is known.
@@ -3256,20 +3256,12 @@ void Bar::applyGlassChrome(BarInstance& instance, const Radii& radius) {
         }
     );
   }
-  if (instance.glassSheen == nullptr || instance.glassRim == nullptr) {
+  if (instance.hairline == nullptr) {
     return;
   }
-  shell::glass::GlassStyle glass;
-  glass.radius = radius;
-  instance.glassSheen->setStyle(shell::glass::sheenStyle(glass));
-  // A bar on the screen edge only gets the sheen; the lit rim belongs to floating glass, where every edge shows.
-  const bool floating = instance.barConfig.marginEdge > 0;
-  instance.glassRim->setVisible(floating);
-  if (floating) {
-    instance.glassRim->setFill(clearColor());
-    instance.glassRim->setRadii(radius);
-    shell::glass::applyRim(*instance.glassRim, glass, isResolvedLightTheme(), instance.barConfig.scale);
-  }
+  instance.hairline->setFill(clearColor());
+  instance.hairline->setRadii(radius);
+  shell::material::applyHairline(*instance.hairline, isResolvedLightTheme(), instance.barConfig.scale);
 }
 
 void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
@@ -3474,10 +3466,7 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
       );
     }
     if (instance.barConfig.glass) {
-      instance.glassSheen = static_cast<Box*>(
-          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
-      );
-      instance.glassRim = static_cast<Box*>(
+      instance.hairline = static_cast<Box*>(
           instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
       );
     }
@@ -3604,13 +3593,13 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
         barAreaW + concave.logicalInset.left + concave.logicalInset.right,
         barAreaH + concave.logicalInset.top + concave.logicalInset.bottom
     );
-    for (Box* glass : {instance.glassSheen, instance.glassRim, instance.scrim}) {
-      if (glass != nullptr) {
-        glass->setPosition(barAreaX, barAreaY);
-        glass->setSize(barAreaW, barAreaH);
+    for (Box* overlay : {instance.hairline, instance.scrim}) {
+      if (overlay != nullptr) {
+        overlay->setPosition(barAreaX, barAreaY);
+        overlay->setSize(barAreaW, barAreaH);
       }
     }
-    applyGlassChrome(instance, concave.radii);
+    applySlateChrome(instance, concave.radii);
   }
 
   instance.paletteConn = paletteChanged().connect([inst = &instance] {

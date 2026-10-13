@@ -81,9 +81,8 @@ struct BarInstance {
 
   // Bar background, shadow, and layout sections (start/center/end along main axis)
   Box* bg = nullptr;
-  // Liquid Glass chrome over the background (BarConfig::glass): top sheen and edge-lit rim.
-  Box* glassSheen = nullptr;
-  Box* glassRim = nullptr;
+  // Slate hairline over the background (BarConfig::glass).
+  Box* hairline = nullptr;
   // BarConfig::legibilityScrim: the gradient behind the items of a transparent menu bar.
   Box* scrim = nullptr;
   // Brightness of the wallpaper under a transparent menu bar; Unknown until sampled (then the theme decides).

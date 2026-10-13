@@ -102,10 +102,17 @@ namespace noctalia::config {
     case LayoutMode::MinimalBar:
       out.bars.push_back(synthesizeBar(layout.minimalBar, kMinimalBarName, /*smartHide=*/false));
       break;
-    case LayoutMode::Island:
+    case LayoutMode::Island: {
       out.island = layout.island;
       out.islandVisibility = IslandVisibility::Always;
+      // Always hidden until the island unfolds it, then on the screen edge over the island's own strip.
+      BarConfig bar = synthesizeBar(layout.islandBar, kIslandBarName, /*smartHide=*/false);
+      bar.autoHide = true;
+      bar.ignoreOtherZones = !layout.islandBar.reserveSpace && layout.islandBar.position == ModeBarPosition::Top;
+      out.bars.push_back(std::move(bar));
+      out.islandBarName = std::string(kIslandBarName);
       break;
+    }
     case LayoutMode::Edges:
       out.edges = layout.edges;
       break;
@@ -120,6 +127,7 @@ namespace noctalia::config {
           !layout.flow.bar.reserveSpace && layout.flow.bar.position == ModeBarPosition::Top;
       out.island = layout.flow.island;
       out.islandVisibility = IslandVisibility::WhileWindowsOpen;
+      out.islandBarName = std::string(kFlowBarName);
       out.edges = layout.flow.edges;
       addHandle(layout.flow.handle);
       break;

@@ -42,7 +42,7 @@ namespace {
   constexpr float kClockFontSize = 88.0F;
   constexpr float kClockToTilesGap = 36.0F;
 
-  constexpr float kTileWidth = 168.0F;
+  constexpr float kTileWidth = 188.0F;
   constexpr float kTileHeight = 96.0F;
   constexpr float kTileGap = Style::spaceMd;
   constexpr std::size_t kMaxColumns = 3; // all six tiles form a 3 x 2 grid
@@ -53,17 +53,14 @@ namespace {
   constexpr float kLevelTrackAlpha = 0.14F;
   constexpr float kLevelNeutralAlpha = 0.45F;
 
-  // Both follow the panel card opacity, so the transparency mode makes the overlay more or less see-through
-  // like every other panel. In the default Glass mode (card opacity ~0.65) the tile tint lands near GlassStyle's
-  // default and the scrim lays the surface color over the blurred desktop at about 40 %.
-  constexpr float kScrimAlphaPerCardOpacity = 0.6F;
-  constexpr float kTileTintPerCardOpacity = 0.8F;
+  // The scrim stays above the compositor's blur cut-off (Hyprland `ignore_alpha 0.4`), so the desktop behind
+  // the overlay is always frosted; the tiles are plain Slate on top of it.
+  constexpr float kScrimAlpha = 0.6F;
 
-  [[nodiscard]] shell::glass::GlassStyle tileGlassStyle(float scale, float cardOpacity) {
-    return shell::glass::GlassStyle{
-        .material = shell::glass::Material::Glass,
-        .radius = Radii{Style::scaledRadiusXl(scale)},
-        .tintOpacity = std::clamp(cardOpacity * kTileTintPerCardOpacity, 0.0F, 1.0F),
+  [[nodiscard]] shell::material::Spec tileMaterial(float scale) {
+    return shell::material::Spec{
+        .elevation = shell::material::Elevation::Flush,
+        .radius = Radii{Style::scaledRadiusLg(scale)},
     };
   }
 
@@ -298,7 +295,7 @@ void StatusOverlayPanel::create() {
   m_paletteConn = paletteChanged().connect([this]() {
     // A theme switch only redraws the open panel, and the rim and sheen depend on light/dark rather than on
     // palette roles, so restyle them here instead of waiting for the next layout.
-    if (isResolvedLightTheme() != m_glassLightTheme) {
+    if (isResolvedLightTheme() != m_lightTheme) {
       applyChrome();
       PanelManager::instance().requestRedraw();
     }
@@ -384,14 +381,13 @@ void StatusOverlayPanel::onPanelCardOpacityChanged(float /*opacity*/) { applyChr
 
 void StatusOverlayPanel::applyChrome() {
   const float scale = contentScale();
-  const float opacity = panelCardOpacity();
-  m_glassLightTheme = isResolvedLightTheme();
+  m_lightTheme = isResolvedLightTheme();
   if (m_scrim != nullptr) {
-    m_scrim->setFill(colorSpecFromRole(ColorRole::Surface, kScrimAlphaPerCardOpacity * opacity));
+    m_scrim->setFill(colorSpecFromRole(ColorRole::Surface, kScrimAlpha));
   }
-  const shell::glass::GlassStyle style = tileGlassStyle(scale, opacity);
+  const shell::material::Spec spec = tileMaterial(scale);
   for (Tile& tile : m_tiles) {
-    shell::glass::applyGlass(tile.glass, style, m_glassLightTheme, scale);
+    shell::material::apply(tile.material, spec, m_lightTheme, scale);
   }
 }
 
@@ -422,8 +418,8 @@ void StatusOverlayPanel::buildTile(Tile& tile, float scale) {
 
   // Hidden until the first refresh finds the backing service available.
   auto tileRoot = ui::inputArea({.width = tileWidth, .height = tileHeight, .visible = false});
-  tile.glass = shell::glass::buildGlass(*tileRoot, tileGlassStyle(scale, panelCardOpacity()));
-  shell::glass::layoutGlass(tile.glass, 0.0F, 0.0F, tileWidth, tileHeight, scale);
+  tile.material = shell::material::build(*tileRoot, tileMaterial(scale));
+  shell::material::layout(tile.material, 0.0F, 0.0F, tileWidth, tileHeight, scale);
 
   auto content = ui::column({
       .align = FlexAlign::Start,

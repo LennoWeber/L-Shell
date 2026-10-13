@@ -19,7 +19,7 @@
 #include "render/scene/input_dispatcher.h"
 #include "render/scene/node.h"
 #include "shell/expo/expo_window_tile.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "shell/switcher/window_switcher_entries.h"
 #include "shell/switcher/window_switcher_membership.h"
 #include "shell/wallpaper/wallpaper_paths.h"
@@ -1003,9 +1003,7 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
   const ExpoLayout layout = computeExpoLayout(layoutInput);
 
   const float cardRadius = Style::scaledRadiusLg(s);
-  shell::glass::GlassStyle glassStyle;
-  glassStyle.radius = cardRadius;
-  glassStyle.tintOpacity = kCardTintOpacity;
+  const shell::material::Spec cardMaterial{.radius = Radii{cardRadius}, .tint = kCardTintOpacity};
   const bool lightTheme = isResolvedLightTheme();
   std::optional<ColorSpec> iconTint;
   if (m_config != nullptr) {
@@ -1081,16 +1079,25 @@ void Expo::buildScene(Instance& instance, std::uint32_t width, std::uint32_t hei
               },
       });
 
-      // A glass desktop with the wallpaper laid in between the tint and the sheen.
-      shell::glass::GlassNodes glass = shell::glass::buildGlass(*cardArea, glassStyle);
-      shell::glass::applyGlass(glass, glassStyle, lightTheme, s);
-      shell::glass::layoutGlass(glass, 0.0F, 0.0F, rect.width, rect.height, s);
-      if (glass.sheen != nullptr) {
-        glass.sheen->setZIndex(1);
-      }
-      if (glass.rim != nullptr) {
-        glass.rim->setZIndex(1);
-      }
+      // A Slate desktop with the wallpaper laid over the tint and the hairline on top.
+      shell::material::Nodes material = shell::material::build(*cardArea, cardMaterial);
+      shell::material::apply(material, cardMaterial, lightTheme, s);
+      shell::material::layout(material, 0.0F, 0.0F, rect.width, rect.height, s);
+      cardArea->addChild(
+          ui::box({
+              .fill = clearColorSpec(),
+              .radius = cardRadius,
+              .width = rect.width,
+              .height = rect.height,
+              .participatesInLayout = false,
+              .configure =
+                  [lightTheme, s](Box& rim) {
+                    rim.setHitTestVisible(false);
+                    rim.setZIndex(1);
+                    shell::material::applyHairline(rim, lightTheme, s);
+                  },
+          })
+      );
       if (!section.wallpaperPath.empty() && m_asyncTextures != nullptr) {
         Image* wallpaper = nullptr;
         cardArea->addChild(

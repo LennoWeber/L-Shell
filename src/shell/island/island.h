@@ -7,7 +7,7 @@
 #include "render/scene/input_dispatcher.h"
 #include "shell/bar/widget_action.h"
 #include "shell/island/island_activity.h"
-#include "shell/surface/glass.h"
+#include "shell/surface/material.h"
 #include "wayland/layer_surface.h"
 
 #include <cstdint>
@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+class Bar;
 class CompositorPlatform;
 class ConfigService;
 class Glyph;
@@ -49,10 +50,13 @@ struct IslandServices {
   MprisService* mpris = nullptr;
   NotificationManager* notifications = nullptr;
   UPowerService* upower = nullptr;
+  // The bar engine: hovering the island unfolds its mode's bar through a peek.
+  Bar* bar = nullptr;
 };
 
 // The top-center capsule of the island and flow layouts. One layer surface per output, sized for the expanded
-// state; the visible capsule animates inside it and the input and blur regions follow the capsule.
+// state; the visible capsule animates inside it and the input and blur regions follow the capsule. Hovering it
+// unfolds the mode's bar over the same strip (every bar widget, one gesture away); events expand it on its own.
 class Island {
 public:
   Island();
@@ -110,8 +114,15 @@ private:
   void scheduleActivityTimer();
   void onActivityTimer();
   void activateClick(Instance& instance);
+  // True when hovering unfolds a bar instead of expanding the capsule.
+  [[nodiscard]] bool unfoldsIntoBar() const noexcept;
+  // Peeks the mode's bar over the island's strip and hides the capsule until the bar slides away again.
+  void unfold(Instance& instance);
+  void stopUnfold(Instance& instance);
   void refreshAll();
   [[nodiscard]] bool shownOn(const Instance& instance) const;
+  // The active workspace's name (its index when unnamed) on the instance's output, empty when unknown.
+  [[nodiscard]] std::string activeWorkspaceText(const Instance& instance) const;
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
   void animateAmbientRoom(Instance& instance);
@@ -128,9 +139,13 @@ private:
     std::unique_ptr<Node> sceneRoot;
     InputDispatcher inputDispatcher;
     InputArea* inputArea = nullptr; // covers the capsule; the surface's input region follows it
-    shell::glass::GlassNodes glass;
+    shell::material::Nodes material;
     Node* capsule = nullptr;
     Label* clock = nullptr;
+    // Collapsed-pill status around the clock: the active workspace at the leading end, the battery at the
+    // trailing one. A playing track or a privacy dot takes their place while it shows.
+    Label* workspace = nullptr;
+    Glyph* battery = nullptr;
     Node* ambientIndicator = nullptr;
     RectNode* privacyDot = nullptr;
     Node* expandedContent = nullptr;
@@ -152,6 +167,11 @@ private:
     // Where `visibility` is heading; nullopt until the first pass. Repeated workspace events then cost nothing.
     std::optional<bool> shownTarget;
     bool pointerInside = false;
+    // While the unfolded bar is on screen the capsule steps aside.
+    bool unfolded = false;
+    Timer unfoldDwell;   // a short rest on the capsule before it unfolds, so passing pointers do not
+    Timer unfoldRelease; // hands the peek back to the bar's own auto-hide once the pointer had time to reach it
+    Timer unfoldWatch;   // notices the bar sliding away again
     float uiScale = 1.0F;
   };
 
@@ -163,6 +183,8 @@ private:
   MprisService* m_mpris = nullptr;
   NotificationManager* m_notifications = nullptr;
   UPowerService* m_upower = nullptr;
+  Bar* m_bar = nullptr;
+  std::string m_islandBarName; // ResolvedLayout::islandBarName
 
   struct Privacy {
     bool mic = false;

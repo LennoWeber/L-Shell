@@ -37,8 +37,8 @@ namespace {
   constexpr auto kMprisRefreshMinInterval = std::chrono::milliseconds(750);
   // Full-height cards need room for rounded-rect AA before the tab viewport clips them.
   constexpr float kTabViewportClipInset = 1.0F;
-  // macOS Control Center width for the Home module grid (logical px before content scale).
-  constexpr float kHomeWidth = 360.0F;
+  // Control Center width for the Home module grid (logical px before content scale).
+  constexpr float kHomeWidth = 404.0F; // room for the shortcut labels (German "Energiesparen" included)
   constexpr float kDetailHeight = 520.0F;
 
   float tabContentHeight(float viewportHeight) {

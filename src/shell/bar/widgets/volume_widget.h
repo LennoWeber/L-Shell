@@ -30,7 +30,7 @@ public:
     bool customImageColorize = false;
     bool showLabel = false; // macOS-style: icon only
     bool hideWhenInactive = false;
-    ColorSpec muteColor = colorSpecFromRole(ColorRole::Error);
+    ColorSpec muteColor = colorSpecFromRole(ColorRole::OnSurfaceVariant); // Slate: muted is a state, not an error
   };
 
   VolumeWidget(PipeWireService* audio, EasyEffectsService* easyEffects, Options options);

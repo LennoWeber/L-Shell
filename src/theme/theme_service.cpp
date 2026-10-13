@@ -229,9 +229,10 @@ namespace noctalia::theme {
       };
     }
 
-    // macOS's accent colors (controlAccentColor), dark then light.
+    // Accent overrides, dark then light. Palette and Wallpaper override nothing here.
     [[nodiscard]] std::optional<AccentArgb> systemAccent(AccentColor accent) {
       switch (accent) {
+      case AccentColor::Palette:
       case AccentColor::Wallpaper:
         return std::nullopt;
       case AccentColor::Blue:

@@ -79,7 +79,7 @@ public:
   // panels resolve through shell.panel.*_position in PanelManager.
   [[nodiscard]] virtual std::string panelScreenPosition() const { return "auto"; }
   [[nodiscard]] virtual bool panelOpenNearClick() const { return false; }
-  // Corner radius of the floating panel in surface px (background, glass, shadow and blur follow it); nullopt
+  // Corner radius of the floating panel in surface px (background, shadow and blur follow it); nullopt
   // keeps the shell's panel radius. Spotlight is a capsule while it is only its search field.
   [[nodiscard]] virtual std::optional<float> floatingCornerRadius() const { return std::nullopt; }
   // Inset between a decorated panel's edge and its content, before contentScale(); nullopt keeps the shell's

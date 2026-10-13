@@ -1283,6 +1283,7 @@ void Application::initWidgetControllersAndCallbacks() {
       .mpris = m_mprisService.get(),
       .notifications = &m_notificationManager,
       .upower = m_upowerService.get(),
+      .bar = &m_bar,
   });
   m_gestureHandle.initialize(
       m_compositorPlatform, m_configService, &m_renderContext, &m_ipcService, &m_panelManager, &m_bar
