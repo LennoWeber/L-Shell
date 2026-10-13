@@ -244,12 +244,6 @@ namespace noctalia::cli {
   inline constexpr std::array<std::string_view, 3> kMsgWindowSwitcherActionChoices{"close", "hide", "hold"};
   inline constexpr std::array<std::string_view, 2> kMsgOverviewActionChoices{"close", "toggle"};
   inline constexpr std::array<std::string_view, 2> kMsgExpoActionChoices{"close", "toggle"};
-  inline constexpr std::array<std::string_view, 7> kMsgLayoutModeSetModeChoices{
-      "classic", "edges", "flow", "handle", "island", "minimal_bar", "smart_bar",
-  };
-  inline constexpr std::array kMsgLayoutModeSetPositionals{
-      Positional{"mode", {}, kMsgLayoutModeSetModeChoices, true, false, false},
-  };
   inline constexpr std::array kMsgExpoPositionals{
       Positional{"action", {}, kMsgExpoActionChoices, false, false, false},
   };
@@ -492,10 +486,6 @@ namespace noctalia::cli {
     };
     inline constexpr Command keyboardLayoutCycle{
         "keyboard-layout-cycle", "Switch to the next keyboard layout", {}, {}, {}, {}, {}, false
-    };
-    inline constexpr Command layoutModeSet{
-        "layout-mode-set", "Switch the layout mode (saved like a change in Settings)", {}, {}, {},
-        kMsgLayoutModeSetPositionals, {}, false
     };
     inline constexpr Command lockscreenWidgetsEdit{
         "lockscreen-widgets-edit", "Open the lockscreen widgets editor", {}, {}, {}, {}, {}, false
@@ -905,7 +895,6 @@ namespace noctalia::cli {
       msg::keyboardBacklightToggle,
       msg::keyboardBacklightUp,
       msg::keyboardLayoutCycle,
-      msg::layoutModeSet,
       msg::lockscreenWidgetsEdit,
       msg::lockscreenWidgetsExit,
       msg::lockscreenWidgetsToggleEdit,

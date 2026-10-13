@@ -19,7 +19,6 @@
 #include "shell/bar/widget_action_dispatcher.h"
 #include "shell/osd/osd_overlay.h"
 #include "shell/panel/panel_manager.h"
-#include "shell/workspace_occupancy.h"
 #include "time/time_format.h"
 #include "ui/builders.h"
 #include "ui/controls/box.h"
@@ -57,11 +56,8 @@ namespace {
   constexpr Color kPrivacyMic = rgba(1.0F, 0.624F, 0.039F, 1.0F);
   constexpr Color kPrivacyScreen = rgba(0.749F, 0.353F, 0.949F, 1.0F);
   constexpr float kFadeMs = 180.0F;
-  // Hover unfold: rest time on the capsule, how long the peek holds the bar before the bar's own auto-hide takes
-  // over (the pointer is usually inside the bar by then, which keeps it), and how often the unfold is checked.
-  constexpr auto kUnfoldDwell = std::chrono::milliseconds(120);
-  constexpr auto kUnfoldRelease = std::chrono::milliseconds(700);
-  constexpr auto kUnfoldWatch = std::chrono::milliseconds(200);
+  // Without a top bar the island floats this far below the screen edge and reserves its own strip.
+  constexpr float kFloatingTop = 6.0F;
   // Content crossfade during the morph: the compact content is gone by 35% expansion and the
   // expanded content starts at 25%, so the capsule is never empty mid-morph; it grows from 92%.
   constexpr float kCollapsedFadeEnd = 0.35F;
@@ -169,20 +165,17 @@ void Island::reload() {
 }
 
 bool Island::applyConfig() {
-  const auto& layout = m_config->resolvedLayout();
-  const bool changed = layout.island != m_islandConfig
-      || layout.islandVisibility != m_visibility
-      || layout.islandBarName != m_islandBarName;
-  m_islandConfig = layout.island;
-  m_visibility = layout.islandVisibility;
-  m_islandBarName = layout.islandBarName;
+  const IslandConfig& island = m_config->config().island;
+  const std::optional<IslandConfig> next = island.enabled ? std::optional(island) : std::nullopt;
+  const bool changed = next != m_islandConfig;
+  m_islandConfig = next;
   if (m_islandConfig.has_value()) {
     m_activities.configure(*m_islandConfig);
     auto parsed = noctalia::bar::parseWidgetAction(m_islandConfig->clickAction);
     if (parsed.has_value()) {
       m_clickAction = *parsed;
     } else {
-      kLog.warn("layout island click_action \"{}\": {}", m_islandConfig->clickAction, parsed.error());
+      kLog.warn("island click_action \"{}\": {}", m_islandConfig->clickAction, parsed.error());
       m_clickAction = {};
     }
   }
@@ -206,23 +199,6 @@ void Island::onOutputChange() {
   syncInstances();
 }
 
-void Island::onWorkspaceChanged() {
-  // Window-title changes arrive here too, in bursts; one visibility pass per burst is enough.
-  if (m_visibilityPassQueued) {
-    return;
-  }
-  m_visibilityPassQueued = true;
-  DeferredCall::callLater([this]() {
-    m_visibilityPassQueued = false;
-    for (auto& instance : m_instances) {
-      animateVisibility(*instance);
-      if (instance->surface != nullptr) {
-        instance->surface->requestUpdate(); // the workspace number
-      }
-    }
-  });
-}
-
 void Island::onSecondTick() {
   // The island shows minutes: repaint when the minute turns, not every second.
   std::string clock = clockText(m_config);
@@ -239,26 +215,16 @@ void Island::onSecondTick() {
 
 bool Island::isActive() const noexcept { return m_islandConfig.has_value() && !m_instances.empty(); }
 
-std::string Island::activeWorkspaceText(const Instance& instance) const {
-  if (m_platform == nullptr) {
-    return {};
+std::optional<BarConfig> Island::topBarOn(wl_output* output) const {
+  if (m_bar == nullptr) {
+    return std::nullopt;
   }
-  for (const Workspace& workspace : m_platform->workspaces(instance.output)) {
-    if (workspace.active) {
-      return workspace.name.empty() ? std::to_string(workspace.index + 1) : workspace.name;
+  for (const BarConfig& base : m_config->config().bars) {
+    if (const auto bar = m_bar->configForBar(output, base.name); bar.has_value() && bar->position == "top") {
+      return bar;
     }
   }
-  return {};
-}
-
-bool Island::shownOn(const Instance& instance) const {
-  if (instance.unfolded) {
-    return false;
-  }
-  if (m_visibility == noctalia::config::IslandVisibility::Always || m_platform == nullptr) {
-    return true;
-  }
-  return !shell::showsHome(*m_platform, instance.output);
+  return std::nullopt;
 }
 
 void Island::syncInstances() {
@@ -281,15 +247,23 @@ void Island::createInstance(const WaylandOutput& output) {
   const float scale = std::max(0.1F, m_config->config().accessibility.uiScale);
   const auto width =
       static_cast<std::uint32_t>(std::ceil((static_cast<float>(config.expandedWidth) + (2.0F * kBleed)) * scale));
+  // Centered in the top bar's strip, so the island reads as the bar's middle; on its own strip without one.
+  const std::optional<BarConfig> bar = topBarOn(output.output);
+  const float stripTop = bar.has_value()
+      ? static_cast<float>(bar->marginEdge) + (static_cast<float>(bar->thickness - config.height) * 0.5F)
+      : kFloatingTop;
   const auto height = static_cast<std::uint32_t>(
-      std::ceil((static_cast<float>(config.marginTop + config.expandedHeight) + kBleed) * scale)
+      std::ceil((stripTop + static_cast<float>(config.expandedHeight) + kBleed) * scale)
   );
-  const std::int32_t reserved = noctalia::config::islandReservedZone(m_config->resolvedLayout(), scale);
+  const std::int32_t reserved = bar.has_value()
+      ? 0
+      : static_cast<std::int32_t>(std::ceil(((stripTop * 2.0F) + static_cast<float>(config.height)) * scale));
 
   auto instance = std::make_unique<Instance>();
   instance->outputName = output.name;
   instance->output = output.output;
   instance->uiScale = scale;
+  instance->stripTop = std::max(0.0F, stripTop);
   instance->visibility = 0.0F;
 
   LayerSurfaceConfig surfaceConfig{
@@ -298,7 +272,7 @@ void Island::createInstance(const WaylandOutput& output) {
       .anchor = LayerShellAnchor::Top,
       .width = width,
       .height = height,
-      // Without its own zone the island ignores the others, so a bar's zone cannot push it down.
+      // In a bar the island ignores the zones, so the bar's own zone cannot push it out of the bar.
       .exclusiveZone = reserved > 0 ? reserved : -1,
       .defaultWidth = width,
       .defaultHeight = height,
@@ -331,7 +305,6 @@ void Island::createInstance(const WaylandOutput& output) {
 void Island::destroyInstances() {
   for (auto& instance : m_instances) {
     instance->animations.cancelAll();
-    stopUnfold(*instance);
   }
   m_instances.clear();
   // A capsule destroyed under the pointer never sends its leave: let the tracker's hold go with it.
@@ -375,7 +348,7 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
   instance.ambientTarget = ambientRoomTarget();
   instance.ambientExtra = instance.ambientTarget;
   const float s = instance.uiScale;
-  const bool black = m_islandConfig->material == IslandMaterial::Black;
+  const bool black = m_islandConfig->material == IslandMaterial::Ink;
   const ColorSpec text = black ? fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 1.0F)) : colorSpecFromRole(ColorRole::OnSurface);
   const ColorSpec secondary =
       black ? fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 0.6F)) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
@@ -397,22 +370,6 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
           .fontWeight = FontWeight::Medium,
           .color = text,
           .maxLines = 1,
-      })
-  ));
-
-  instance.workspace = static_cast<Label*>(instance.capsule->addChild(
-      ui::label({
-          .fontSize = Style::fontSizeCaption * s,
-          .fontWeight = FontWeight::Bold,
-          .color = colorSpecFromRole(ColorRole::Primary),
-          .maxLines = 1,
-      })
-  ));
-  instance.battery = static_cast<Glyph*>(instance.capsule->addChild(
-      ui::glyph({
-          .glyph = std::string("battery-4"),
-          .glyphSize = 15.0F * s,
-          .color = secondary,
       })
   ));
 
@@ -465,16 +422,11 @@ void Island::buildScene(Instance& instance, std::uint32_t width, std::uint32_t h
   Instance* instancePtr = &instance;
   instance.inputArea->setOnEnter([this, instancePtr](const InputArea::PointerData&) {
     instancePtr->pointerInside = true;
-    if (unfoldsIntoBar()) {
-      instancePtr->unfoldDwell.start(kUnfoldDwell, [this, instancePtr]() { unfold(*instancePtr); });
-      return;
-    }
     m_activities.setHovered(true);
     refreshAll();
   });
   instance.inputArea->setOnLeave([this, instancePtr]() {
     instancePtr->pointerInside = false;
-    instancePtr->unfoldDwell.stop();
     const bool anyHovered = std::ranges::any_of(m_instances, [](const auto& other) { return other->pointerInside; });
     m_activities.setHovered(anyHovered);
     scheduleActivityTimer();
@@ -512,12 +464,6 @@ void Island::updateContent(Instance& instance) {
     return;
   }
   instance.clock->setText(clockText(m_config));
-  instance.workspace->setText(activeWorkspaceText(instance));
-  const bool hasBattery = m_upower != nullptr && m_upower->state().isPresent;
-  instance.battery->setVisible(hasBattery);
-  if (hasBattery) {
-    instance.battery->setGlyph(batteryGlyphName(m_upower->state().percentage, m_upower->state().state));
-  }
 
   const auto& state = m_activities.state();
   const Activity* shown = state.transient.has_value() ? &*state.transient
@@ -538,15 +484,7 @@ void Island::updateContent(Instance& instance) {
     }
     return;
   }
-  // Hovered with nothing going on: the date, the time and the battery, like a glance at the lock screen.
-  instance.activityGlyph->setGlyph("calendar");
-  instance.activityTitle->setText(formatLocalTime("%A, %-d %B"));
-  std::string subtitle = timeText(m_config);
-  if (m_upower != nullptr && m_upower->state().isPresent) {
-    subtitle += "  ·  " + percentText(m_upower->state().percentage);
-  }
-  instance.activitySubtitle->setText(subtitle);
-  instance.activityLevel->setVisible(false);
+  // Nothing going on: the expanded content keeps its last activity while the capsule collapses over it.
 }
 
 void Island::layoutCapsule(Instance& instance) {
@@ -562,7 +500,7 @@ void Island::layoutCapsule(Instance& instance) {
   const float x = std::round((rootW - w) * 0.5F);
   // Reduce Motion: the island only fades, without the lift.
   const float lift = MotionService::instance().reduced() ? 0.0F : kHideLift * (1.0F - instance.visibility);
-  const float y = std::round((static_cast<float>(config.marginTop) - lift) * s);
+  const float y = std::round((instance.stripTop - lift) * s);
 
   instance.capsule->setPosition(x, y);
   instance.capsule->setSize(w, h);
@@ -571,7 +509,7 @@ void Island::layoutCapsule(Instance& instance) {
   // Pill when collapsed; a rounder-than-panel rectangle when expanded, like the Dynamic Island.
   const float radius = std::min(h * 0.5F, lerp(h * 0.5F, 26.0F * s, instance.expansion));
   const shell::material::Spec spec{
-      .kind = config.material == IslandMaterial::Black ? shell::material::Kind::Ink : shell::material::Kind::Slate,
+      .kind = config.material == IslandMaterial::Ink ? shell::material::Kind::Ink : shell::material::Kind::Slate,
       .radius = Radii(radius),
   };
   shell::material::apply(instance.material, spec, isResolvedLightTheme(), s);
@@ -597,22 +535,6 @@ void Island::layoutCapsule(Instance& instance) {
     instance.ambientIndicator->setOpacity(collapsedOpacity * std::clamp(instance.ambientExtra, 0.0F, 1.0F));
     instance.ambientIndicator->setPosition(
         std::round(14.0F * s), std::round((collapsedH - instance.ambientIndicator->height()) * 0.5F)
-    );
-  }
-  // Workspace and battery hold the ends of the pill until a track or a privacy dot claims them.
-  const float statusPad = 14.0F * s;
-  instance.workspace->measure(renderer);
-  instance.workspace->setVisible(!ambient && !instance.workspace->text().empty());
-  instance.workspace->setOpacity(collapsedOpacity * (1.0F - std::clamp(instance.ambientExtra, 0.0F, 1.0F)));
-  instance.workspace->setPosition(
-      std::round(statusPad), std::round((collapsedH - instance.workspace->height()) * 0.5F)
-  );
-  if (instance.battery->visible()) {
-    instance.battery->measure(renderer);
-    instance.battery->setOpacity(collapsedOpacity * (m_privacy.any() ? 0.0F : 1.0F));
-    instance.battery->setPosition(
-        std::round(w - statusPad - instance.battery->width()),
-        std::round((collapsedH - instance.battery->height()) * 0.5F)
     );
   }
   instance.privacyDot->setVisible(m_privacy.any());
@@ -678,7 +600,7 @@ void Island::syncInputRegion(Instance& instance) {
   if (instance.surface == nullptr || instance.capsule == nullptr) {
     return;
   }
-  if (instance.visibility <= 0.01F || !shownOn(instance)) {
+  if (instance.visibility <= 0.01F) {
     instance.surface->setInputRegion({});
     return;
   }
@@ -686,7 +608,7 @@ void Island::syncInputRegion(Instance& instance) {
   // under the pointer mid-animation.
   const IslandConfig& config = *m_islandConfig;
   const float s = instance.uiScale;
-  const bool hoverExpands = instance.pointerInside && config.expandOnHover && !unfoldsIntoBar();
+  const bool hoverExpands = instance.pointerInside && m_activities.presentation() == Presentation::Expanded;
   const float w = hoverExpands ? static_cast<float>(config.expandedWidth) * s : instance.capsule->width();
   const float h = hoverExpands ? static_cast<float>(config.expandedHeight) * s : instance.capsule->height();
   const float x = (instance.sceneRoot->width() - w) * 0.5F;
@@ -700,7 +622,7 @@ void Island::syncBlurRegion(Instance& instance) {
   if (instance.surface == nullptr || instance.capsule == nullptr) {
     return;
   }
-  if (m_islandConfig->material == IslandMaterial::Black || instance.visibility <= 0.01F) {
+  if (m_islandConfig->material == IslandMaterial::Ink || instance.visibility <= 0.01F) {
     instance.surface->clearBlurRegion();
     return;
   }
@@ -789,7 +711,7 @@ void Island::animateVisibility(Instance& instance) {
   if (instance.surface == nullptr) {
     return;
   }
-  const bool shown = shownOn(instance);
+  const bool shown = !m_suppressed;
   if (instance.shownTarget == shown) {
     return; // already there, or on the way
   }
@@ -858,12 +780,6 @@ void Island::onActivityTimer() {
 
 bool Island::takeOsdContent(const OsdContent& content) {
   if (!m_islandConfig.has_value() || m_instances.empty()) {
-    return false;
-  }
-  // Only take over where the island is actually on screen; elsewhere the regular OSD still has to show.
-  const bool visibleSomewhere =
-      std::ranges::any_of(m_instances, [this](const auto& instance) { return shownOn(*instance); });
-  if (!visibleSomewhere) {
     return false;
   }
   Activity activity{
@@ -974,45 +890,6 @@ void Island::onNotificationEvent(const Notification& notification, NotificationE
           .subtitle = notification.appName.empty() ? notification.body : notification.summary,
       }
   );
-}
-
-bool Island::unfoldsIntoBar() const noexcept {
-  return m_bar != nullptr && !m_islandBarName.empty() && m_islandConfig.has_value() && m_islandConfig->expandOnHover;
-}
-
-void Island::unfold(Instance& instance) {
-  if (!unfoldsIntoBar() || instance.unfolded || !shownOn(instance)) {
-    return;
-  }
-  m_bar->setBarPeek(instance.output, m_islandBarName, true);
-  instance.unfolded = true;
-  animateVisibility(instance);
-
-  Instance* instancePtr = &instance;
-  instance.unfoldRelease.start(kUnfoldRelease, [this, instancePtr]() {
-    if (m_bar != nullptr) {
-      m_bar->setBarPeek(instancePtr->output, m_islandBarName, false);
-    }
-  });
-  instance.unfoldWatch.startRepeating(kUnfoldWatch, [this, instancePtr]() {
-    if (m_bar != nullptr && m_bar->isBarShown(instancePtr->output, m_islandBarName)) {
-      return;
-    }
-    stopUnfold(*instancePtr);
-    animateVisibility(*instancePtr);
-  });
-}
-
-void Island::stopUnfold(Instance& instance) {
-  instance.unfoldDwell.stop();
-  instance.unfoldWatch.stop();
-  if (instance.unfoldRelease.active()) {
-    instance.unfoldRelease.stop();
-    if (m_bar != nullptr && !m_islandBarName.empty()) {
-      m_bar->setBarPeek(instance.output, m_islandBarName, false);
-    }
-  }
-  instance.unfolded = false;
 }
 
 void Island::activateClick(Instance& instance) {

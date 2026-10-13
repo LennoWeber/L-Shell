@@ -1,5 +1,9 @@
 # Shell layout modes
 
+> **Retired on 2026-10-13.** L-Shell now has a single layout (menu bar, island in its middle, dock); the layout
+> modes, Flow, the handle, the screen edges and the status overlay were removed. See [DESIGN.md](DESIGN.md). This
+> file is kept as the history of that build.
+
 Working notes for a phased feature build (structures → signatures → TODOs → trial run → invariants →
 implementation). Each phase is committed separately with a `phase N:` prefix and reviewed before the next one.
 

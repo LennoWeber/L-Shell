@@ -40,6 +40,10 @@ int main() {
   TEST_CHECK(tracker.advance(1000.0F));
   TEST_CHECK(!tracker.state().transient.has_value());
   TEST_CHECK(tracker.presentation() == Presentation::Collapsed);
+  // Hovering an idle island keeps it the clock: there is nothing to open.
+  tracker.setHovered(true);
+  TEST_CHECK(tracker.presentation() == Presentation::Collapsed);
+  tracker.setHovered(false);
 
   // Ambient media keeps the compact indicator; hover expands when configured.
   tracker.setAmbient(Activity{.kind = ActivityKind::Media, .title = "Song"});

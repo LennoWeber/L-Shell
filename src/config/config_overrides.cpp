@@ -394,7 +394,7 @@ namespace {
   //   - keybinds: an empty configured set and its built-in default set have the same runtime behavior
   bool configEqual(const Config& a, const Config& b) {
     return vectorEqual(a.bars, b.bars, barConfigEqual)
-        && a.layout == b.layout
+        && a.island == b.island
         && widgetMapEqual(a.widgets, b.widgets)
         && desktopWidgetsConfigEqual(a.desktopWidgets, b.desktopWidgets)
         && a.hotCorners == b.hotCorners
@@ -874,10 +874,9 @@ namespace {
 } // namespace
 
 ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
-  // A layout change swaps the bars on screen, so it counts as a bar change as well.
-  const bool layoutChanged = !(prev.layout == next.layout);
+  const bool islandChanged = !(prev.island == next.island);
   return ConfigChangeSet{
-      .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual) || layoutChanged,
+      .bars = !vectorEqual(prev.bars, next.bars, barConfigEqual),
       .widgets = !widgetMapEqual(prev.widgets, next.widgets),
       .desktopWidgets = !desktopWidgetsConfigEqual(prev.desktopWidgets, next.desktopWidgets),
       .lockscreenWidgets = !lockscreenWidgetsConfigEqual(prev.lockscreenWidgets, next.lockscreenWidgets),
@@ -903,7 +902,7 @@ ConfigChangeSet computeConfigChangeSet(const Config& prev, const Config& next) {
       .controlCenter = !(prev.controlCenter == next.controlCenter),
       .plugins = !pluginsConfigEqual(prev.plugins, next.plugins),
       .hotCorners = !(prev.hotCorners == next.hotCorners),
-      .layout = layoutChanged,
+      .island = islandChanged,
       .storage = !(prev.storage == next.storage),
       .accessibility = !(prev.accessibility == next.accessibility),
   };
@@ -1065,23 +1064,6 @@ void ConfigService::setThemeMode(ThemeMode mode) {
   // Rebuild Config and fan out reload callbacks so ThemeService transitions.
   loadAll();
   fireReloadCallbacks();
-}
-
-bool ConfigService::setLayoutMode(LayoutMode mode) {
-  assert(!enumToKey(kLayoutModes, mode).empty() && "layout mode outside kLayoutModes");
-  if (m_overridesPath.empty()) {
-    return false;
-  }
-  auto* layoutTbl = ensureTable(m_overridesTable, "layout");
-  layoutTbl->insert_or_assign("mode", std::string(enumToKey(kLayoutModes, mode)));
-  if (!writeOverridesToFile()) {
-    kLog.warn("failed to write {}", m_overridesPath);
-    return false;
-  }
-  m_ownOverridesWritePending = true;
-  loadAll();
-  fireReloadCallbacks();
-  return true;
 }
 
 bool ConfigService::setThemeColorScheme(PaletteSource source, std::string_view valueRaw) {

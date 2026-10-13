@@ -46,8 +46,8 @@ namespace settings {
     Hooks,
     Niri,
     Umbriel,
-    Layout, // the [layout] mode picker and the active mode's settings
-    Bar,    // the [bar.*] bars; shown only in the classic layout mode
+    Island, // [island], the live middle of the menu bar
+    Bar,    // the [bar.*] bars
     Plugins,
   };
 

@@ -43,7 +43,7 @@ inline bool barMayRender(const BarConfig& bar) {
 // The bars on screen: the classic [bar.*] list or the layout mode's synthesized bars.
 inline bool configHasLockKeysWidget(const ConfigService& service) {
   const Config& config = service.config();
-  return std::ranges::any_of(service.activeBars(), [&config](const BarConfig& bar) {
+  return std::ranges::any_of(service.config().bars, [&config](const BarConfig& bar) {
     return barMayRender(bar)
         && (widgetListHasLockKeys(bar.startWidgets, config)
             || widgetListHasLockKeys(bar.centerWidgets, config)

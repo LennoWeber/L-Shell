@@ -1,7 +1,6 @@
 #pragma once
 
 #include "config/config_types.h"
-#include "config/layout_resolver.h"
 #include "core/timer_manager.h"
 #include "render/animation/animation_manager.h"
 #include "render/scene/input_dispatcher.h"
@@ -50,13 +49,14 @@ struct IslandServices {
   MprisService* mpris = nullptr;
   NotificationManager* notifications = nullptr;
   UPowerService* upower = nullptr;
-  // The bar engine: hovering the island unfolds its mode's bar through a peek.
+  // The bar engine: the island centers itself in the top bar's strip.
   Bar* bar = nullptr;
 };
 
-// The top-center capsule of the island and flow layouts. One layer surface per output, sized for the expanded
-// state; the visible capsule animates inside it and the input and blur regions follow the capsule. Hovering it
-// unfolds the mode's bar over the same strip (every bar widget, one gesture away); events expand it on its own.
+// The live middle of the menu bar ([island]). It sits centered in the top bar and shows the date and time;
+// events (volume, brightness, media, charger, …) expand it below the bar for a moment, hovering shows what is
+// playing, a click opens Notification Center under it. One layer surface per output, sized for the expanded state;
+// the visible capsule animates inside it and the input and blur regions follow the capsule.
 class Island {
 public:
   Island();
@@ -66,13 +66,11 @@ public:
   Island& operator=(const Island&) = delete;
 
   void initialize(const IslandServices& services);
-  // Re-reads the resolved layout: creates, retunes or removes the island.
+  // Re-reads [island]: creates, retunes or removes the island.
   void reload();
   void onOutputChange();
   // Hidden while the lock-screen widget editor owns the screen, like the bar and the dock.
   void setSuppressed(bool suppressed);
-  // Workspace, window or overview change: re-evaluates whether each output shows home.
-  void onWorkspaceChanged();
   void onSecondTick();
   bool onPointerEvent(const PointerEvent& event);
   // OSD redirect: true when the island shows this content instead of the OSD.
@@ -94,7 +92,7 @@ public:
 private:
   struct Instance;
 
-  // Reads the resolved layout; true when the island appeared, vanished or changed.
+  // Reads [island]; true when the island appeared, vanished or changed.
   [[nodiscard]] bool applyConfig();
   void syncInstances();
   void createInstance(const WaylandOutput& output);
@@ -114,15 +112,9 @@ private:
   void scheduleActivityTimer();
   void onActivityTimer();
   void activateClick(Instance& instance);
-  // True when hovering unfolds a bar instead of expanding the capsule.
-  [[nodiscard]] bool unfoldsIntoBar() const noexcept;
-  // Peeks the mode's bar over the island's strip and hides the capsule until the bar slides away again.
-  void unfold(Instance& instance);
-  void stopUnfold(Instance& instance);
   void refreshAll();
-  [[nodiscard]] bool shownOn(const Instance& instance) const;
-  // The active workspace's name (its index when unnamed) on the instance's output, empty when unknown.
-  [[nodiscard]] std::string activeWorkspaceText(const Instance& instance) const;
+  // The first enabled top bar on the output (with its per-monitor overrides), the strip the island sits in.
+  [[nodiscard]] std::optional<BarConfig> topBarOn(wl_output* output) const;
   [[nodiscard]] Instance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] float capsuleWidth(const Instance& instance) const noexcept;
   void animateAmbientRoom(Instance& instance);
@@ -142,10 +134,6 @@ private:
     shell::material::Nodes material;
     Node* capsule = nullptr;
     Label* clock = nullptr;
-    // Collapsed-pill status around the clock: the active workspace at the leading end, the battery at the
-    // trailing one. A playing track or a privacy dot takes their place while it shows.
-    Label* workspace = nullptr;
-    Glyph* battery = nullptr;
     Node* ambientIndicator = nullptr;
     RectNode* privacyDot = nullptr;
     Node* expandedContent = nullptr;
@@ -161,17 +149,14 @@ private:
     float ambientExtra = 0.0F;
     float ambientTarget = 0.0F;
     AnimationManager::Id ambientAnim = 0;
-    // 0 = hidden (flow with an empty workspace), 1 = shown; animated.
+    // 0 = hidden (while suppressed, and fading in on creation), 1 = shown; animated.
     float visibility = 1.0F;
     AnimationManager::Id visibilityAnim = 0;
     // Where `visibility` is heading; nullopt until the first pass. Repeated workspace events then cost nothing.
     std::optional<bool> shownTarget;
     bool pointerInside = false;
-    // While the unfolded bar is on screen the capsule steps aside.
-    bool unfolded = false;
-    Timer unfoldDwell;   // a short rest on the capsule before it unfolds, so passing pointers do not
-    Timer unfoldRelease; // hands the peek back to the bar's own auto-hide once the pointer had time to reach it
-    Timer unfoldWatch;   // notices the bar sliding away again
+    // Top of the collapsed capsule (logical px): centered in the top bar, or the floating margin without one.
+    float stripTop = 0.0F;
     float uiScale = 1.0F;
   };
 
@@ -184,7 +169,6 @@ private:
   NotificationManager* m_notifications = nullptr;
   UPowerService* m_upower = nullptr;
   Bar* m_bar = nullptr;
-  std::string m_islandBarName; // ResolvedLayout::islandBarName
 
   struct Privacy {
     bool mic = false;
@@ -196,8 +180,7 @@ private:
   };
   Privacy m_privacy;
 
-  std::optional<IslandConfig> m_islandConfig; // nullopt when the active layout has no island
-  noctalia::config::IslandVisibility m_visibility = noctalia::config::IslandVisibility::Always;
+  std::optional<IslandConfig> m_islandConfig; // nullopt while [island] is disabled
   noctalia::bar::WidgetAction m_clickAction; // parsed IslandConfig::clickAction
   shell::island::ActivityTracker m_activities;
   shell::island::Presentation m_presentation = shell::island::Presentation::Collapsed;
@@ -208,7 +191,6 @@ private:
   std::optional<bool> m_lastCharging;
   std::optional<float> m_lastBatteryPercent;
   bool m_suppressed = false;
-  bool m_visibilityPassQueued = false; // coalesces bursts of workspace/window events into one pass
   std::string m_clockText;             // last clock text; the island repaints when the minute turns
   std::vector<std::unique_ptr<Instance>> m_instances;
 };

@@ -382,37 +382,22 @@ tab_next = ["tab"]
 tab_previous = ["shift+iso_left_tab"]
 delete   = ["del"]
 
-# ── Layout ────────────────────────────────────────────────────────────────────
-# Which chrome is on screen. Every mode has its own table; see docs/user/layout.
+# ── Island ────────────────────────────────────────────────────────────────────
+# The live middle of the menu bar; see docs/user/island.
 
-[layout]
-mode = "flow"                       # flow | classic | smart_bar | minimal_bar | island | edges | handle
-
-[layout.flow.bar]
-background      = "transparent"     # like the Tahoe menu bar; a soft scrim keeps it legible (glass | solid)
-
-[layout.flow.island]
-material        = "glass"           # glass | black
-reserve_space   = true              # windows start below the island, like below the menu bar
-expand_on_hover = true              # hovering unfolds the home bar over the island's strip
+[island]
+material        = "slate"           # slate | ink
+expand_on_hover = true              # hovering shows the playing track
 suppress_osd    = true              # volume, brightness, … show in the island instead of the OSD
 
-[layout.flow.edges]
-left  = "panel-open launcher"       # any IPC command, "exec <cmd>", or "none"
-right = "panel-open control-center"
-
-[layout.flow.handle]
-reveal           = "overlay"        # overlay | bar
-swipe_workspaces = true
-
 # ── Bar ───────────────────────────────────────────────────────────────────────
-# [bar.*] bars show in the classic layout mode.
+# The menu bar; its middle stays free for the island.
 
 
 [bar.main]
 position           = "top"          # top | bottom | left | right
-thickness          = 28
-background_opacity = 0.65
+thickness          = 30
+background_opacity = 0.84          # Slate tint
 compositor_blur    = true          # false stops compositor blur for this bar
 radius             = 0
 concave_edge_corners = false
@@ -434,9 +419,9 @@ capsule            = false
 # capsule_border   = "outline"      # uncomment for a border on all widgets
 # capsule_border_width = 1.0        # outline thickness in pixels (0-8); needs capsule_border
 
-start  = ["logo", "app_name"]      # logo = session menu, app_name = focused app (built-in widget instances)
-center = []
-end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"]
+start  = ["logo", "workspaces", "app_name"]  # logo = session sheet, app_name = focused app
+center = []                         # the island sits here and carries the time
+end    = ["tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"]
 
 # Commands for the bar margin outside widget sections (dead zone):
 # [bar.main.dead_zone.actions]
@@ -477,8 +462,8 @@ margin_edge         = 8
 shadow              = true
 show_running        = true
 auto_hide           = false
-# smart_auto_hide   = false       # show when the active workspace is empty; hide when it has windows
-reserve_space       = true
+smart_auto_hide     = true          # show on an empty workspace, step aside while windows are open
+reserve_space       = false
 layer               = "top"         # top | overlay
 active_scale        = 1.0
 inactive_scale      = 1.0

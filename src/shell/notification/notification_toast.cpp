@@ -2060,11 +2060,9 @@ void NotificationToast::ensureSurfaces() {
   if (slack > 0.0F) {
     (revealDirection() == RevealDirection::FromRight ? margins.right : margins.left) = 0;
   }
-  // Banners clear a layout mode's menu bar; Classic keeps Noctalia's own placement.
-  if (position.starts_with("top") && m_config->config().layout.mode != LayoutMode::Classic) {
-    const std::int32_t reserved =
-        noctalia::config::islandReservedZone(m_config->resolvedLayout(), m_config->config().accessibility.uiScale);
-    margins.top += std::max(0, floatingTopBarInset(m_config->activeBars()) - reserved);
+  // Banners clear a top bar that reserves no zone of its own.
+  if (position.starts_with("top")) {
+    margins.top += floatingTopBarInset(m_config->config().bars);
   }
   if (!m_instances.empty()
       && (position != m_lastPosition || layer != m_lastLayer || selectedMonitors != m_lastMonitorSelectors)) {

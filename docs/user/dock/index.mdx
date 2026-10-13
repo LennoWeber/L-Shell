@@ -5,11 +5,12 @@ sidebar:
   order: 3
 ---
 
-A standalone application dock that displays pinned and running apps. Disabled by default.
+L-Shell's dock: pinned and running apps at the bottom. It shows on an empty workspace and steps aside while windows
+are open (Smart auto-hide); the bottom edge brings it back.
 
 ```toml
 [dock]
-enabled             = false      # set true to activate
+enabled             = true
 position            = "bottom"   # top | bottom | left | right
 active_monitor_only = false      # when true, only show apps/windows from the active monitor
 
@@ -32,8 +33,8 @@ margin_edge         = 0          # distance from the nearest screen edge (positi
 
 show_running        = true       # also show running apps not in the pinned list
 auto_hide           = false      # slide out when pointer leaves; reveal from edge trigger strip
-smart_auto_hide     = false      # show when the active workspace is empty; hide when it has windows
-reserve_space       = true       # reserve compositor exclusive zone / push windows away
+smart_auto_hide     = true       # show when the active workspace is empty; hide when it has windows (default)
+reserve_space       = false      # true reserves an exclusive zone and pushes windows away
 layer               = "top"      # top | overlay (overlay keeps the dock above fullscreen apps)
 
 active_scale        = 1.0        # icon scale for the focused app (clamped 0.1–1.75)
@@ -156,7 +157,7 @@ When `auto_hide = true`, the dock slides out after the pointer leaves and slides
 
 ### Smart auto-hide
 
-Set auto-hide to **Smart** in dock settings (or `smart_auto_hide = true` with `auto_hide = false` in config). The dock stays visible while the active workspace on that monitor is empty and hides when the workspace has windows.
+**Smart** is the default. Set auto-hide to **Smart** in dock settings (or `smart_auto_hide = true` with `auto_hide = false` in config). The dock stays visible while the active workspace on that monitor is empty and hides when the workspace has windows.
 
 - Mutually exclusive with pointer auto-hide; if both are set in config, smart auto-hide takes precedence.
 - Uses the same slide animation and edge reveal strip while hidden.

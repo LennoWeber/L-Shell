@@ -18,8 +18,8 @@ sheen, lit rims, bouncing springs, wallpaper-tinted chrome).
    the frame around it. (Wallpaper-derived palettes stay available as an explicit choice in Settings.)
 3. **Signal, not paint.** Colour marks state. The accent appears on small things that carry meaning — the
    active workspace, the focused app, a level, an armed toggle, the keyboard focus — never as a large fill.
-4. **Everything is one gesture away.** Hidden chrome (the island's bar, edge drawers, the handle's overlay)
-   always unfolds from where it lives, and always shows the complete function set, not a reduced preview.
+4. **One place for each thing.** Every function has exactly one home that is always visible: the bar for state
+   and switches, the island for what is happening now, the dock for apps. Nothing hides behind a hover.
 5. **Quiet motion.** Movement explains where something came from and settles at once. No overshoot.
 
 ## 2. Material
@@ -95,27 +95,48 @@ workspace number), secondary text uses `on_surface_variant`.
 
 Reduce Motion (Settings → Accessibility) turns every move into a fade.
 
-## 8. Layout: Flow, one strip
+## 8. Layout: one way to use the system
 
-The default layout is **Flow**. The top of the screen is one strip that changes what it holds:
+L-Shell has exactly one layout. There are no modes: every element has one place and one job.
 
-1. **Home** (empty workspace): the full bar, Slate, flush with the top edge — logo, workspaces, tray,
-   network, Bluetooth, volume, battery, launcher, Control Center, clock.
-2. **Working** (windows open): the bar folds into the **island**, a pill in the same strip showing the
-   active workspace, date and time, and the battery. Events (volume, brightness, media, charger,
-   notifications) expand it briefly.
-3. **Hover the island**: it unfolds back into the full bar over the windows — every bar function, one gesture
-   away. Leaving the bar folds it into the island again.
+```
++--------------------------------------------------------------------------------------+
+| (L)  1 2 3  Ghostty        ( Di 13 Okt  16:43 )        tray wifi bt vol bat  (/) (=) |   menu bar + island
++--------------------------------------------------------------------------------------+
+                       .-----------------------------.
+                       |  vol  Volume                |    island, expanded for a moment
+                       |       ==========-------     |
+                       '-----------------------------'
 
-The bottom has the dock (Slate, signal lines) and the handle; the left and right screen edges open the
-launcher and Control Center. The Island layout uses the same unfold with its own bar (`[layout.island_bar]`).
+                                 (windows)
+
+                      .------------------------------.
+                      |  ::  [] [] [] []              |    dock: at home; while working it hides,
+                      |          ==                   |    the bottom edge brings it back
+                      '------------------------------'
+```
+
+1. **Menu bar** (top, always): system menu (logo: session sheet), numbered workspaces, the focused app on the left;
+   tray, network, Bluetooth, volume, battery, search, Control Center on the right. Flush, Slate, 30 px.
+2. **Island** (the bar's middle): the date and time. Events — volume, brightness, a new track, the charger, low
+   battery, Wi-Fi/Bluetooth toggles — grow it below the bar for a moment; it replaces the floating OSD, so status
+   always appears in one place. Hover while music plays shows the track; a click opens Notification Center under
+   it. Recording dots (camera, microphone, screen) sit at its trailing end.
+3. **Dock** (bottom): pinned and running apps with signal lines. It shows on an empty workspace and steps aside
+   while windows are open; the bottom edge brings it back. Windows always get the full height.
+4. **Panels** open where their trigger is: Control Center under its bar button, Notification Center under the
+   island, Spotlight in the upper middle, the session sheet in the center.
+5. **Keyboard first**: every surface has a key (see the Hyprland binds) — Spotlight, Control Center, Notification
+   Center, overview/Expo, session sheet, clipboard, screenshots.
+
+What L-Shell deliberately does not have: layout modes, auto-hiding menu bars, hover-only chrome, edge drawers,
+wallpaper-tinted colours, floating OSD pop-ups.
 
 ## 9. Components
 
 - **Session menu**: a sheet with two tiers — quiet actions (lock, sleep, log out) as tiles, power actions
   (restart, shut down) as wide buttons below them, so what ends the session stands apart. Number keys 1–5.
 - **Control Center**: Slate wells with hairlines; circular toggles turn amber when on.
-- **Status overlay** (handle): a dimmed full-screen scrim with flush Slate tiles.
 - **OSD / toasts**: raised Slate cards with the hairline; levels use amber, neutral when muted.
 
 ## 10. Checklist for new UI
@@ -125,4 +146,4 @@ launcher and Control Center. The Island layout uses the same unfold with its own
 - Radii from the scale, concentric with the parent.
 - Raised or flush decided by where the surface lives.
 - Motion from the tokens; nothing overshoots.
-- Every function reachable from hidden chrome is also reachable from the visible chrome.
+- It has one home: no second copy of a function elsewhere, nothing reachable only by hover.

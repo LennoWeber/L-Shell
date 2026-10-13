@@ -47,11 +47,9 @@ struct PanelOpenRequest {
   bool hasAnchorPosition = false;
   std::string_view context;
   std::string_view sourceBarName;
-  // Screen-edge drawers: open floating at this kPanelPositions value (e.g. "center_left") instead of the panel's
+  // Open floating at this kPanelPositions value (e.g. "top_center" under the island) instead of the panel's
   // configured placement and position. Empty keeps the configured ones.
   std::string_view screenPosition;
-  // Screen-edge drawers: close the panel once the pointer leaves it (after it has entered once).
-  bool dismissOnPointerLeave = false;
 };
 
 class PanelManager : public PopupGrabHost {
@@ -192,13 +190,6 @@ public:
 private:
   // The open panel's floating position: a screen-edge override, a plugin panel's own, or the configured one.
   [[nodiscard]] std::string effectivePanelPosition() const;
-  // Screen-edge drawers close when the pointer leaves them, unless a popup or a focused text field holds them.
-  // Marks the drawer visited once the pointer is over the panel body (not its shadow bleed).
-  void notePointerInPanel(double sx, double sy);
-  void armUnvisitedDrawerTimer();
-  [[nodiscard]] bool dismissesOnPointerLeave() const;
-  // The leave-dismiss conditions apart from "the pointer was inside": no popup in use, no focused text field.
-  [[nodiscard]] bool leaveMayDismiss() const;
   // The open floating panel's corner radius: its own (Spotlight's capsule) or the shell's panel radius.
   [[nodiscard]] float floatingPanelRadius() const;
   static PanelManager* s_instance;
@@ -303,12 +294,7 @@ private:
   std::string m_sourceBarName;       // name of the bar that opened the current panel
   std::optional<AttachedPanelGeometry> m_attachedPanelGeometry;
   bool m_pointerInside = false;
-  // Opened with PanelOpenRequest::dismissOnPointerLeave; armed once the pointer has entered the panel.
-  bool m_dismissOnPointerLeave = false;
-  bool m_pointerEnteredSinceOpen = false;
-  Timer m_unvisitedDrawerTimer; // closes a leave-dismiss drawer the pointer never entered
-  std::chrono::steady_clock::time_point m_drawerOpenedAt; // when the current drawer opened (settle grace)
-  // PanelOpenRequest::screenPosition of the open panel (screen-edge drawers); empty when it uses its own.
+  // PanelOpenRequest::screenPosition of the open panel; empty when it uses its own.
   std::string m_screenPositionOverride;
   bool m_inTransition = false;
   bool m_closing = false;

@@ -28,6 +28,7 @@ namespace noctalia::config {
     constexpr int kPluginAutoUpdateModeMigrationVersion = 13;
     constexpr int kCalendarEventFormatsMigrationVersion = 14;
     constexpr int kDockMonitorOverridesMigrationVersion = 15;
+    constexpr int kSingleLayoutMigrationVersion = 16;
     constexpr std::int64_t kMaxBarRadius = 500;
     constexpr std::array<std::string_view, 5> kBarRadiusKeys = {
         "radius", "radius_top_left", "radius_top_right", "radius_bottom_left", "radius_bottom_right",
@@ -749,6 +750,27 @@ namespace noctalia::config {
       onChanged("dock.monitors");
     }
 
+    // L-Shell has one layout: the [layout] modes are gone. The island's settings move to [island] (its geometry
+    // inside the bar is computed now, so margin_top and reserve_space go); everything else under [layout] is dropped.
+    void migrateSingleLayoutSidecar(toml::table& root, schema::Diagnostics& diag) {
+      toml::table* layout = root["layout"].as_table();
+      if (layout == nullptr) {
+        return;
+      }
+      if (toml::table* island = (*layout)["island"].as_table(); island != nullptr && !root.contains("island")) {
+        toml::table moved = *island;
+        moved.erase("margin_top");
+        moved.erase("reserve_space");
+        if (const auto material = moved["material"].value<std::string>(); material.has_value()) {
+          moved.insert_or_assign("material", *material == "black" ? "ink" : "slate");
+        }
+        root.insert_or_assign("island", std::move(moved));
+        diag.warn("layout.island", "moved to [island]");
+      }
+      root.erase("layout");
+      diag.warn("layout", "removed: L-Shell has a single layout now");
+    }
+
     void migrateDockMonitorAllowListSidecar(toml::table& root, schema::Diagnostics& diag) {
       migrateDockMonitorAllowList(root, [&diag](const std::string& path) {
         diag.warn(path, "migrated dock monitor allow-list to per-monitor enabled overrides");
@@ -888,6 +910,11 @@ namespace noctalia::config {
             .toVersion = kDockMonitorOverridesMigrationVersion,
             .summary = "dock: migrate monitor allow-list to per-monitor enabled overrides",
             .apply = migrateDockMonitorAllowListSidecar,
+        },
+        {
+            .toVersion = kSingleLayoutMigrationVersion,
+            .summary = "layout: drop the layout modes, move [layout.island] to [island]",
+            .apply = migrateSingleLayoutSidecar,
         },
     };
     return migrations;

@@ -32,8 +32,6 @@ int main(int argc, char* argv[]) {
   i18n::Service::instance().init();
 
   Config config;
-  // The [bar.*] pages exist only in the classic layout mode.
-  config.layout.mode = LayoutMode::Classic;
   config.bars.push_back(BarConfig{});
   const auto registry = settings::buildSettingsRegistry(config, nullptr, nullptr, settings::RegistryEnvironment{});
 

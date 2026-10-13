@@ -37,7 +37,7 @@ namespace shell::island {
   enum class Presentation : std::uint8_t {
     Collapsed, // clock only
     Compact,   // clock plus the ambient indicator (e.g. a playing track)
-    Expanded,  // hovered, or a transient activity is showing
+    Expanded,  // a transient activity is showing, or hovered while something ambient is going on
   };
 
   struct ActivityState {

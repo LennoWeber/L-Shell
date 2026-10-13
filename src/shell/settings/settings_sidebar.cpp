@@ -47,8 +47,8 @@ namespace settings {
 
     SidebarStyle sidebarStyle(SettingsSection section) {
       switch (section) {
-      case SettingsSection::Layout:
-        return {"layout-dashboard-filled", 0xff0a84ffU, 0};
+      case SettingsSection::Island:
+        return {"capsule-horizontal-filled", 0xfff2b04bU, 0};
       case SettingsSection::Appearance:
         return {"circle-half-2", 0xff3a3a3cU, 0};
       case SettingsSection::Wallpaper:
@@ -513,7 +513,7 @@ namespace settings {
       *creatingBarName = nextBarName;
       requestRebuild();
     };
-    if (cfg.layout.mode == LayoutMode::Classic) {
+    {
       addNavButton(
           *nav,
           ui::button({

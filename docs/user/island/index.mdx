@@ -1,0 +1,50 @@
+---
+title: Island
+description: The live middle of the L-Shell menu bar — the time, and what is happening right now.
+sidebar:
+  order: 1
+---
+
+L-Shell has one layout: the menu bar at the top, the island in its middle and the dock at the bottom (see
+`DESIGN.md`). The island is the bar's live centre. Collapsed it shows the date and time. When something happens it
+grows below the bar for a moment and shows it — volume, brightness, the track that just started, the charger, low
+battery, Wi-Fi or Bluetooth toggled. It replaces the floating OSD for everything it shows, so status always appears
+in the same place.
+
+- **Hover** while music plays: the island shows the track.
+- **Click**: Notification Center opens right under the island (notifications, the month, the weather).
+- A playing track keeps a small note in the pill; an app using the camera, the microphone or screen capture lights
+  a dot at its trailing end (green camera, orange microphone, purple screen capture), filtered like the privacy OSD
+  under `[shell.privacy]`.
+
+The island centers itself in the first top bar of each monitor. Without a top bar it floats at the top edge and
+keeps windows clear of its own strip.
+
+```toml
+[island]
+enabled          = true
+material         = "slate"   # slate | ink (an opaque black capsule)
+height           = 22        # collapsed capsule, centered in the top bar
+collapsed_width  = 190
+expanded_width   = 420
+expanded_height  = 72
+expand_on_hover  = true      # hovering shows the playing track
+click_action     = "panel-toggle notification-center"
+activity_ms      = 3000
+suppress_osd     = true      # the island replaces the OSD for what it shows
+
+[island.activities]
+media        = true
+volume       = true
+brightness   = true
+battery      = true
+notification = false
+system       = true          # Wi-Fi, Bluetooth, Do Not Disturb, caffeine, …
+```
+
+Settings → **Island** has the same options.
+
+## Blur
+
+The island is drawn in Slate and needs compositor blur behind it. Add `island` to your blur rule (see
+[Hyprland](/user/compositor-settings/hyprland/)).

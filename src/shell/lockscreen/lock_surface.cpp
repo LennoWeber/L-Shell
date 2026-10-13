@@ -1351,7 +1351,7 @@ void LockSurface::refreshClock() {
   const std::string format = lockClockFormat(m_config);
   m_clockLabel->setText(formatLocalTime(format.c_str()));
   // Same translated long date as the status overlay ("Sunday, 11 October").
-  m_dateLabel->setText(formatLocalTime(i18n::tr("status-overlay.date-format").c_str()));
+  m_dateLabel->setText(formatLocalTime(i18n::tr("lockscreen.date-format").c_str()));
 
   // Nothing to tick for while the clock is not on screen (unlocked, blacked out, no login box, a clock widget).
   if (!m_locked || m_blackout || !isLoginBoxEnabled() || outputHasClockWidget(m_config, m_outputKey)) {

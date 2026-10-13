@@ -172,7 +172,7 @@ namespace {
   }
 
   [[nodiscard]] float barCapsuleThicknessFor(const ConfigService& config, std::string_view barName) {
-    for (const auto& bar : config.activeBars()) {
+    for (const auto& bar : config.config().bars) {
       if (bar.name == barName) {
         return bar.capsuleThickness;
       }

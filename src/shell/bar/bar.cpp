@@ -46,10 +46,6 @@
 
 namespace {
 
-  // Transparent menu bar scrim (BarConfig::legibilityScrim): strength at the screen edge, per theme.
-  constexpr float kScrimDarkAlpha = 0.34F;
-  constexpr float kScrimLightAlpha = 0.5F;
-
   constexpr Logger kLog("bar");
   constexpr std::chrono::milliseconds kWorkspaceRevealDebounce{80};
   constexpr std::chrono::milliseconds kWorkspacePeekHold{450};
@@ -97,11 +93,6 @@ namespace {
     if (fullSurface) {
       return {InputRect{0, 0, surfW, surfH}};
     }
-    // Without edge reveal a hidden bar takes no input at all; only the layout handle (setBarPeek) brings it back.
-    if (!cfg.autoHideEdgeReveal) {
-      return {};
-    }
-
     const int strip = std::min(kAutoHideTriggerPx, cfg.position == "left" || cfg.position == "right" ? surfW : surfH);
     if (cfg.position == "bottom") {
       return {InputRect{0, surfH - strip, surfW, strip}};
@@ -692,7 +683,7 @@ namespace {
     if (barConfig.reserveSpace) {
       spec.exclusiveZone = reservedBarExclusiveZone(barConfig, shadowConfig);
     } else {
-      spec.exclusiveZone = barConfig.ignoreOtherZones && barConfig.isAutoHideEnabled() ? -1 : 0;
+      spec.exclusiveZone = 0;
     }
     return spec;
   }
@@ -735,9 +726,6 @@ namespace {
         && a.marginEnds == b.marginEnds
         && a.marginEdge == b.marginEdge
         && a.shadow == b.shadow
-        // The scrim box exists only when the surface's scene was built with it.
-        && a.legibilityScrim == b.legibilityScrim
-        && a.ignoreOtherZones == b.ignoreOtherZones
         && sameShadowSurface
         && a.monitorOverrides == b.monitorOverrides;
   }
@@ -1442,14 +1430,14 @@ bool Bar::initialize(const BarServices& services) {
 
   // Bars on screen come from the layout mode: the classic [bar.*] list or the mode's synthesized bars, so a
   // mode switch shows up here as a changed bar list.
-  m_lastBars = m_config->activeBars();
+  m_lastBars = m_config->config().bars;
   m_lastWidgets = m_config->config().widgets;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastPlugins = m_config->config().plugins;
   m_config->addReloadCallback(
       [this]() {
         const auto& cfg = m_config->config();
-        if (m_config->activeBars() == m_lastBars
+        if (m_config->config().bars == m_lastBars
             && cfg.widgets == m_lastWidgets
             && cfg.shell.shadow == m_lastShadow
             && cfg.plugins == m_lastPlugins) {
@@ -1495,108 +1483,6 @@ BarServices Bar::services() const {
   };
 }
 
-std::string Bar::connectorFor(const BarInstance& instance) const {
-  if (m_platform == nullptr) {
-    return {};
-  }
-  for (const auto& output : m_platform->outputs()) {
-    if (output.output == instance.output) {
-      return output.connectorName;
-    }
-  }
-  return {};
-}
-
-std::optional<ColorSpec> Bar::adaptiveForeground(const BarInstance& instance) {
-  if (!instance.barConfig.legibilityScrim) {
-    return std::nullopt;
-  }
-  switch (instance.wallpaperTone) {
-  case shell::bar::WallpaperTone::Dark:
-    return fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 0.96F));
-  case shell::bar::WallpaperTone::Light:
-    return fixedColorSpec(rgba(0.0F, 0.0F, 0.0F, 0.86F));
-  case shell::bar::WallpaperTone::Unknown:
-    break;
-  }
-  return std::nullopt;
-}
-
-void Bar::onWallpaperChanged() { refreshWallpaperTones(); }
-
-void Bar::refreshWallpaperTones() {
-  if (m_config == nullptr) {
-    return;
-  }
-  const bool wallpaperEnabled = m_config->config().wallpaper.enabled;
-  for (const auto& instance : m_instances) {
-    if (!instance->barConfig.legibilityScrim) {
-      continue;
-    }
-    const std::string connector = connectorFor(*instance);
-    if (connector.empty()) {
-      continue;
-    }
-    const std::string path = wallpaperEnabled ? m_config->getWallpaperPath(connector) : std::string{};
-    if (const auto it = m_wallpaperTonePaths.find(connector); it != m_wallpaperTonePaths.end() && it->second == path) {
-      continue;
-    }
-    m_wallpaperTonePaths[connector] = path;
-    if (path.empty()) {
-      m_wallpaperTones[connector] = shell::bar::WallpaperTone::Unknown;
-      applyWallpaperTone(connector);
-      continue;
-    }
-    const bool bottom = instance->barConfig.position == "bottom";
-    // Decoding a full-size wallpaper takes tens of milliseconds: never on the UI thread.
-    m_toneJobs.push_back(
-        ToneJob{
-            .connector = connector,
-            .path = path,
-            .result = std::async(std::launch::async, shell::bar::sampleWallpaperTone, path, bottom),
-        }
-    );
-  }
-  if (!m_toneJobs.empty() && !m_tonePollTimer.active()) {
-    m_tonePollTimer.startRepeating(std::chrono::milliseconds(40), [this]() { pollWallpaperTones(); });
-  }
-}
-
-void Bar::pollWallpaperTones() {
-  for (auto it = m_toneJobs.begin(); it != m_toneJobs.end();) {
-    if (it->result.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-      ++it;
-      continue;
-    }
-    const shell::bar::WallpaperTone tone = it->result.get();
-    // A newer wallpaper for the same output may have been queued meanwhile; only the current path counts.
-    if (m_wallpaperTonePaths[it->connector] == it->path) {
-      m_wallpaperTones[it->connector] = tone;
-      applyWallpaperTone(it->connector);
-    }
-    it = m_toneJobs.erase(it);
-  }
-  if (m_toneJobs.empty()) {
-    m_tonePollTimer.stop();
-  }
-}
-
-void Bar::applyWallpaperTone(const std::string& connector) {
-  const auto toneIt = m_wallpaperTones.find(connector);
-  const shell::bar::WallpaperTone tone =
-      toneIt != m_wallpaperTones.end() ? toneIt->second : shell::bar::WallpaperTone::Unknown;
-  for (auto& instance : m_instances) {
-    if (connectorFor(*instance) != connector || instance->wallpaperTone == tone) {
-      continue;
-    }
-    instance->wallpaperTone = tone;
-    // Widgets apply their colors when they are built, so rebuild them (rare: the wallpaper changed); the
-    // rebuild picks the tone up again and restyles the scrim.
-    const BarConfig config = instance->barConfig;
-    rebuildInstanceContents(*instance, config);
-  }
-}
-
 void Bar::onSecondTick() {
   for (auto& inst : m_instances) {
     if (inst->surface != nullptr) {
@@ -1610,8 +1496,8 @@ void Bar::reload() {
   kLog.info("reloading config");
   const auto previousBars = m_lastBars;
   const auto previousShadow = m_lastShadow;
-  const bool recreateForOrder = barSurfaceOrderRequiresRecreate(previousBars, m_config->activeBars());
-  m_lastBars = m_config->activeBars();
+  const bool recreateForOrder = barSurfaceOrderRequiresRecreate(previousBars, m_config->config().bars);
+  m_lastBars = m_config->config().bars;
   m_lastWidgets = m_config->config().widgets;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastPlugins = m_config->config().plugins;
@@ -1800,7 +1686,7 @@ void Bar::reevaluateSmartAutoHide() {
         needsRedraw = true;
       }
     } else if (
-        !instance->pointerInside && !instance->peeked && instance->attachedPopupCount == 0 && !suppressAutoHide
+        !instance->pointerInside && instance->attachedPopupCount == 0 && !suppressAutoHide
     ) {
       if ((instance->hideOpacity > 0.0F || pinnedChanged)
           && (!instance->barConfig.showOnWorkspaceSwitch || !isWorkspacePeekActive())) {
@@ -1861,8 +1747,7 @@ void Bar::applyPendingWorkspaceReveal() {
     for (BarInstance* instance : peeked) {
       if (instance == nullptr
           || !instance->barConfig.isAutoHideEnabled()
-          || instance->pointerInside
-          || instance->peeked) {
+          || instance->pointerInside) {
         continue;
       }
       if (instance->barConfig.smartAutoHide && instance->smartAutoHidePinnedVisible) {
@@ -1910,12 +1795,9 @@ void Bar::setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)>
 
 void Bar::reevaluateAutoHide() {
   for (const auto& instance : m_instances) {
-    // Only auto-hiding bars can be peeked: a peek holds a slide-out bar revealed.
-    assert(instance == nullptr || !instance->peeked || barSupportsSlideBehavior(instance->barConfig));
     if (instance == nullptr
         || !barPointerHideAllowed(*instance)
         || instance->pointerInside
-        || instance->peeked
         || instance->attachedPopupCount > 0) {
       continue;
     }
@@ -2082,10 +1964,6 @@ void Bar::syncBarExclusiveZone(BarInstance& instance) {
   std::int32_t zone = 0;
   if (shouldReserveExclusiveZone(instance)) {
     zone = reservedBarExclusiveZone(instance.barConfig, m_config->config().shell.shadow);
-  } else if (instance.barConfig.ignoreOtherZones && instance.barConfig.isAutoHideEnabled()) {
-    // On the screen edge while it only shows at home (see BarConfig); kept visible (bar-auto-hide-set off) it
-    // hangs below the island's strip again instead of covering the island.
-    zone = -1;
   }
   instance.surface->setExclusiveZone(zone);
 }
@@ -2290,41 +2168,6 @@ void Bar::setAttachedPanelGeometry(
   }
 }
 
-void Bar::setBarPeek(wl_output* output, std::string_view barName, bool active) {
-  assert(!barName.empty() && "a peek names the bar it holds");
-  BarInstance* instance = instanceForBar(output, barName);
-  if (instance == nullptr || instance->surface == nullptr) {
-    return;
-  }
-  if (!active) {
-    // Released even if the bar stopped sliding meanwhile (bar-auto-hide-set off), so no stale hold remains.
-    instance->peeked = false;
-  }
-  if (!barSupportsSlideBehavior(instance->barConfig)) {
-    return;
-  }
-  instance->peeked = active;
-  if (active) {
-    revealAutoHideBar(*instance);
-    syncBarAutoHideInputRegion(*instance);
-    instance->surface->requestRedraw();
-    return;
-  }
-  if (instance->pointerInside || instance->attachedPopupCount > 0 || !barPointerHideAllowed(*instance)) {
-    return;
-  }
-  const bool suppressAutoHide =
-      (m_autoHideSuppressionCallback != nullptr) ? m_autoHideSuppressionCallback(*instance) : false;
-  if (!suppressAutoHide) {
-    startHideFadeOut(*instance);
-  }
-}
-
-bool Bar::isBarShown(wl_output* output, std::string_view barName) const noexcept {
-  const BarInstance* instance = instanceForBar(output, barName);
-  return instance != nullptr && instance->surface != nullptr && barContentVisuallyShown(*instance);
-}
-
 void Bar::beginAttachedPopup(wl_surface* surface) {
   auto* instance = instanceForSurface(surface);
   if (instance == nullptr) {
@@ -2436,7 +2279,7 @@ void Bar::toggle() {
 
 void Bar::syncInstances() {
   const auto& outputs = m_platform->outputs();
-  const auto& bars = m_config->activeBars();
+  const auto& bars = m_config->config().bars;
 
   const auto geometryChanged = [](const BarInstance& instance, const WaylandOutput& output) {
     return instance.outputLogicalX != output.logicalX
@@ -2574,8 +2417,6 @@ void Bar::createInstance(const WaylandOutput& output, std::size_t barIndex, cons
 
   m_surfaceMap[instance->surface->wlSurface()] = instance.get();
   m_instances.push_back(std::move(instance));
-  // populateWidgets ran before the instance was listed, so its wallpaper was not sampled yet.
-  refreshWallpaperTones();
 }
 
 void Bar::destroyInstance(std::uint32_t outputName) {
@@ -2591,9 +2432,6 @@ void Bar::destroyInstance(std::uint32_t outputName) {
 }
 
 void Bar::populateWidgets(BarInstance& instance) {
-  instance.wallpaperTone = m_wallpaperTones.contains(connectorFor(instance))
-      ? m_wallpaperTones.at(connectorFor(instance))
-      : shell::bar::WallpaperTone::Unknown;
   instance.deadZoneBindings.resolve(
       noctalia::bar::WidgetActionBindings::Inputs{
           .widgetDefaults = noctalia::bar::deadZoneGestureDefaults(),
@@ -2669,8 +2507,7 @@ void Bar::populateWidgets(BarInstance& instance) {
     } else if (instance.barConfig.widgetColor.has_value()) {
       widget->setWidgetForeground(instance.barConfig.widgetColor);
     } else {
-      // No color of its own: on a transparent menu bar, the wallpaper-adaptive text color.
-      widget->setWidgetForeground(adaptiveForeground(instance));
+      widget->setWidgetForeground(std::nullopt);
     }
     if (options.iconColor.has_value()) {
       widget->setWidgetIconColor(options.iconColor);
@@ -2723,8 +2560,6 @@ void Bar::populateWidgets(BarInstance& instance) {
     instance.endWidgets.insert(instance.endWidgets.begin(), std::move(debugWidget));
   }
 #endif
-  // Sample the wallpaper tone for new outputs (a no-op for wallpapers already sampled).
-  refreshWallpaperTones();
 }
 
 void Bar::attachWidgetsToSections(BarInstance& instance) {
@@ -3224,38 +3059,6 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
 }
 
 void Bar::applySlateChrome(BarInstance& instance, const Radii& radius) {
-  if (instance.scrim != nullptr) {
-    // Darkens the wallpaper under white text or lightens it under black text, fading out downwards. The tone
-    // follows the wallpaper's brightness like macOS's transparent menu bar; the theme decides until it is known.
-    const bool light = instance.wallpaperTone == shell::bar::WallpaperTone::Unknown
-        ? isResolvedLightTheme()
-        : instance.wallpaperTone == shell::bar::WallpaperTone::Light;
-    const bool atBottom = instance.barConfig.position == "bottom";
-    const float alpha = light ? kScrimLightAlpha : kScrimDarkAlpha;
-    const float tone = light ? 1.0F : 0.0F;
-    const Color edge = rgba(tone, tone, tone, alpha);
-    const Color mid = rgba(tone, tone, tone, alpha * 0.4F);
-    const Color clear = rgba(tone, tone, tone, 0.0F);
-    // Strongest at the screen edge, eased out towards the desktop.
-    const std::array<GradientStop, 4> stops = atBottom
-        ? std::array<
-              GradientStop,
-              4>{GradientStop{0.0F, clear}, GradientStop{0.4F, mid}, GradientStop{1.0F, edge}, GradientStop{1.0F, edge}}
-        : std::array<GradientStop, 4>{
-              GradientStop{0.0F, edge}, GradientStop{0.6F, mid}, GradientStop{1.0F, clear}, GradientStop{1.0F, clear}
-          };
-    instance.scrim->setStyle(
-        RoundedRectStyle{
-            .fill = edge,
-            .border = clear,
-            .fillMode = FillMode::LinearGradient,
-            .gradientDirection = GradientDirection::Vertical,
-            .gradientStops = stops,
-            .radius = radius,
-            .softness = 0.0F,
-        }
-    );
-  }
   if (instance.hairline == nullptr) {
     return;
   }
@@ -3276,7 +3079,6 @@ void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
   }
   if (barConfigUsesSlideSurface(instance.barConfig)) {
     const bool fullSurface = instance.pointerInside
-        || instance.peeked
         || instance.attachedPopupCount > 0
         || instance.hideOpacity > 0.5F
         || (instance.barConfig.smartAutoHide && instance.smartAutoHidePinnedVisible);
@@ -3460,16 +3262,10 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
 
     // Bar background
     instance.bg = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
-    if (instance.barConfig.legibilityScrim) {
-      instance.scrim = static_cast<Box*>(
-          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
-      );
-    }
-    if (instance.barConfig.glass) {
-      instance.hairline = static_cast<Box*>(
-          instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
-      );
-    }
+    // The Slate hairline around the bar, like every other surface.
+    instance.hairline = static_cast<Box*>(
+        instance.slideRoot->addChild(ui::box({.configure = [](Box& box) { box.setHitTestVisible(false); }}))
+    );
 
     // Shadow — bar shape copy rendered with large SDF softness to simulate a blurred drop shadow.
     if (shadowSize > 0.0F) {
@@ -3593,11 +3389,9 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
         barAreaW + concave.logicalInset.left + concave.logicalInset.right,
         barAreaH + concave.logicalInset.top + concave.logicalInset.bottom
     );
-    for (Box* overlay : {instance.hairline, instance.scrim}) {
-      if (overlay != nullptr) {
-        overlay->setPosition(barAreaX, barAreaY);
-        overlay->setSize(barAreaW, barAreaH);
-      }
+    if (instance.hairline != nullptr) {
+      instance.hairline->setPosition(barAreaX, barAreaY);
+      instance.hairline->setSize(barAreaW, barAreaH);
     }
     applySlateChrome(instance, concave.radii);
   }
@@ -3812,8 +3606,6 @@ bool Bar::onPointerEvent(const PointerEvent& event) {
   case PointerEvent::Type::Leave: {
     if (m_hoveredInstance != nullptr) {
       m_hoveredInstance->pointerInside = false;
-      // A peek ends once the pointer has used the bar and moved on.
-      m_hoveredInstance->peeked = false;
       m_hoveredInstance->inputDispatcher.pointerLeave();
       updateAccordionExpansion(*m_hoveredInstance, nullptr);
       const bool suppressAutoHide =
@@ -3927,15 +3719,15 @@ std::optional<std::string> Bar::collectBarIpcInstances(
   }
 
   if (barName.has_value()) {
-    const bool knownBar = std::ranges::contains(m_config->activeBars(), *barName, &BarConfig::name);
+    const bool knownBar = std::ranges::contains(m_config->config().bars, *barName, &BarConfig::name);
     if (!knownBar) {
       if (!monitorSelector.has_value()) {
         monitorSelector = std::move(barName);
         barName = std::nullopt;
       } else {
         std::vector<std::string> knownBars;
-        knownBars.reserve(m_config->activeBars().size());
-        for (const auto& bar : m_config->activeBars()) {
+        knownBars.reserve(m_config->config().bars.size());
+        for (const auto& bar : m_config->config().bars) {
           knownBars.push_back(bar.name);
         }
         const std::string suffix =
@@ -4197,8 +3989,6 @@ std::string Bar::setBarAutoHideIpc(std::string_view args) {
 
     instance.ipcLayoutReleased = false;
     instance.autoHideDisablePending = false;
-    // A peek only holds a sliding bar; the new mode starts without one (the handle's watch notices the bar).
-    instance.peeked = false;
     instance.animations.cancelForOwner(instance.slideRoot);
 
     instance.barConfig.autoHide = enabled;

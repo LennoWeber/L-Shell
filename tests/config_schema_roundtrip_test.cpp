@@ -351,21 +351,12 @@ location = "https://example.invalid/bad"
         .soundTheme = "freedesktop"
     };
     c.weather = WeatherConfig{false, false, 17, "imperial"};
-    // Layout modes: a non-default value in every component table, nested Flow tables included.
-    c.layout.mode = LayoutMode::Edges;
-    c.layout.smartBar.background = ModeBarBackground::Solid;
-    c.layout.smartBar.endWidgets = {"clock", "battery"};
-    c.layout.minimalBar.position = ModeBarPosition::Bottom;
-    c.layout.island.material = IslandMaterial::Black;
-    c.layout.island.activities.notification = true;
-    c.layout.island.activityMs = 4500;
-    c.layout.edges.left = "panel-open clipboard";
-    c.layout.edges.length = 0.35F;
-    c.layout.handle.reveal = HandleReveal::Bar;
-    c.layout.handle.bar.floating = true;
-    c.layout.flow.island.expandOnHover = false;
-    c.layout.flow.edges.closeOnLeave = false;
-    c.layout.flow.handle.swipeWorkspaces = false;
+    // Island: a non-default value in the table and its activities.
+    c.island.enabled = false;
+    c.island.material = IslandMaterial::Ink;
+    c.island.activities.notification = true;
+    c.island.activityMs = 4500;
+    c.island.expandOnHover = false;
     c.osd.position = "bottom_left";
     c.osd.positionVertical = "top_right";
     c.osd.orientation = "vertical";
@@ -768,21 +759,15 @@ location = "https://example.invalid/bad"
     }
   }
 
-  void checkLayoutChangeSet() {
+  void checkIslandChangeSet() {
     Config before;
-    Config modeChanged = before;
-    modeChanged.layout.mode = LayoutMode::Island;
-    const auto changed = computeConfigChangeSet(before, modeChanged);
-    if (!changed.layout || !changed.bars) {
-      fail("a layout mode change did not mark layout and bars changed");
-    }
     Config islandTuned = before;
-    islandTuned.layout.flow.island.height = 30;
-    if (!computeConfigChangeSet(before, islandTuned).layout) {
-      fail("a nested flow island change did not mark layout changed");
+    islandTuned.island.height = 26;
+    if (!computeConfigChangeSet(before, islandTuned).island) {
+      fail("an island change did not mark island changed");
     }
-    if (computeConfigChangeSet(before, before).layout) {
-      fail("an unchanged config marked layout changed");
+    if (computeConfigChangeSet(before, before).island) {
+      fail("an unchanged config marked island changed");
     }
   }
 
@@ -1400,7 +1385,7 @@ widget_spacing = 8
   checkStorageKeySourceValidation();
   checkPanelFloatingLayerValidation();
   checkClamps();
-  checkLayoutChangeSet();
+  checkIslandChangeSet();
   checkMonitorOverrideChangeSet();
   checkPluginAutoUpdateMode();
   checkAutoUpdateScopeSelection();

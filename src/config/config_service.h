@@ -2,7 +2,6 @@
 
 #include "config/config_migrations.h"
 #include "config/config_types.h"
-#include "config/layout_resolver.h"
 #include "config/schema/diagnostics.h"
 #include "config/state_store.h"
 #include "core/inotify/inotify.h"
@@ -54,9 +53,6 @@ public:
   // Which sections changed in the reload currently being dispatched. Valid while
   // reload callbacks run; subscribers consult it to skip unaffected work.
   [[nodiscard]] const ConfigChangeSet& lastChange() const noexcept { return m_lastChange; }
-  // The bars on screen: [bar.*] in the classic layout mode, otherwise the active mode's synthesized bars.
-  [[nodiscard]] const std::vector<BarConfig>& activeBars() const noexcept;
-  [[nodiscard]] const noctalia::config::ResolvedLayout& resolvedLayout() const noexcept;
   [[nodiscard]] const std::string& lastMutationError() const noexcept { return m_lastMutationError; }
   [[nodiscard]] bool matchesKeybind(KeybindAction action, std::uint32_t sym, std::uint32_t modifiers) const;
   [[nodiscard]] int watchFd() const noexcept { return m_inotify.fd(); }
@@ -133,8 +129,6 @@ public:
 
   // Persist a theme-mode override to settings.toml and trigger the reload pipeline.
   void setThemeMode(ThemeMode mode);
-  // Persists [layout].mode as a settings override (the Layout page and `layout-mode-set`).
-  [[nodiscard]] bool setLayoutMode(LayoutMode mode);
   // Persist `[theme].source` and the palette field for that source, then reload.
   [[nodiscard]] bool setThemeColorScheme(PaletteSource source, std::string_view value);
   // Persist dock enabled override to settings.toml and trigger the reload pipeline.
@@ -253,7 +247,6 @@ private:
   Config m_config;
   ConfigChangeSet m_lastChange;
   // What the active [layout] mode puts on screen; recomputed after every parse of m_config.
-  noctalia::config::ResolvedLayout m_resolvedLayout;
 
   // Hand-authored config directory: all *.toml merged alphabetically.
   std::string m_configDir;

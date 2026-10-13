@@ -80,7 +80,9 @@ namespace shell::island {
   }
 
   Presentation ActivityTracker::presentation() const noexcept {
-    if (m_state.transient.has_value() || (m_state.hovered && m_config.expandOnHover)) {
+    // Hover opens only what is going on (the playing track); an idle island stays the clock.
+    const bool hoverShows = m_state.hovered && m_config.expandOnHover && m_state.ambient.has_value();
+    if (m_state.transient.has_value() || hoverShows) {
       return Presentation::Expanded;
     }
     if (m_state.ambient.has_value()) {

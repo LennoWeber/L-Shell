@@ -34,13 +34,13 @@ float TrayDrawerPanel::resolvedItemGap() const {
   }
 
   const auto resolved = tray::resolvedTrayOptions(*m_config);
-  if (!m_config->activeBars().empty()) {
-    gap = static_cast<float>(m_config->activeBars().front().widgetSpacing);
+  if (!m_config->config().bars.empty()) {
+    gap = static_cast<float>(m_config->config().bars.front().widgetSpacing);
   }
-  if (!resolved.options.matchAdjacentSpacing || m_config->activeBars().empty()) {
+  if (!resolved.options.matchAdjacentSpacing || m_config->config().bars.empty()) {
     return gap;
   }
-  const auto capsule = tray::resolvedTrayCapsuleSpec(*m_config, m_config->activeBars().front());
+  const auto capsule = tray::resolvedTrayCapsuleSpec(*m_config, m_config->config().bars.front());
   const float padding = capsule.enabled ? capsule.padding * contentScale() : 0.0F;
   return gap + 2.0F * padding;
 }
@@ -73,8 +73,8 @@ void TrayDrawerPanel::create() {
 
   float widgetSpacing = Style::spaceXs;
   std::string barPosition = "top";
-  if (!m_config->activeBars().empty()) {
-    const auto& barConfig = m_config->activeBars().front();
+  if (!m_config->config().bars.empty()) {
+    const auto& barConfig = m_config->config().bars.front();
     widgetSpacing = static_cast<float>(barConfig.widgetSpacing);
     barPosition = barConfig.position;
   }
@@ -93,8 +93,8 @@ void TrayDrawerPanel::create() {
   options.customItemSize = resolved.drawerItemSize;
   m_drawerWidget = std::make_unique<TrayWidget>(*m_config, m_tray, std::move(options));
   m_drawerWidget->setContentScale(contentScale());
-  if (!m_config->activeBars().empty()) {
-    const auto& barConfig = m_config->activeBars().front();
+  if (!m_config->config().bars.empty()) {
+    const auto& barConfig = m_config->config().bars.front();
     m_drawerWidget->setBarCapsuleSpec(tray::resolvedTrayCapsuleSpec(*m_config, barConfig));
   }
   m_drawerWidget->setAnimationManager(m_animations);

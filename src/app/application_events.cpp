@@ -103,7 +103,6 @@ void Application::requestAllSurfacesRedraw() {
   DeferredCall::callLater([this]() {
     m_bar.requestRedraw();
     m_island.requestRedraw();
-    m_gestureHandle.requestRedraw();
     m_dock.requestRedraw();
     m_desktopWidgetsController.requestRedraw();
     m_panelManager.requestRedraw();

@@ -25,7 +25,7 @@ namespace noctalia::config::schema {
   const Schema<ControlCenterConfig>& controlCenterSchema();
   const Schema<PluginsConfig>& pluginsSchema();
   const Schema<HotCornersConfig>& hotCornersSchema();
-  const Schema<LayoutConfig>& layoutSchema();
+  const Schema<IslandConfig>& islandSchema();
   const Schema<CalendarConfig::Reminders>& calendarRemindersSchema();
   const Schema<CalendarConfig>& calendarSchema();
   const Schema<KeybindsConfig>& keybindsSchema();

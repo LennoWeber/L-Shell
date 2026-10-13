@@ -74,7 +74,6 @@
 #include "shell/session/session_ipc.h"
 #include "shell/session/session_panel.h"
 #include "shell/setup_wizard/setup_wizard_panel.h"
-#include "shell/status_overlay/status_overlay_panel.h"
 #include "shell/test/test_panel.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/tray/tray_drawer_panel.h"
@@ -471,10 +470,6 @@ void Application::initInputDispatch() {
     // so a click on the island would otherwise reopen the panel it just closed.
     if (m_island.onPointerEvent(event))
       return;
-    if (m_gestureHandle.onPointerEvent(event))
-      return;
-    if (m_screenEdges.onPointerEvent(event))
-      return;
     if (m_panelManager.onPointerEvent(event))
       return;
     if (m_hotCorners.onPointerEvent(event))
@@ -729,9 +724,6 @@ void Application::initPanelManagerAndPanels() {
     m_overviewLauncherCapture.sync();
     m_bar.scheduleSmartAutoHideReevaluation();
     m_dock.scheduleSmartAutoHideReevaluation();
-    // The overview counts as home: Flow's island and the home line follow it like the home bar does.
-    m_island.onWorkspaceChanged();
-    m_gestureHandle.onWorkspaceChanged();
   });
   // A panel opened while the expo shows (launcher, control center, ...) replaces it.
   m_panelManager.setPanelOpeningCallback([this]() { m_expo.close(); });
@@ -783,18 +775,7 @@ void Application::initPanelManagerAndPanels() {
           .platform = &m_compositorPlatform,
       })
   );
-  m_panelManager.registerPanel(
-      std::string(StatusOverlayPanel::kPanelId),
-      std::make_unique<StatusOverlayPanel>(StatusOverlayServices{
-          .config = &m_configService,
-          .upower = m_upowerService.get(),
-          .network = m_networkService.get(),
-          .bluetooth = m_bluetoothService.get(),
-          .audio = m_pipewireService.get(),
-          .brightness = m_brightnessService.get(),
-          .mpris = m_mprisService.get(),
-      })
-  );
+
 
   if (SetupWizardPanel::isFirstRun(m_configService)) {
     DeferredCall::callLater([]() { PanelManager::instance().togglePanel("setup-wizard"); });
@@ -970,19 +951,13 @@ void Application::initBarDockAndLayout() {
       .screenshots = &m_screenshotService,
       .scriptApi = &m_scriptApi,
   });
-  // Caffeine needs a surface to hold its inhibitor on; in the bar-less layouts the island or the handle serves.
+  // Caffeine needs a surface to hold its inhibitor on: a bar, or the island when no bar is on screen.
   m_idleInhibitor.setAnchorSurfacesProvider([this]() {
     auto surfaces = m_bar.caffeineAnchorSurfaces();
     std::ranges::copy(m_island.surfaces(), std::back_inserter(surfaces));
-    std::ranges::copy(m_gestureHandle.surfaces(), std::back_inserter(surfaces));
     return surfaces;
   });
   m_panelManager.setOpenWidgetSettingsCallback([this](std::string barName, std::string widgetName) {
-    // A layout mode's synthesized bar has no [bar.*] page; its widgets are listed on the Layout page.
-    if (!std::ranges::contains(m_configService.config().bars, barName, &BarConfig::name)) {
-      m_settingsWindow.openToSetting({"layout", "mode"});
-      return;
-    }
     m_settingsWindow.openToBarWidget(std::move(barName), std::move(widgetName));
   });
   m_panelManager.setOpenPluginSettingsCallback([this](std::string pluginId) {
@@ -997,15 +972,11 @@ void Application::initBarDockAndLayout() {
   m_panelManager.setClickShieldExcludeRectsProvider([this](wl_output* output) {
     auto rects = m_bar.surfaceRectsForOutput(output);
     std::ranges::copy(m_island.surfaceRectsForOutput(output), std::back_inserter(rects));
-    std::ranges::copy(m_gestureHandle.surfaceRectsForOutput(output), std::back_inserter(rects));
-    std::ranges::copy(m_screenEdges.surfaceRectsForOutput(output), std::back_inserter(rects));
     return rects;
   });
   m_panelManager.setFocusGrabBarSurfacesProvider([this]() {
     auto surfaces = m_bar.allBarSurfaces();
     std::ranges::copy(m_island.surfaces(), std::back_inserter(surfaces));
-    std::ranges::copy(m_gestureHandle.surfaces(), std::back_inserter(surfaces));
-    std::ranges::copy(m_screenEdges.surfaces(), std::back_inserter(surfaces));
     return surfaces;
   });
   m_panelManager.setAttachedPanelAvailabilityCallback([this](wl_output* output, std::string_view barName) {
@@ -1132,8 +1103,6 @@ void Application::initWidgetControllersAndCallbacks() {
   m_lockscreenWidgetsController.setOnEnterEditCallback([this]() {
     m_settingsWindow.closeForWidgetEditor();
     m_island.setSuppressed(true);
-    m_gestureHandle.setSuppressed(true);
-    m_screenEdges.setSuppressed(true);
   });
   const auto restoreSettingsAfterWidgetEditor = [this]() {
     DeferredCall::callLater([this]() {
@@ -1145,8 +1114,6 @@ void Application::initWidgetControllersAndCallbacks() {
   m_desktopWidgetsController.setOnExitEditCallback(restoreSettingsAfterWidgetEditor);
   m_lockscreenWidgetsController.setOnExitEditCallback([this, restoreSettingsAfterWidgetEditor]() {
     m_island.setSuppressed(false);
-    m_gestureHandle.setSuppressed(false);
-    m_screenEdges.setSuppressed(false);
     restoreSettingsAfterWidgetEditor();
   });
   m_iconThemePollSource.setChangeCallback([this]() { onIconThemeChanged(); });
@@ -1164,7 +1131,6 @@ void Application::initWidgetControllersAndCallbacks() {
         m_renderContext.setTextFontFamily(newShellFontFamily);
         m_bar.reload();
         m_island.requestLayout();
-        m_gestureHandle.requestLayout();
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1196,7 +1162,6 @@ void Application::initWidgetControllersAndCallbacks() {
         m_renderContext.setTextBaseDirection(rtl);
         m_bar.requestLayout();
         m_island.requestLayout();
-        m_gestureHandle.requestLayout();
         m_dock.requestLayout();
         m_desktopWidgetsController.requestLayout();
         m_lockscreenWidgetsController.requestLayout();
@@ -1285,29 +1250,20 @@ void Application::initWidgetControllersAndCallbacks() {
       .upower = m_upowerService.get(),
       .bar = &m_bar,
   });
-  m_gestureHandle.initialize(
-      m_compositorPlatform, m_configService, &m_renderContext, &m_ipcService, &m_panelManager, &m_bar
-  );
-  m_screenEdges.initialize(m_compositorPlatform, m_configService, &m_renderContext, &m_ipcService, &m_panelManager);
   m_osdOverlay.setRedirect([this](const OsdContent& content) { return m_island.takeOsdContent(content); });
   m_configService.addReloadCallback(
       [this]() {
-        // The dock decides where the handle line sits (in the gap under a bottom dock) and whether there is room.
+        // The island sits in the top bar: a bar change moves it, and rebuilt bar surfaces would stack above it
+        // (same layer, newer on top), so it is recreated after them.
         const auto& changed = m_configService.lastChange();
-        if (!changed.layout && !changed.dock && !changed.bars) {
+        if (!changed.island && !changed.bars) {
           return;
         }
         m_island.reload();
-        m_gestureHandle.reload();
-        m_screenEdges.reload();
-        if (changed.bars || changed.dock) {
-          // Bar and dock surfaces this reload rebuilt now stack above the chrome (same layer, the newer surface on
-          // top). Recreating the chrome after them restores the order of reconcileOutputSurfaces().
+        if (changed.bars) {
           m_island.onOutputChange();
-          m_gestureHandle.onOutputChange();
-          m_screenEdges.onOutputChange();
         }
       },
-      "layout"
+      "island"
   );
 }

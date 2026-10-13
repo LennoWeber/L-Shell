@@ -75,9 +75,9 @@ namespace {
   // The dock stacks against the bars on screen: the classic [bar.*] list or the layout mode's synthesized bars.
   std::vector<std::string> barLayerStackSignature(const ConfigService& service) {
     std::vector<std::string> signature;
-    signature.reserve(service.activeBars().size());
+    signature.reserve(service.config().bars.size());
 
-    for (const auto& bar : service.activeBars()) {
+    for (const auto& bar : service.config().bars) {
       std::string item = std::format(
           "{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}\x1F{}", bar.name, bar.position, bar.enabled, bar.autoHide,
           bar.reserveSpace, bar.layer, bar.thickness, bar.marginEnds, bar.marginEdge, bar.shadow

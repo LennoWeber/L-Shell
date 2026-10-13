@@ -33,19 +33,11 @@ namespace noctalia::config::schema {
   inline constexpr Range<std::int64_t> kOsdHideDelayMsRange{250, 10000, 50};
   inline constexpr Range<float> kLockscreenTransitionDurationRange{100.0F, 30000.0F, 100.0F};
 
-  // Layout modes.
-  inline constexpr Range<std::int64_t> kModeBarThicknessRange{16, 64, 1};
+  // Island.
   inline constexpr Range<std::int64_t> kIslandHeightRange{16, 64, 1};
   inline constexpr Range<std::int64_t> kIslandWidthRange{60, 1200, 2};
   inline constexpr Range<std::int64_t> kIslandExpandedHeightRange{24, 240, 2};
-  inline constexpr Range<std::int64_t> kLayoutMarginRange{0, 64, 1};
   inline constexpr Range<std::int64_t> kIslandActivityMsRange{500, 10000, 250};
-  inline constexpr Range<std::int64_t> kEdgesDelayMsRange{0, 2000, 25};
-  inline constexpr Range<std::int64_t> kEdgesTriggerSizeRange{1, 8, 1};
-  inline constexpr Range<float> kEdgesLengthRange{0.1F, 1.0F, 0.05F};
-  inline constexpr Range<std::int64_t> kHandleWidthRange{40, 400, 2};
-  inline constexpr Range<std::int64_t> kHandleThicknessRange{2, 12, 1};
-  inline constexpr Range<std::int64_t> kHandleHoverDelayMsRange{0, 2000, 25};
 
   // Bar.
   inline constexpr Range<float> kBarFontScaleRange{0.2F, 2.5F, 0.01F};

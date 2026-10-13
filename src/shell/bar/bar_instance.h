@@ -5,7 +5,6 @@
 #include "render/scene/input_area.h"
 #include "render/scene/input_dispatcher.h"
 #include "render/scene/node.h"
-#include "shell/bar/wallpaper_tone.h"
 #include "shell/bar/widget.h"
 #include "shell/panel/attached_panel_context.h"
 #include "ui/signal.h"
@@ -73,20 +72,14 @@ struct BarInstance {
   // smart_auto_hide: active workspace empty (or overview open) — keep the bar visible.
   bool smartAutoHidePinnedVisible = false;
   bool pointerInside = false;
-  // Held revealed by Bar::setBarPeek (layout handle) until the pointer has visited and left the bar.
-  bool peeked = false;
   float lastPointerSx = 0.0F;
   float lastPointerSy = 0.0F;
   std::size_t attachedPopupCount = 0;
 
   // Bar background, shadow, and layout sections (start/center/end along main axis)
   Box* bg = nullptr;
-  // Slate hairline over the background (BarConfig::glass).
+  // Slate hairline over the background.
   Box* hairline = nullptr;
-  // BarConfig::legibilityScrim: the gradient behind the items of a transparent menu bar.
-  Box* scrim = nullptr;
-  // Brightness of the wallpaper under a transparent menu bar; Unknown until sampled (then the theme decides).
-  shell::bar::WallpaperTone wallpaperTone = shell::bar::WallpaperTone::Unknown;
   Box* shadow = nullptr;
   Node* shadowLeftClip = nullptr;
   Node* shadowRightClip = nullptr;

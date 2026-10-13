@@ -48,10 +48,6 @@ namespace {
 
   constexpr Logger kLog("panel");
   constexpr auto kKeyboardRelaxDelay = std::chrono::milliseconds(100);
-  // A screen-edge drawer the pointer never reaches (it brushed the edge and moved on) closes after this.
-  constexpr auto kUnvisitedDrawerTimeout = std::chrono::milliseconds(1500);
-  // How long after opening a screen-edge drawer a pointer leave is still part of the drawer settling in.
-  constexpr auto kDrawerSettleTime = std::chrono::milliseconds(350);
 
   // Layer-shell keyboard interactivity for a panel surface: `initial` is applied at
   // map time, `relaxed` (when set) shortly after by m_keyboardRelaxTimer.
@@ -182,11 +178,11 @@ namespace {
       const std::function<std::optional<BarConfig>(wl_output*, std::string_view)>& barConfigProvider,
       std::string_view barName = {}
   ) {
-    if (configService == nullptr || configService->activeBars().empty()) {
+    if (configService == nullptr || configService->config().bars.empty()) {
       return BarConfig{};
     }
 
-    const auto& bars = configService->activeBars();
+    const auto& bars = configService->config().bars;
     const std::string_view panelAnchorBar = configService->config().shell.panelAnchorBar;
     const std::string_view effectiveName = !panelAnchorBar.empty() ? panelAnchorBar : barName;
 
@@ -250,7 +246,7 @@ namespace {
     }
 
     std::size_t count = 0;
-    for (const auto& bar : configService->activeBars()) {
+    for (const auto& bar : configService->config().bars) {
       const BarConfig resolved = wlOutput != nullptr ? ConfigService::resolveForOutput(bar, *wlOutput) : bar;
       if (!resolved.enabled || resolved.position != position) {
         continue;
@@ -263,39 +259,23 @@ namespace {
     return false;
   }
 
-  // Top bars without an exclusive zone (the layout modes' smart bars) still cover the top edge, and the compositor
-  // does not keep surfaces clear of them: panels pinned to the top open below them, like macOS menus.
+  // Top bars without an exclusive zone still cover the top edge, and the compositor does not keep surfaces clear
+  // of them: panels pinned to the top open below them, like menus.
   [[nodiscard]] std::int32_t
   floatingTopBarInset(const ConfigService* configService, CompositorPlatform* platform, wl_output* output) {
-    // Classic keeps Noctalia's own [bar.*] behavior: panels there may overlap a floating bar, as upstream.
-    if (configService == nullptr || configService->config().layout.mode == LayoutMode::Classic) {
+    if (configService == nullptr) {
       return 0;
     }
     const WaylandOutput* wlOutput =
         platform != nullptr && output != nullptr ? platform->findOutputByWl(output) : nullptr;
     std::int32_t inset = 0;
-    for (const auto& bar : configService->activeBars()) {
+    for (const auto& bar : configService->config().bars) {
       const BarConfig resolved = wlOutput != nullptr ? ConfigService::resolveForOutput(bar, *wlOutput) : bar;
       if (resolved.enabled && resolved.position == "top" && !resolved.reserveSpace) {
         inset = std::max(inset, resolved.thickness + std::max(resolved.marginEdge, 0));
       }
     }
-    // The island's reserved strip already pushes panels down; the bar covers that strip as well.
-    const std::int32_t reserved = noctalia::config::islandReservedZone(
-        configService->resolvedLayout(), configService->config().accessibility.uiScale
-    );
-    return std::max(0, inset - reserved);
-  }
-
-  // A top bar that sits on the screen edge over other zones (Flow's home bar, BarConfig::ignoreOtherZones) is not
-  // pushed down by the island's reserved strip, but panels placed relative to it are: take that strip back off.
-  [[nodiscard]] std::int32_t zoneSkippedByBar(const ConfigService* configService, const BarConfig& bar) {
-    if (configService == nullptr || bar.reserveSpace || !bar.ignoreOtherZones || bar.position != "top") {
-      return 0;
-    }
-    return noctalia::config::islandReservedZone(
-        configService->resolvedLayout(), configService->config().accessibility.uiScale
-    );
+    return inset;
   }
 
   [[nodiscard]] AttachedRevealDirection
@@ -365,10 +345,9 @@ namespace {
     if (panelId == "polkit") {
       return pc.polkitPosition;
     }
-    // Notification Center hangs from the right end of the menu bar, like on macOS; Classic's [bar.*] bars can sit
-    // on any edge, so there it opens next to the clock that was clicked.
+    // Notification Center hangs from the island in the middle of the menu bar, which carries the time.
     if (panelId == "notification-center") {
-      return configService->config().layout.mode == LayoutMode::Classic ? "auto" : "top_right";
+      return "top_center";
     }
     return "auto";
   }
@@ -598,53 +577,6 @@ void PanelManager::unregisterPanel(const std::string& id) {
   m_panels.erase(it);
 }
 
-void PanelManager::armUnvisitedDrawerTimer() {
-  m_unvisitedDrawerTimer.start(kUnvisitedDrawerTimeout, [this]() {
-    if (!m_pointerEnteredSinceOpen && !m_pointerInside && leaveMayDismiss()) {
-      closePanel();
-    }
-  });
-}
-
-void PanelManager::notePointerInPanel(double sx, double sy) {
-  // A screen-edge drawer opens right under the pointer resting on its edge: the surface's shadow bleed, or the
-  // whole surface before its first input region lands, can catch the pointer for a moment. Only the panel body
-  // counts as a visit, so that moment's enter and leave do not close the drawer it just opened.
-  if (m_pointerEnteredSinceOpen) {
-    return;
-  }
-  if (m_bgNode == nullptr) {
-    m_pointerEnteredSinceOpen = true;
-    return;
-  }
-  const auto x = static_cast<float>(sx);
-  const auto y = static_cast<float>(sy);
-  m_pointerEnteredSinceOpen = x >= m_bgNode->x()
-      && y >= m_bgNode->y()
-      && x < m_bgNode->x() + m_bgNode->width()
-      && y < m_bgNode->y() + m_bgNode->height();
-}
-
-bool PanelManager::dismissesOnPointerLeave() const {
-  if (!m_pointerEnteredSinceOpen) {
-    return false;
-  }
-  return leaveMayDismiss();
-}
-
-bool PanelManager::leaveMayDismiss() const {
-  if (!m_dismissOnPointerLeave || m_activePanel == nullptr) {
-    return false;
-  }
-  // Moving into a context menu or a dropdown of the panel leaves its surface; that is still using the panel.
-  if (m_activePopup != nullptr || (m_selectPopup != nullptr && m_selectPopup->isSelectDropdownOpen())) {
-    return false;
-  }
-  // A focused text field (the launcher's search) keeps the panel: typing must not depend on where the pointer is.
-  const InputArea* focused = m_inputDispatcher.focusedArea();
-  return focused == nullptr || focused->textInputClient() == nullptr;
-}
-
 float PanelManager::floatingPanelRadius() const {
   assert(m_activePanel != nullptr && "radius of a panel that is not open");
   if (m_activePanel == nullptr) {
@@ -665,16 +597,11 @@ std::string PanelManager::effectivePanelPosition() const {
 }
 
 void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest request) {
-  // A screen position is a concrete kPanelPositions value ("auto" would mean "no override"), and only screen-edge
-  // drawers, which always carry one, dismiss on pointer leave.
+  // A screen position is a concrete kPanelPositions value ("auto" would mean "no override").
   assert(
       (request.screenPosition.empty()
        || (request.screenPosition != "auto" && std::ranges::contains(kPanelPositions, request.screenPosition)))
       && "PanelOpenRequest::screenPosition must be a concrete panel position"
-  );
-  assert(
-      (!request.dismissOnPointerLeave || !request.screenPosition.empty())
-      && "dismiss-on-leave is for screen-edge drawers, which open at a screen position"
   );
   if (m_inTransition) {
     return;
@@ -753,15 +680,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
 
   m_activePanel = it->second.get();
   m_activePanelId = panelId;
-  // Screen-edge drawers float at their edge and close once the pointer has been in and left again.
   m_screenPositionOverride = std::string(request.screenPosition);
-  m_dismissOnPointerLeave = request.dismissOnPointerLeave;
-  m_pointerEnteredSinceOpen = false;
-  m_drawerOpenedAt = std::chrono::steady_clock::now();
-  m_unvisitedDrawerTimer.stop();
-  if (m_dismissOnPointerLeave) {
-    armUnvisitedDrawerTimer();
-  }
   m_activePanel->setContentScale(shell::panel_surface::contentScale(m_config));
   m_pendingOpenContext = std::string(request.context);
   m_activePanel->setPendingOpenContext(request.context);
@@ -1014,9 +933,8 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
   // Reproduces the prior absolute placement when nothing else reserves space.
   const bool useBarRelativeDetached = !useCenterScreenLayout && !useScreenPosition && !useReservedEdgePlacement;
   if (useBarRelativeDetached) {
-    const std::int32_t barReserved = barConfig.reserveSpace
-        ? reservedBarEdgeDistance(barConfig, m_config->config().shell.shadow)
-        : zoneSkippedByBar(m_config, barConfig);
+    const std::int32_t barReserved =
+        barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, m_config->config().shell.shadow) : 0;
     const auto sw = static_cast<std::int32_t>(detachedSurfaceWidth);
     const auto sh = static_cast<std::int32_t>(detachedSurfaceHeight);
     if (isBottom) {
@@ -1123,11 +1041,6 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     });
     surface.setPrepareFrameCallback([this](bool needsUpdate, bool needsLayout) {
       prepareFrame(needsUpdate, needsLayout);
-      // A drawer's settle time counts from its latest frame until the pointer visits it: building a panel the
-      // first time can take longer than the settle time itself.
-      if (m_dismissOnPointerLeave && !m_pointerEnteredSinceOpen) {
-        m_drawerOpenedAt = std::chrono::steady_clock::now();
-      }
     });
     surface.setFrameTickCallback([this](float deltaMs) {
       startAttachedOpenAnimation();
@@ -1325,8 +1238,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     // config edge; subtracting the bar's own reservation on the main axis avoids
     // double-counting it. With no other reservation this matches the old absolute
     // placement; it self-corrects by the external reservation when one exists.
-    const std::int32_t barReserved = barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, shadowConfig)
-                                                            : zoneSkippedByBar(m_config, barConfig);
+    const std::int32_t barReserved = barConfig.reserveSpace ? reservedBarEdgeDistance(barConfig, shadowConfig) : 0;
     std::uint32_t attachedAnchor = LayerShellAnchor::Top | LayerShellAnchor::Left;
     std::int32_t attachedMarginTop = surfaceY;
     std::int32_t attachedMarginRight = 0;
@@ -1652,7 +1564,6 @@ void PanelManager::closePanel(bool animateClose) {
   // Drop the outside-click handlers as soon as close starts.
   // During the close animation we want clicks on apps to behave normally.
   deactivateOutsideClickHandlers();
-  m_unvisitedDrawerTimer.stop();
 
   // Disable input during close animation
   m_inputDispatcher.setSceneRoot(nullptr);
@@ -1791,7 +1702,7 @@ bool PanelManager::resumeClosingPanel(std::string_view panelId, wl_output* outpu
   m_closing = false;
   m_inputDispatcher.setSceneRoot(m_sceneRoot.get());
 
-  // Restore what closePanel dropped: outside-click dismissal and the unvisited-drawer timeout.
+  // Restore what closePanel dropped: outside-click dismissal.
   const bool wantsOutsideDismiss =
       m_activePanel->dismissOnOutsideClick() && m_activePanel->keyboardMode() != LayerShellKeyboard::None;
   if (wantsOutsideDismiss) {
@@ -1801,10 +1712,6 @@ bool PanelManager::resumeClosingPanel(std::string_view panelId, wl_output* outpu
     }
     activateFocusGrab();
   }
-  if (m_dismissOnPointerLeave && !m_pointerEnteredSinceOpen) {
-    armUnvisitedDrawerTimer();
-  }
-
   if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
     m_animations.cancelForOwner(m_attachedRevealClipNode);
     m_animations.animate(
@@ -1929,7 +1836,6 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
   case PointerEvent::Type::Enter: {
     if (event.surface == m_wlSurface) {
       m_pointerInside = true;
-      notePointerInPanel(event.sx, event.sy);
       m_inputDispatcher.pointerEnter(static_cast<float>(event.sx), static_cast<float>(event.sy), event.serial);
     }
     break;
@@ -1938,14 +1844,6 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
     if (event.surface == m_wlSurface) {
       m_pointerInside = false;
       m_inputDispatcher.pointerLeave();
-      if (m_dismissOnPointerLeave && std::chrono::steady_clock::now() - m_drawerOpenedAt < kDrawerSettleTime) {
-        // The drawer just opened under the pointer resting on its edge: the first configure moves the surface
-        // under the pointer and away again. That is not a visit; the unvisited timer decides instead.
-        m_pointerEnteredSinceOpen = false;
-        armUnvisitedDrawerTimer();
-      } else if (dismissesOnPointerLeave()) {
-        closePanel();
-      }
     }
     break;
   }
@@ -1953,7 +1851,6 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
     if (!m_pointerInside) {
       return false;
     }
-    notePointerInPanel(event.sx, event.sy);
     m_inputDispatcher.pointerMotion(static_cast<float>(event.sx), static_cast<float>(event.sy), 0);
     break;
   }

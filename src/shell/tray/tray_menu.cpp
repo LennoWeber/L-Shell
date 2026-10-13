@@ -94,7 +94,7 @@ namespace {
     }
 
     std::optional<BarConfig> fallback;
-    for (const auto& base : config->activeBars()) {
+    for (const auto& base : config->config().bars) {
       BarConfig resolved = base;
       if (wlOutput != nullptr) {
         resolved = ConfigService::resolveForOutput(base, *wlOutput);

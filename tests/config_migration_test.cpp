@@ -846,6 +846,27 @@ event_time_format = "%H:%M"
     );
   }
 
+  void checkSingleLayoutMigration() {
+    toml::table sidecar = toml::parse(R"(
+config_version = 15
+[layout]
+mode = "flow"
+[layout.island]
+material = "black"
+margin_top = 4
+activity_ms = 4000
+[layout.flow.bar]
+thickness = 30
+)");
+    noctalia::config::schema::Diagnostics diagnostics;
+    const int applied = noctalia::config::applyPendingConfigMigrations(sidecar, 15, diagnostics);
+    expect(applied == noctalia::config::currentConfigVersion(), "single layout migration was not applied");
+    expect(sidecar["layout"].node() == nullptr, "the [layout] table was not removed");
+    expect(sidecar["island"]["material"].value<std::string_view>() == "ink", "island material was not renamed");
+    expect(sidecar["island"]["activity_ms"].value<std::int64_t>() == 4000, "island settings were not moved");
+    expect(sidecar["island"]["margin_top"].node() == nullptr, "the computed island margin was kept");
+  }
+
   void checkDockMonitorAllowListMigration() {
     toml::table sidecar = toml::parse(R"(
 config_version = 14
@@ -1049,6 +1070,7 @@ int main() {
   checkDeadZoneActionsMigration();
   checkCalendarEventFormatsMigration();
   checkDockMonitorAllowListMigration();
+  checkSingleLayoutMigration();
   checkSysmonPresentationMigration();
   checkKeyboardLayoutShowGlyphMigration();
   checkKeyboardLayoutCustomLabelsMigration();

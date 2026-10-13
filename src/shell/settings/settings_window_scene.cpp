@@ -2288,12 +2288,10 @@ void SettingsWindow::buildScene(std::uint32_t width, std::uint32_t height) {
 
   const Config fallbackCfg{};
   const Config& cfg = m_config != nullptr ? m_config->config() : fallbackCfg;
-  // Only the classic layout shows the [bar.*] bars; the other modes configure theirs on the Layout page.
-  const bool classicLayout = cfg.layout.mode == LayoutMode::Classic;
-  const auto availableBars = classicLayout ? settings::barNames(cfg) : std::vector<std::string>{};
+  const auto availableBars = settings::barNames(cfg);
   syncSelectedBarState(cfg, availableBars);
 
-  const BarConfig* selectedBar = classicLayout ? settings::findBar(cfg, m_selectedBarName) : nullptr;
+  const BarConfig* selectedBar = settings::findBar(cfg, m_selectedBarName);
   logSettingsProfile("buildScene configSelection", phaseProfileWatch);
   phaseProfileWatch.reset();
 

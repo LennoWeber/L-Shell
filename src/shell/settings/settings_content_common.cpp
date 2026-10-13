@@ -355,7 +355,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
-    case SettingsSection::Layout:
+    case SettingsSection::Island:
     case SettingsSection::Plugins:
       return false;
     }
@@ -393,7 +393,7 @@ namespace settings {
     case SettingsSection::Niri:
     case SettingsSection::Umbriel:
     case SettingsSection::Bar:
-    case SettingsSection::Layout:
+    case SettingsSection::Island:
     case SettingsSection::Plugins:
       return {};
     }

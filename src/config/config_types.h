@@ -139,23 +139,13 @@ struct BarConfig {
   bool autoHide = false;             // slide out when the pointer leaves; reveal on edge approach
   bool smartAutoHide = false;        // hide while the active workspace has windows; show when it is empty
   bool showOnWorkspaceSwitch = true; // with auto_hide: briefly reveal when the active workspace changes
-  // With auto-hide: touching the bar's screen edge reveals it. Layout modes may turn this off; [bar.*] keeps it on.
-  bool autoHideEdgeReveal = true;
 
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
   bool reserveSpace = true;    // reserve compositor exclusive zone; applies with or without auto_hide
   std::string layer = "top";   // top | overlay; attached panels use the same layer
-  std::int32_t thickness = 28; // slim macOS-style menu bar
+  std::int32_t thickness = 30; // the Slate menu bar; the island sits in its middle
   float backgroundOpacity = Style::slateTint;
   bool compositorBlur = true;
-  // Slate chrome (the material's hairline) over the background; set by layout modes, off for [bar.*].
-  bool glass = false;
-  // Tahoe's transparent menu bar: a soft gradient from the top edge keeps the items legible on any wallpaper.
-  // Set by layout modes with a transparent background, off for [bar.*].
-  bool legibilityScrim = false;
-  // Without a zone of its own, sit on the screen edge over other surfaces' zones (exclusive zone -1) instead of
-  // after them, while it auto-hides. Set for Flow's home bar, so it takes the top edge over the island's strip.
-  bool ignoreOtherZones = false;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
   float borderWidth = 0.0F;
@@ -182,11 +172,12 @@ struct BarConfig {
   int fontWeight = 500;           // primary label weight for bar widgets
   // Typeface for this bar's widgets; unset inherits shell.font_family. Per-widget `font_family` overrides.
   std::optional<std::string> fontFamily;
-  // macOS-style menu bar: logo (session menu) and focused app name left, status icons and clock right.
-  std::vector<std::string> startWidgets = {"logo", "app_name"};
+  // The L-Shell menu bar: the system menu (logo), workspaces and the focused app on the left, status on the right.
+  // The middle stays free for the island, which carries the time.
+  std::vector<std::string> startWidgets = {"logo", "workspaces", "app_name"};
   std::vector<std::string> centerWidgets = {};
-  std::vector<std::string> endWidgets = {"tray",    "network",  "bluetooth",      "volume",
-                                         "battery", "launcher", "control-center", "clock"};
+  std::vector<std::string> endWidgets = {"tray",    "network",  "bluetooth",     "volume",
+                                         "battery", "launcher", "control-center"};
   // When true, widgets on this bar use a capsule unless `[widget.*] capsule = false`.
   bool widgetCapsuleDefault = false;
   ColorSpec widgetCapsuleFill = colorSpecFromRole(ColorRole::SurfaceVariant);
@@ -724,11 +715,12 @@ struct DockConfig {
   bool shadow = true;                  // use the global shell shadow
   bool showRunning = true;             // also show running apps not in pinned list
   bool autoHide = false;               // slide out when not hovered (overlay mode)
-  bool smartAutoHide = false;          // hide while the active workspace has windows; show when it is empty
+  // L-Shell's dock: on an empty workspace, out of the way while windows are open (the bottom edge brings it back).
+  bool smartAutoHide = true;           // hide while the active workspace has windows; show when it is empty
   std::string layer = "top";           // top | overlay
 
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
-  bool reserveSpace = true;         // reserve compositor exclusive zone; applies with or without auto_hide
+  bool reserveSpace = false; // reserve an exclusive zone; off: the dock hides over windows instead
   float activeScale = 1.0F;         // focused app icon scale
   float inactiveScale = 1.0F;       // non-focused app icon scale
   bool magnification = true;        // grow icons near the pointer
@@ -1891,79 +1883,15 @@ struct HotCornersConfig {
   bool operator==(const HotCornersConfig&) const = default;
 };
 
-// [layout]: which shell layout is on screen. Exactly one mode is active; each mode keeps its own settings
-// table, so tuning one mode never changes another. `classic` hands the screen to the [bar.*] bars.
-enum class LayoutMode : std::uint8_t {
-  Classic = 0,
-  SmartBar = 1,
-  MinimalBar = 2,
-  Island = 3,
-  Edges = 4,
-  Handle = 5,
-  Flow = 6,
-};
-
-constexpr EnumOption<LayoutMode> kLayoutModes[] = {
-    {LayoutMode::Classic, "classic", "settings.options.layout.mode.classic"},
-    {LayoutMode::SmartBar, "smart_bar", "settings.options.layout.mode.smart-bar"},
-    {LayoutMode::MinimalBar, "minimal_bar", "settings.options.layout.mode.minimal-bar"},
-    {LayoutMode::Island, "island", "settings.options.layout.mode.island"},
-    {LayoutMode::Edges, "edges", "settings.options.layout.mode.edges"},
-    {LayoutMode::Handle, "handle", "settings.options.layout.mode.handle"},
-    {LayoutMode::Flow, "flow", "settings.options.layout.mode.flow"},
-};
-
-enum class ModeBarPosition : std::uint8_t {
-  Top = 0,
-  Bottom = 1,
-};
-
-constexpr EnumOption<ModeBarPosition> kModeBarPositions[] = {
-    {ModeBarPosition::Top, "top", "settings.options.edge.top"},
-    {ModeBarPosition::Bottom, "bottom", "settings.options.edge.bottom"},
-};
-
-// How a mode bar paints behind its widgets. `transparent` is the Tahoe menu bar look.
-enum class ModeBarBackground : std::uint8_t {
-  Transparent = 0,
-  Glass = 1,
-  Solid = 2,
-};
-
-constexpr EnumOption<ModeBarBackground> kModeBarBackgrounds[] = {
-    {ModeBarBackground::Transparent, "transparent", "settings.options.layout.bar-background.transparent"},
-    {ModeBarBackground::Glass, "glass", "settings.options.layout.bar-background.glass"},
-    {ModeBarBackground::Solid, "solid", "settings.options.layout.bar-background.solid"},
-};
-
-// The curated bar a layout mode puts on screen. Resolved into a full BarConfig; everything not listed here
-// keeps the mode's look fixed.
-struct ModeBarConfig {
-  ModeBarPosition position = ModeBarPosition::Top;
-  std::int32_t thickness = 28;
-  float scale = 1.0F;     // content scale for glyphs and text
-  float fontScale = 1.0F; // text-only scale on top of `scale`
-  ModeBarBackground background = ModeBarBackground::Glass;
-  float backgroundOpacity = Style::slateTint; // tint opacity for glass and solid backgrounds
-  bool floating = false;           // detach from the screen edge as a rounded pill
-  bool reserveSpace = true;
-  bool revealOnHover = true;         // auto-hiding bars: touching the edge reveals the bar
-  bool showOnWorkspaceSwitch = true; // auto-hiding bars: briefly reveal on workspace change
-  std::vector<std::string> startWidgets;
-  std::vector<std::string> centerWidgets;
-  std::vector<std::string> endWidgets;
-
-  bool operator==(const ModeBarConfig&) const = default;
-};
-
+// How the island is drawn: Slate like every other surface, or Ink (opaque black) to read as a notch.
 enum class IslandMaterial : std::uint8_t {
-  Glass = 0,
-  Black = 1,
+  Slate = 0,
+  Ink = 1,
 };
 
 constexpr EnumOption<IslandMaterial> kIslandMaterials[] = {
-    {IslandMaterial::Glass, "glass", "settings.options.layout.island-material.glass"},
-    {IslandMaterial::Black, "black", "settings.options.layout.island-material.black"},
+    {IslandMaterial::Slate, "slate", "settings.options.island.material.slate"},
+    {IslandMaterial::Ink, "ink", "settings.options.island.material.ink"},
 };
 
 // Events that briefly expand the island on their own.
@@ -1978,134 +1906,23 @@ struct IslandActivitiesConfig {
   bool operator==(const IslandActivitiesConfig&) const = default;
 };
 
+// [island]: the live middle of the menu bar. It sits centered in the top bar and shows the date and time; events
+// (volume, brightness, media, charger, …) expand it below the bar for a moment, hovering shows what is playing,
+// and a click opens Notification Center under it. Without a top bar it floats at the top edge on its own strip.
 struct IslandConfig {
-  IslandMaterial material = IslandMaterial::Glass;
-  std::int32_t height = 32;          // collapsed capsule height
-  std::int32_t collapsedWidth = 220; // collapsed capsule width: workspace, date and time, battery
-  std::int32_t expandedWidth = 440;  // width while hovered or showing an activity
-  std::int32_t expandedHeight = 76;  // height while hovered or showing an activity
-  std::int32_t marginTop = 6;        // gap between the screen's top edge and the capsule
-  bool reserveSpace = true;          // reserve the collapsed strip so windows start below it
-  // Hovering unfolds the island into its mode's bar (flow: the home bar, island: [layout.island_bar]), so the
-  // whole bar is one gesture away; events still expand the island on their own.
-  bool expandOnHover = true;
-  std::string clickAction = "panel-toggle control-center"; // widget action grammar
+  bool enabled = true;
+  IslandMaterial material = IslandMaterial::Slate;
+  std::int32_t height = 22;          // collapsed capsule height, centered in the top bar
+  std::int32_t collapsedWidth = 190; // collapsed capsule width
+  std::int32_t expandedWidth = 420;  // width while showing an activity
+  std::int32_t expandedHeight = 72;  // height while showing an activity
+  bool expandOnHover = true;         // hovering shows the ongoing activity (the playing track), if there is one
+  std::string clickAction = "panel-toggle notification-center"; // widget action grammar
   IslandActivitiesConfig activities;
   std::int32_t activityMs = 3000; // how long an event keeps the island expanded
   bool suppressOsd = true;        // the island replaces the OSD for every activity it shows
 
   bool operator==(const IslandConfig&) const = default;
-};
-
-// Screen-edge drawers: resting the pointer on the middle part of an edge runs that edge's action.
-struct EdgesConfig {
-  std::int32_t delayMs = 150;                    // dwell time before the action runs
-  std::int32_t triggerSize = 2;                  // trigger strip thickness in logical px
-  float length = 0.5F;                           // fraction of each edge covered by its strip, centered
-  bool closeOnLeave = true;                      // panels opened from an edge close when the pointer leaves them
-  std::string top = "panel-open control-center"; // widget action grammar; "none" disables the edge
-  std::string bottom = "panel-open launcher";
-  std::string left = "panel-open status-overlay";
-  std::string right = "panel-open session";
-
-  bool operator==(const EdgesConfig&) const = default;
-};
-
-// What hovering or pulling up the bottom handle shows.
-enum class HandleReveal : std::uint8_t {
-  Bar = 0,
-  Overlay = 1,
-};
-
-constexpr EnumOption<HandleReveal> kHandleReveals[] = {
-    {HandleReveal::Bar, "bar", "settings.options.layout.handle-reveal.bar"},
-    {HandleReveal::Overlay, "overlay", "settings.options.layout.handle-reveal.overlay"},
-};
-
-struct HandleConfig {
-  HandleReveal reveal = HandleReveal::Overlay;
-  std::int32_t width = 134;      // home-indicator line length in logical px
-  std::int32_t thickness = 5;    // line thickness in logical px
-  std::int32_t marginBottom = 8; // gap between the screen's bottom edge and the line
-  std::int32_t hoverDelayMs = 250;
-  bool pullUp = true;          // dragging the line upwards also reveals
-  bool swipeWorkspaces = true; // dragging the line sideways switches workspace
-  // Shown on reveal = "bar": hidden while windows are open, visible on an empty workspace.
-  ModeBarConfig bar{
-      .position = ModeBarPosition::Bottom,
-      .thickness = 30,
-      .startWidgets = {"workspaces"},
-      .centerWidgets = {"clock"},
-      .endWidgets = {"network", "bluetooth", "volume", "battery", "control-center"},
-  };
-
-  bool operator==(const HandleConfig&) const = default;
-};
-
-// Flow: the bar on an empty workspace; with windows open it folds into the island in the same strip (hovering
-// the island unfolds it again), the handle appears at the bottom and the side edges open the launcher and
-// Control Center.
-struct FlowConfig {
-  // Pinned on an empty workspace only; while windows are open the island owns the top edge, so the bar neither
-  // reveals on edge hover nor flashes on a workspace switch. Slate, because the island unfolds it over windows.
-  ModeBarConfig bar{
-      .thickness = 28,
-      .reserveSpace = false, // only on screen when there are no windows to push aside
-      .revealOnHover = false,
-      .showOnWorkspaceSwitch = false,
-      .startWidgets = {"logo", "workspaces"},
-      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
-  };
-  // Its strip stays reserved, like the macOS menu bar: windows never slide under the island.
-  IslandConfig island{
-      .height = 24,
-      .marginTop = 2,
-      .reserveSpace = true,
-  };
-  EdgesConfig edges{
-      .top = "none",
-      .bottom = "none",
-      .left = "panel-open launcher",
-      .right = "panel-open control-center",
-  };
-  HandleConfig handle;
-
-  bool operator==(const FlowConfig&) const = default;
-};
-
-struct LayoutConfig {
-  LayoutMode mode = LayoutMode::Flow;
-  // Menu-bar presets use the seeded "logo" (session menu, like the Apple menu) and "app_name" widgets and the
-  // launcher as the Spotlight button, matching the [bar.*] defaults.
-  ModeBarConfig smartBar{
-      .thickness = 28,
-      .reserveSpace = false, // hidden while windows are open; a hover reveal floats over them like macOS
-      .startWidgets = {"logo", "workspaces", "app_name"},
-      .centerWidgets = {"clock"},
-      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center"},
-  };
-  // Always shown over its own reserved strip, never over windows.
-  ModeBarConfig minimalBar{
-      .thickness = 24,
-      .scale = 0.85F,
-      .startWidgets = {"logo", "app_name"},
-      .endWidgets = {"tray", "network", "battery", "launcher", "control-center", "clock"},
-  };
-  IslandConfig island;
-  // Island mode's bar: hidden until hovering the island unfolds it over the island's strip.
-  ModeBarConfig islandBar{
-      .thickness = 28,
-      .reserveSpace = false,
-      .revealOnHover = false,
-      .showOnWorkspaceSwitch = false,
-      .startWidgets = {"logo", "workspaces", "app_name"},
-      .endWidgets = {"tray", "network", "bluetooth", "volume", "battery", "launcher", "control-center", "clock"},
-  };
-  EdgesConfig edges;
-  HandleConfig handle;
-  FlowConfig flow;
-
-  bool operator==(const LayoutConfig&) const = default;
 };
 
 struct Config {
@@ -2118,7 +1935,7 @@ struct Config {
   DockConfig dock;
   DesktopWidgetsConfig desktopWidgets;
   HotCornersConfig hotCorners;
-  LayoutConfig layout;
+  IslandConfig island;
   StorageConfig storage;
   ShellConfig shell;
   OsdConfig osd;
@@ -2169,7 +1986,7 @@ struct ConfigChangeSet {
   bool controlCenter = true;
   bool plugins = true;
   bool hotCorners = true;
-  bool layout = true;
+  bool island = true;
   bool storage = true;
   bool accessibility = true;
 
@@ -2200,10 +2017,9 @@ struct ConfigChangeSet {
         || controlCenter
         || plugins
         || hotCorners
-        || layout
+        || island
         || storage
-        || accessibility
-        || layout;
+        || accessibility;
   }
 };
 

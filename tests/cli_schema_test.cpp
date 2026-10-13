@@ -40,16 +40,6 @@ int main() {
     TEST_CHECK(noctalia::theme::schemeToString(*parsed) == name);
   }
 
-  // layout-mode-set offers exactly the config's layout modes.
-  const noctalia::cli::Command* layoutModeSet = noctalia::cli::findMsgCommand("layout-mode-set");
-  TEST_CHECK(layoutModeSet != nullptr);
-  TEST_CHECK(layoutModeSet->positionals.size() == 1);
-  const auto& modeChoices = layoutModeSet->positionals.front().choices;
-  TEST_CHECK(modeChoices.size() == std::size(kLayoutModes));
-  for (const auto& option : kLayoutModes) {
-    TEST_CHECK(std::ranges::contains(modeChoices, option.key));
-  }
-
   // expo takes the same optional toggle/close action as overview.
   for (const std::string_view name : {std::string_view{"overview"}, std::string_view{"expo"}}) {
     const noctalia::cli::Command* command = noctalia::cli::findMsgCommand(name);

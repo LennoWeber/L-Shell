@@ -43,7 +43,6 @@
 #include "shell/desktop/desktop_widgets_controller.h"
 #include "shell/dock/dock.h"
 #include "shell/expo/expo.h"
-#include "shell/gesture_handle/gesture_handle.h"
 #include "shell/hot_corners/hot_corners.h"
 #include "shell/island/island.h"
 #include "shell/lockscreen/lock_screen.h"
@@ -60,7 +59,6 @@
 #include "shell/overview/overview_launcher_capture.h"
 #include "shell/panel/panel_manager.h"
 #include "shell/screen_corners/screen_corners.h"
-#include "shell/screen_edges/screen_edges.h"
 #include "shell/session/session_action_runner.h"
 #include "shell/settings/settings_window.h"
 #include "shell/switcher/window_switcher.h"
@@ -372,8 +370,6 @@ private:
   ScreenCorners m_screenCorners;
   // Layout-mode components; each stays empty unless the active [layout] mode uses it.
   Island m_island;
-  ScreenEdges m_screenEdges;
-  GestureHandle m_gestureHandle;
   TrayMenu m_trayMenu;
   Wallpaper m_wallpaper;
   Backdrop m_backdrop;

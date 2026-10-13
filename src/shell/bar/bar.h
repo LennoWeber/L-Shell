@@ -4,14 +4,12 @@
 #include "ipc/ipc_invocation_context.h"
 #include "shell/bar/bar_instance.h"
 #include "shell/bar/bar_services.h"
-#include "shell/bar/wallpaper_tone.h"
 #include "shell/bar/widget_action_dispatcher.h"
 #include "shell/bar/widget_factory.h"
 #include "ui/dialogs/layer_popup_host.h"
 #include "wayland/surface.h"
 
 #include <functional>
-#include <future>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -76,7 +74,6 @@ public:
   void onSecondTick();
   void refresh();
   // The wallpaper changed: re-sample its tone under transparent menu bars (text color like macOS).
-  void onWallpaperChanged();
   void requestLayout();
   void setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)> callback);
   // Re-run auto-hide after a panel closes so unrelated bars are not left visible.
@@ -116,11 +113,6 @@ public:
   // bars that have finished sliding into their resting position.
   [[nodiscard]] bool isAttachedPanelBarSettled(wl_output* output, std::string_view barName) const noexcept;
   void revealAutoHideForAttachedPanel(wl_output* output, std::string_view barName);
-  // Holds an auto-hiding bar revealed while `active` (the layout handle's hover or pull), even with windows open;
-  // releasing it lets the bar's own auto-hide decide again. No-op for bars that do not auto-hide.
-  void setBarPeek(wl_output* output, std::string_view barName, bool active);
-  // True while the bar's content is on screen (not fully slid away).
-  [[nodiscard]] bool isBarShown(wl_output* output, std::string_view barName) const noexcept;
   void beginAttachedPopup(wl_surface* surface);
   void endAttachedPopup(wl_surface* surface);
 
@@ -158,7 +150,7 @@ private:
   [[nodiscard]] bool shouldReserveExclusiveZone(const BarInstance& instance) const noexcept;
   [[nodiscard]] bool barContentVisuallyShown(const BarInstance& instance) const noexcept;
   void revealAutoHideBar(BarInstance& instance);
-  // BarConfig::glass: the Slate hairline around the bar.
+  // The Slate hairline around the bar.
   static void applySlateChrome(BarInstance& instance, const Radii& radius);
   [[nodiscard]] bool isWorkspacePeekActive() const noexcept;
   void applyPendingWorkspaceReveal();
@@ -230,20 +222,4 @@ private:
   bool m_overlayDisplaySuppressed = false;
   bool m_wasVisibleBeforeOverlaySuppress = false;
   bool m_smartAutoHideReevalQueued = false;
-
-  // Wallpaper tone under transparent menu bars, per output connector, sampled off the UI thread.
-  struct ToneJob {
-    std::string connector;
-    std::string path;
-    std::future<shell::bar::WallpaperTone> result;
-  };
-  void refreshWallpaperTones();
-  void pollWallpaperTones();
-  void applyWallpaperTone(const std::string& connector);
-  [[nodiscard]] std::string connectorFor(const BarInstance& instance) const;
-  [[nodiscard]] static std::optional<ColorSpec> adaptiveForeground(const BarInstance& instance);
-  std::unordered_map<std::string, shell::bar::WallpaperTone> m_wallpaperTones;
-  std::unordered_map<std::string, std::string> m_wallpaperTonePaths;
-  std::vector<ToneJob> m_toneJobs;
-  Timer m_tonePollTimer;
 };

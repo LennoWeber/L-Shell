@@ -5,8 +5,8 @@
   </picture>
 </p>
 
-<p align="center"><b>A calm, macOS-inspired desktop shell for Wayland.</b><br/>
-Liquid Glass panels, a Spotlight that finds everything, and a desktop that gets out of your way.</p>
+<p align="center"><b>A calm, productive desktop shell for Wayland with one design of its own: Slate.</b><br/>
+One menu bar with a live island in its middle, one material, one way to work.</p>
 
 <p><br/></p>
 
@@ -30,41 +30,28 @@ Brand assets live in [`assets/branding/`](assets/branding) and are rendered by
 
 ## What makes it L-Shell
 
-- **Spotlight.** A compact search bar in the upper part of the screen that opens instantly, grows as you type and
-  groups results under *Top Hit*, *Applications*, *Settings*, *Calculator*, *Emoji* and more. All launcher features
-  (prefixes, app actions, app grid, dmenu) stay available.
-- **Settings search.** Type what you want to change ("bar position", "dock") and Enter opens the settings window on
-  exactly that setting.
-- **Mission Control.** `l-shell msg overview` shows every window of the current workspace as a large thumbnail on a
-  frosted backdrop, with a workspace bar on top. Click to focus, Esc to leave.
-- **Liquid Glass.** Floating panels, Control Center, the session menu and the dock are translucent glass with a
-  specular sheen and a hairline rim, and they appear with a quick fade-and-zoom instead of sliding in.
-- **Menu bar and dock.** A transparent menu bar like Tahoe's (logo menu, status icons, Spotlight, Control Center,
-  clock) over a soft scrim that keeps it legible on any wallpaper, and a floating glass dock with running-app dots
-  and magnification.
-- **Notification Center.** Click the clock: the latest notifications as cards with app icons and relative times,
-  a month widget and a weather widget on a sky gradient.
-- **Apple menu.** The logo opens a compact menu: Sleep, Restart, Shut Down, Lock Screen, Log Out.
-- **Command-Tab.** Alt+Tab shows one large icon per app on a glass panel, most recently used first, without
-  capturing window snapshots.
-- **Lock screen like Tahoe.** Date and a large clock at the top, the avatar, your name and a glass password pill at
-  the bottom, session buttons in the corner.
-- **Neutral by default.** The built-in *L-Shell* palette is mostly dark greys with a single system-blue accent; color
-  appears only where it carries meaning. Common apps (GTK, Qt, KDE, terminals, btop) follow the same palette.
-- **Inter** as the UI font, bundled.
-- **Layout modes.** Switch in *Settings → Layout* or with `l-shell-msg layout-mode-set <mode>`:
-  - *Flow* (default): the menu bar on an empty desktop; while you work it steps away, a Liquid Glass island at the
-    top shows the time and expands for volume, brightness, charging and track changes, the screen edges open
-    Spotlight and Control Center, and an iPhone-style home line at the bottom opens a full-screen status overview.
-  - *Classic* (your `[bar.*]` bars, as upstream), *Smart Bar*, *Minimal Bar*, *Island*, *Edges* and *Handle*, each
-    with its own settings. See [docs/user/layout](docs/user/layout/index.mdx).
-- **Control Center like Tahoe.** A compact grid of glass modules: Wi-Fi/Bluetooth/VPN, Focus, Caffeine, Night Light,
-  Display and Sound sliders, Now Playing, and round shortcuts; modules open on their own with a back button.
-- **System Settings like Tahoe.** Floating glass sidebar with colored squircle icons, grouped rows, neutral segmented
-  controls and pop-up buttons, accent colors (blue, purple, pink, red, orange, yellow, green, graphite, or taken
-  from the wallpaper).
+L-Shell has exactly one layout and one visual system, **Slate** (see [DESIGN.md](DESIGN.md)). There are no modes to
+pick: the shell is designed as a whole, the way macOS or Windows are.
+
+- **The menu bar.** Always there, flush with the top edge: the system menu (logo), numbered workspaces and the
+  focused app on the left; tray, network, Bluetooth, volume, battery, search and Control Center on the right.
+- **The island.** The bar's live middle. It shows the date and time; when something happens (volume, brightness,
+  a new track, the charger, low battery, Wi-Fi or Bluetooth toggled) it grows below the bar for a moment and shows
+  it. It replaces the floating OSD, so status always appears in one place. Hover while music plays to see the
+  track; click to open Notification Center under it. Recording dots show when an app uses the camera, microphone
+  or screen.
+- **The dock.** On an empty workspace it is there; while you work it gets out of the way and the bottom edge brings
+  it back. Running apps carry a signal line, the focused one in amber.
+- **Slate.** One material for every surface (graphite at 84 % over blur, a 1 px hairline, a shadow only on what
+  floats), a fixed palette with one amber signal accent, concentric radii and quiet motion. The wallpaper never
+  recolours the shell; GTK, Qt, KDE, terminal and btop themes follow the same palette.
+- **Spotlight.** A compact search field that opens instantly and finds apps, settings, calculations, emoji and more.
+- **Mission Control and Expo.** `l-shell msg overview` shows the current workspace's windows; Expo shows every
+  workspace on every monitor.
+- **Session sheet.** Lock, sleep and log out as tiles over restart and shut down as wide buttons; keys 1–5.
+- **Settings search.** Type what you want to change and Enter opens the settings window on exactly that setting.
 - **Instant key bindings.** `l-shell-msg` is an IPC client that links only libc: bound to a key it answers in about
-  2 ms instead of loading the whole shell (~45 ms), so Spotlight and Control Center appear the moment you press.
+  2 ms, so Spotlight and Control Center appear the moment you press.
 
 ## Build and run
 
@@ -87,12 +74,12 @@ l-shell-msg panel-toggle launcher        # Spotlight
 l-shell-msg panel-toggle control-center  # Control Center
 l-shell-msg overview                     # Mission Control
 l-shell-msg settings-toggle              # System Settings
-l-shell-msg layout-mode-set flow         # layout mode
+l-shell-msg panel-toggle session         # session sheet
 ```
 
 Bind these to keys with `l-shell-msg` (not `l-shell msg`): it is the fast path. For Hyprland, see
-[docs/user/compositor-settings/hyprland.mdx](docs/user/compositor-settings/hyprland.mdx), which also has the Liquid
-Glass blur and window shadow settings.
+[docs/user/compositor-settings/hyprland.mdx](docs/user/compositor-settings/hyprland.mdx), which also has the Slate
+blur and window shadow settings.
 
 ## Staying current with Noctalia
 

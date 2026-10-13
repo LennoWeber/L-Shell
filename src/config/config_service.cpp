@@ -580,9 +580,7 @@ ConfigService::ConfigService() {
 
 // ── Public interface ─────────────────────────────────────────────────────────
 
-const std::vector<BarConfig>& ConfigService::activeBars() const noexcept { return m_resolvedLayout.bars; }
 
-const noctalia::config::ResolvedLayout& ConfigService::resolvedLayout() const noexcept { return m_resolvedLayout; }
 
 void ConfigService::addReloadCallback(ReloadCallback callback, std::string_view label) {
   m_reloadCallbacks.push_back({std::move(callback), std::string(label)});
@@ -1550,7 +1548,6 @@ void ConfigService::loadAll() {
     kLog.info("no config files found, using defaults");
     m_lastChange = ConfigChangeSet{};
     m_config = makeDefaultConfig();
-    m_resolvedLayout = noctalia::config::resolveLayout(m_config);
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
     m_configFileDockMonitorOverrideNames.clear();
@@ -1610,7 +1607,6 @@ void ConfigService::loadAll() {
   if (semanticError.empty()) {
     m_lastChange = computeConfigChangeSet(m_config, nextConfig);
     m_config = std::move(nextConfig);
-    m_resolvedLayout = noctalia::config::resolveLayout(m_config);
     m_configFileBarNames = std::move(configFileBarNames);
     m_configFileMonitorOverrideNames = std::move(configFileMonitorOverrideNames);
     m_configFileDockMonitorOverrideNames = std::move(configFileDockMonitorOverrideNames);
@@ -1631,7 +1627,6 @@ void ConfigService::loadAll() {
   } else if (m_config.bars.empty()) {
     m_lastChange = ConfigChangeSet{};
     m_config = makeDefaultConfig();
-    m_resolvedLayout = noctalia::config::resolveLayout(m_config);
     m_configFileBarNames.clear();
     m_configFileMonitorOverrideNames.clear();
     m_configFileDockMonitorOverrideNames.clear();
@@ -1924,16 +1919,6 @@ bool ConfigService::matchesKeybind(KeybindAction action, std::uint32_t sym, std:
 void ConfigService::registerIpc(IpcService& ipc) {
   ipc.bind(noctalia::cli::msg::configReload, [this](const std::string&) -> std::string {
     forceReload();
-    return "ok\n";
-  });
-  ipc.bind(noctalia::cli::msg::layoutModeSet, [this](const std::string& args) -> std::string {
-    const auto mode = enumFromKey(kLayoutModes, StringUtils::trim(args));
-    if (!mode.has_value()) {
-      return "error: unknown layout mode (expected classic, smart_bar, minimal_bar, island, edges, handle or flow)\n";
-    }
-    if (!setLayoutMode(*mode)) {
-      return "error: could not save the layout mode (see the log)\n";
-    }
     return "ok\n";
   });
 }

@@ -807,8 +807,6 @@ void Application::reconcileOutputSurfaces() {
   m_lockscreenWidgetsController.onOutputChange();
   m_screenCorners.onOutputChange();
   m_island.onOutputChange();
-  m_gestureHandle.onOutputChange();
-  m_screenEdges.onOutputChange();
   m_hotCorners.onOutputChange();
   m_lockScreen.onOutputChange();
   m_idleGraceOverlay.onOutputChange();
@@ -854,8 +852,6 @@ void Application::initWaylandCallbacks() {
     }
     m_bar.onWorkspaceChanged();
     m_dock.onWorkspaceChanged();
-    m_island.onWorkspaceChanged();
-    m_gestureHandle.onWorkspaceChanged();
     m_bar.refresh();
     m_windowSwitcher.onToplevelChange();
     m_expo.onWindowsChanged();
@@ -874,8 +870,6 @@ void Application::initWaylandCallbacks() {
     m_bar.scheduleSmartAutoHideReevaluation();
     m_dock.scheduleSmartAutoHideReevaluation();
     // Windows opening or closing on the active workspace decide whether the island and handle show.
-    m_island.onWorkspaceChanged();
-    m_gestureHandle.onWorkspaceChanged();
     m_bar.refresh();
     m_dock.refresh();
     m_windowSwitcher.onToplevelChange();
@@ -949,7 +943,6 @@ void Application::initAuxServicesAndHooks() {
       m_syncScriptApiOutputs();
     }
     m_backdrop.onStateChange();
-    m_bar.onWallpaperChanged();
     m_lockScreen.onWallpaperChanged();
     m_themeService.onWallpaperChange();
     if (m_panelManager.isOpenPanel("control-center")) {
