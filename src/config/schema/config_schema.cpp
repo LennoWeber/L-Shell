@@ -129,6 +129,7 @@ namespace noctalia::config::schema {
   const Schema<LockscreenConfig>& lockscreenSchema() {
     static const Schema<LockscreenConfig> s = {
         field(&LockscreenConfig::enabled, "enabled"),
+        field(&LockscreenConfig::ink, "ink"),
         field(&LockscreenConfig::lockBeforeSuspend, "lock_before_suspend"),
         field(&LockscreenConfig::gracePeriodSeconds, "grace_period_seconds", Range<std::int64_t>{0, 60}),
         field(&LockscreenConfig::fingerprint, "fingerprint"),
@@ -141,6 +142,7 @@ namespace noctalia::config::schema {
         field(&LockscreenConfig::edgeSmoothness, "edge_smoothness", kUnitRange),
         field(&LockscreenConfig::blurIntensity, "blur_intensity", kUnitRange),
         field(&LockscreenConfig::tintIntensity, "tint_intensity", kUnitRange),
+        enumField(&LockscreenConfig::clockStyle, "clock_style", kLockscreenClockStyles),
         pathStringField(&LockscreenConfig::wallpaper, "wallpaper"),
         field(&LockscreenConfig::monitors, "monitors"),
     };
@@ -291,6 +293,8 @@ namespace noctalia::config::schema {
   const Schema<NotificationConfig>& notificationSchema() {
     static const Schema<NotificationConfig> s = {
         field(&NotificationConfig::enableDaemon, "enable_daemon"),
+        enumField(&NotificationConfig::style, "style", kNotificationToastStyles),
+        field(&NotificationConfig::showToasts, "show_toasts"),
         field(&NotificationConfig::showAppName, "show_app_name"),
         field(&NotificationConfig::showActions, "show_actions"),
         field(&NotificationConfig::position, "position"),
@@ -435,6 +439,7 @@ namespace noctalia::config::schema {
   const Schema<DesktopWidgetsConfig>& desktopWidgetsSchema() {
     static const Schema<DesktopWidgetsConfig> s = {
         field(&DesktopWidgetsConfig::enabled, "enabled"),
+        field(&DesktopWidgetsConfig::visibility, "visibility"),
         field(&DesktopWidgetsConfig::schemaVersion, "schema_version"),
         subTable(&DesktopWidgetsConfig::grid, "grid", desktopWidgetsGridSchema()),
     };
@@ -583,6 +588,7 @@ namespace noctalia::config::schema {
         field(&ControlCenterConfig::width, "width", kControlCenterWidthRange),
         field(&ControlCenterConfig::showShortcutLabels, "show_shortcut_labels"),
         field(&ControlCenterConfig::showSessionButton, "show_session_button"),
+        field(&ControlCenterConfig::showHomeTitle, "show_home_title"),
         field(&ControlCenterConfig::hiddenTabs, "hidden_tabs"),
         subTable(&ControlCenterConfig::calendarTab, "calendar", calendarTabSchema()),
         arrayOf<ControlCenterConfig, ShortcutConfig>(
@@ -1375,6 +1381,7 @@ namespace noctalia::config::schema {
       static const Schema<ShellConfig::ShadowConfig> s = {
           enumField(&ShellConfig::ShadowConfig::direction, "direction", kShadowDirections),
           field(&ShellConfig::ShadowConfig::alpha, "alpha", kUnitRange),
+          colorField(&ShellConfig::ShadowConfig::color, "color"),
       };
       return s;
     }
@@ -1428,6 +1435,7 @@ namespace noctalia::config::schema {
           colorField(&ShellConfig::PanelConfig::borderColor, "border_color"),
           field(&ShellConfig::PanelConfig::borderWidth, "border_width", kPanelBorderWidthRange),
           field(&ShellConfig::PanelConfig::shadow, "shadow"),
+          enumField(&ShellConfig::PanelConfig::reveal, "reveal", kPanelReveals),
           field(&ShellConfig::PanelConfig::listItemBackground, "list_item_background"),
           field(&ShellConfig::PanelConfig::wallpaperShowNames, "wallpaper_show_names"),
           custom<ShellConfig::PanelConfig>(
@@ -1459,11 +1467,13 @@ namespace noctalia::config::schema {
           field(&ShellConfig::PanelConfig::sessionPosition, "session_position"),
           field(&ShellConfig::PanelConfig::polkitPosition, "polkit_position"),
           field(&ShellConfig::PanelConfig::floatingOffset, "floating_offset", Range<std::int64_t>{0, 100}),
+          field(&ShellConfig::PanelConfig::attachedFullLength, "attached_full_length"),
           field(&ShellConfig::PanelConfig::openNearClickControlCenter, "open_near_click_control_center"),
           field(&ShellConfig::PanelConfig::openNearClickLauncher, "open_near_click_launcher"),
           field(&ShellConfig::PanelConfig::openNearClickClipboard, "open_near_click_clipboard"),
           field(&ShellConfig::PanelConfig::openNearClickWallpaper, "open_near_click_wallpaper"),
           field(&ShellConfig::PanelConfig::openNearClickSession, "open_near_click_session"),
+          field(&ShellConfig::PanelConfig::scrim, "scrim"),
       };
       return s;
     }
@@ -1493,6 +1503,7 @@ namespace noctalia::config::schema {
           field(&ShellConfig::LauncherConfig::appGrid, "app_grid"),
           field(&ShellConfig::LauncherConfig::showAppActions, "show_app_actions"),
           field(&ShellConfig::LauncherConfig::sortByUsage, "sort_by_usage"),
+          field(&ShellConfig::LauncherConfig::recentFiles, "recent_files"),
           field(&ShellConfig::LauncherConfig::pinned, "pinned"),
           field(&ShellConfig::LauncherConfig::fetchExchangeRates, "fetch_exchange_rates"),
           field(&ShellConfig::LauncherConfig::providerPrefix, "provider_prefix"),
@@ -1661,6 +1672,7 @@ namespace noctalia::config::schema {
           field(&ShellSessionConfig::menu, "menu"),
           field(&ShellSessionConfig::grid, "grid"),
           field(&ShellSessionConfig::gridColumns, "grid_columns", kSessionGridColumnsRange),
+          field(&ShellSessionConfig::hairline, "hairline"),
           field(&ShellSessionConfig::showShortcuts, "show_shortcuts"),
           subTable(&ShellSessionConfig::power, "power", shellSessionPowerSchema()),
       };
@@ -1690,6 +1702,10 @@ namespace noctalia::config::schema {
             },
             [](toml::table& tbl, const ShellConfig& in) { tbl.insert_or_assign("font_family", in.fontFamily); }
         ),
+        field(&ShellConfig::displayFontFamily, "display_font_family"),
+        enumField(&ShellConfig::iconStyle, "icon_style", kIconStyles),
+        field(&ShellConfig::iconWeight, "icon_weight", kIconWeightRange),
+        field(&ShellConfig::iconFill, "icon_fill"),
         stringIfNonEmptyField(&ShellConfig::lang, "lang"),
         field(&ShellConfig::timeFormat, "time_format"),
         field(&ShellConfig::dateFormat, "date_format"),
@@ -1708,6 +1724,7 @@ namespace noctalia::config::schema {
         field(&ShellConfig::settingsWindowTranslucent, "settings_window_translucent"),
         field(&ShellConfig::showLocation, "show_location"),
         field(&ShellConfig::appIconColorize, "app_icon_colorize"),
+        field(&ShellConfig::appIconGlyphs, "app_icon_glyphs"),
         colorSpecField(&ShellConfig::appIconColor, "app_icon_color", /*alwaysEmit=*/false),
         field(&ShellConfig::launchAppsAsSystemdServices, "launch_apps_as_systemd_services"),
         field(&ShellConfig::launchAppsCustomCommand, "launch_apps_custom_command"),
@@ -1923,7 +1940,7 @@ namespace noctalia::config::schema {
       }
       static const std::unordered_set<std::string> kWidgetKeys = {
           "id",        "type",       "output",   "cx",     "cy",     "placement_width", "placement_height",
-          "box_width", "box_height", "rotation", "flip_x", "flip_y", "enabled",         "settings",
+          "box_width", "box_height", "scale",    "rotation", "flip_x", "flip_y", "enabled",         "settings",
       };
       if (!kWidgetKeys.contains(path[3])) {
         return false;
@@ -2372,7 +2389,9 @@ namespace noctalia::config::schema {
         field(&DockConfig::inactiveOpacity, "inactive_opacity", kUnitRange),
         field(&DockConfig::showDots, "show_dots"),
         field(&DockConfig::showInstanceCount, "show_instance_count"),
+        enumField(&DockConfig::itemStyle, "item_style", kDockItemStyles),
         enumField(&DockConfig::launcherPosition, "launcher_position", kDockLauncherPositions),
+        field(&DockConfig::launcherSeparator, "launcher_separator"),
         field(&DockConfig::launcherIcon, "launcher_icon"),
         pathStringField(&DockConfig::launcherCustomImage, "launcher_custom_image"),
         field(&DockConfig::launcherCustomImageColorize, "launcher_custom_image_colorize"),
@@ -2409,10 +2428,12 @@ namespace noctalia::config::schema {
         field(&BarConfig::autoHide, "auto_hide"),
         field(&BarConfig::smartAutoHide, "smart_auto_hide"),
         field(&BarConfig::showOnWorkspaceSwitch, "show_on_workspace_switch"),
+        field(&BarConfig::eventMorph, "event_morph"),
         field(&BarConfig::reserveSpace, "reserve_space"),
         barLayerField(),
         field(&BarConfig::thickness, "thickness", kBarThicknessRange),
         field(&BarConfig::backgroundOpacity, "background_opacity", kBarOpacityRange),
+        colorField(&BarConfig::background, "background"),
         field(&BarConfig::compositorBlur, "compositor_blur"),
         colorField(&BarConfig::border, "border"),
         field(&BarConfig::borderWidth, "border_width", kBarBorderWidthRange),

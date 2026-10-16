@@ -267,7 +267,8 @@
       "do-not-disturb": "Nicht stören",
       "display": "Display",
       "sound": "Ton",
-      "vpn": "VPN"
+      "vpn": "VPN",
+      "heading": "Steuerung"
     },
     "media": {
       "active-player": "Aktiver Player",
@@ -648,6 +649,12 @@
     }
   },
   "launcher": {
+    "age": {
+      "days": "{count} Tg.",
+      "hours": "{count} Std.",
+      "minutes": "{count} Min.",
+      "now": "jetzt"
+    },
     "categories": {
       "all": "Alle",
       "applications": {
@@ -703,6 +710,9 @@
       "emoji": {
         "title": "Emoji"
       },
+      "recent": {
+        "title": "Zuletzt"
+      },
       "session": {
         "action-subtitle": "Sitzungsaktion ausführen",
         "command-subtitle": "Konfigurierten Befehl ausführen",
@@ -727,6 +737,7 @@
     },
     "search-placeholder": "Spotlight-Suche",
     "sections": {
+      "apps": "Apps",
       "top-hit": "Bester Treffer"
     },
     "footer": {
@@ -738,6 +749,10 @@
       "close": "Schließen"
     },
     "command-placeholder": "Apps, Einstellungen und Befehle suchen…",
+    "sheet": {
+      "enter": "Enter"
+    },
+    "sheet-placeholder": "Suchen",
     "tags": {
       "applications": "Programm",
       "calculator": "Rechner",
@@ -835,6 +850,9 @@
       "session-bus-unavailable": "Session-Bus nicht verfügbar",
       "wallpaper-palette-export": "Benutzerdefinierte Palette",
       "wallpaper-palette-export-success": "„{name}“ gespeichert und Palettenquelle auf benutzerdefiniert umgestellt."
+    },
+    "toast": {
+      "now": "Jetzt"
     }
   },
   "osd": {
@@ -934,7 +952,15 @@
     "errors": {
       "lock-body": "Das Sitzungssperrprotokoll ist nicht verfügbar.",
       "lock-title": "Sperre nicht verfügbar"
-    }
+    },
+    "short-actions": {
+      "lock": "Sperren",
+      "logout": "Abmelden",
+      "reboot": "Neustart",
+      "shutdown": "Aus",
+      "sleep": "Ruhe"
+    },
+    "title": "Sitzung"
   },
   "settings": {
     "actions": {
@@ -1420,6 +1446,18 @@
         "overlay": "Overlay",
         "top": "Top"
       },
+      "lockscreen": {
+        "clock-style": {
+          "centered": "Zentriert",
+          "corner": "Ecke"
+        }
+      },
+      "notification": {
+        "style": {
+          "banner": "Banner",
+          "header": "Kopfzeile"
+        }
+      },
       "notification-urgency": {
         "critical": "Kritisch",
         "low": "Niedrig",
@@ -1456,6 +1494,17 @@
         "top-right": "Oben rechts"
       },
       "shell": {
+        "icon-style": {
+          "tabler": "Tabler",
+          "outlined": "Material Outlined",
+          "rounded": "Material Rounded",
+          "sharp": "Material Sharp"
+        },
+        "launcher-style": {
+          "command": "Befehlsleiste",
+          "sheet": "Blatt",
+          "spotlight": "Spotlight"
+        },
         "panel-placement": {
           "attached": "Angedockt",
           "floating": "Schwebend"
@@ -1480,9 +1529,9 @@
           "up-left": "Oben links",
           "up-right": "Oben rechts"
         },
-        "launcher-style": {
-          "command": "Befehlsleiste",
-          "spotlight": "Spotlight"
+        "panel-reveal": {
+          "grow": "Wachsen",
+          "lift": "Anheben"
         }
       },
       "theme": {
@@ -1546,6 +1595,10 @@
           "slate": "Slate",
           "ink": "Schwarz"
         }
+      },
+      "dock-item-style": {
+        "icon": "Symbole",
+        "tile": "Kacheln"
       }
     },
     "plugins": {
@@ -1663,6 +1716,10 @@
           "description": "Färbe Anwendung-Icons in der Shell neu ein, um sie an die aktive Palette anzupassen",
           "label": "App-Icons einfärben"
         },
+        "app-icon-glyphs": {
+          "description": "Apps im Starter und in der Taskleiste als einfarbige Symbole ihrer Kategorie statt mit ihren eigenen Icons zeigen",
+          "label": "Apps als Symbole"
+        },
         "builtin-palette": {
           "description": "Wähle eine Palette aus dem mitgelieferten Katalog",
           "label": "Integrierte Palette"
@@ -1747,6 +1804,10 @@
         "design": {
           "label": "Design",
           "description": "Der ganze Desktop: Aufbau, Farben, Schrift und Fensterstil. Auch über Super+Alt+D."
+        },
+        "display-font-family": {
+          "label": "Titelschrift",
+          "description": "Schriftart für Überschriften, Mitteilungstitel, die Uhr des Sperrbildschirms und die Suche im Launcher; leer verwendet die Oberflächenschrift"
         }
       },
       "backdrop": {
@@ -2109,6 +2170,14 @@
         "show-running": {
           "description": "Zeige laufende Anwendungen, die nicht angeheftet sind",
           "label": "Laufende anzeigen"
+        },
+        "item-style": {
+          "label": "Darstellung",
+          "description": "Die App-Symbole selbst zeigen oder jede App auf einer abgerundeten Kachel, den Launcher auf einer Akzentkachel"
+        },
+        "launcher-separator": {
+          "label": "Trennlinie nach dem Launcher",
+          "description": "Eine feine Linie zwischen Launcher-Knopf und Apps zeichnen"
         }
       },
       "hooks": {
@@ -2257,6 +2326,10 @@
           "description": "Verwende einen Schnappschuss des Desktops als Hintergrund des Sperrbildschirms",
           "label": "Desktopaufnahme"
         },
+        "clock-style": {
+          "description": "Zentriert: das Datum über einer großen Uhrzeit oben. Ecke: eine riesige Uhrzeit links unten unter dem Datum",
+          "label": "Uhr"
+        },
         "enabled": {
           "description": "Aktiviere Sitzungssperre, Logind-Integration und Sperraktionen",
           "label": "Sperrbildschirm"
@@ -2360,12 +2433,20 @@
           "description": "Zeige den Namen der sendenden Anwendung in Benachrichtigungs-Toasts an",
           "label": "App-Name anzeigen"
         },
+        "style": {
+          "description": "Banner: das Icon der App neben dem Text. Kopfzeile: eine Zeile mit dem Namen der App über dem Text, die Aktionen als Felder, getrennt durch feine Linien",
+          "label": "Stil"
+        },
         "toast-opacity": {
           "description": "Hintergrunddeckkraft von Benachrichtigungs-Toasts",
           "label": "Hintergrunddeckkraft"
         }
       },
       "panels": {
+        "attached-full-length": {
+          "description": "Angedockte Panels laufen über die ganze Länge ihrer Leiste, als Blätter, die aus ihr fahren, statt sich ihrem Inhalt anzupassen",
+          "label": "Angedockte Panels in voller Länge"
+        },
         "borders": {
           "description": "Zeichne einen Umriss um schwebende Panels",
           "label": "Rahmen"
@@ -2490,6 +2571,10 @@
           "description": "Trigger-Präfix für die Fenstersuche",
           "label": "Fensterpräfix"
         },
+        "launcher-recent-files": {
+          "description": "Zuletzt verwendete Dateien im Starter finden und im leeren Blatt auflisten",
+          "label": "Zuletzt verwendete Dateien"
+        },
         "launcher-reset-usage": {
           "button": "Zurücksetzen",
           "description": "Lösche Startzähler und den Verlauf der zuletzt verwendeten Einträge, die für die Launcher-Sortierung genutzt werden",
@@ -2593,12 +2678,20 @@
         "launcher-style": {
           "label": "Stil",
           "description": "Befehlsleiste ist kompakt und kantig mit einzeiligen Treffern; Spotlight ist das macOS-Original"
+        },
+        "reveal": {
+          "label": "Öffnen",
+          "description": "Schwebende Panels wachsen leicht aus ihrem Ursprung oder heben sich beim Einblenden ein paar Pixel an ihren Platz"
         }
       },
       "power": {
         "session-actions": {
           "description": "Einträge des Sitzungsmenüs, Reihenfolge, benutzerdefinierte Befehle und Icons",
           "label": "Einträge"
+        },
+        "session-hairline": {
+          "description": "Das Raster als Kacheln zeichnen, getrennt durch feine Linien, jede mit ihrem Symbol über einem kurzen Namen, am Fuß des Panels",
+          "label": "Kacheln mit feinen Linien"
         },
         "session-menu": {
           "description": "Eine kompakte Liste wie das Apple-Menü statt großer Schaltflächen",
@@ -3388,12 +3481,15 @@
         "value": "Wert"
       },
       "options": {
+        "active-indicator-dot": "Punkt unter der App",
+        "active-indicator-edge": "Strich am Bildschirmrand",
         "after": "Danach",
         "always": "Immer",
         "app-name": "App-Name",
         "auto": "Auto",
         "before": "Davor",
         "both": "Beide",
+        "box": "Kasten",
         "compact": "Kompakt",
         "count": "Zähler",
         "cpu-freq": "CPU-Frequenz",
@@ -3440,10 +3536,12 @@
         "scroll-steps": "Bei jedem Schritt",
         "shared": "Geteilt",
         "short": "Kurz",
+        "squares": "Quadrate",
         "swap-percent": "Swap %",
         "text": "Text",
         "text-only": "Nur Text",
         "time": "Zeit",
+        "underline": "Unterstrich",
         "workspace-label-centered": "Zentriert",
         "workspace-label-corner": "Ecke",
         "workspace-label-inside": "Innerhalb der Pill"
@@ -3456,6 +3554,10 @@
         "active-color": {
           "description": "Farbe für aktive Privatsphäre-Indikatoren; feste Hex-Farben werden ebenfalls unterstützt",
           "label": "Aktiv-Farbe"
+        },
+        "active-indicator": {
+          "description": "Wie die fokussierte App markiert wird",
+          "label": "Aktiv-Markierung"
         },
         "active-indicator-color": {
           "description": "Farbe des Indikators unter dem Icon des aktiven Fensters",
@@ -3781,6 +3883,14 @@
           "description": "Abstandshalter-Länge in Pixeln",
           "label": "Länge"
         },
+        "letter-spacing": {
+          "description": "Zusätzlicher Abstand zwischen den Buchstaben, als Anteil der Schriftgröße",
+          "label": "Laufweite"
+        },
+        "line-height": {
+          "description": "Abstand gestapelter Zeilen als Vielfaches der Schriftgröße (0 = der Schrift eigener)",
+          "label": "Zeilenhöhe"
+        },
         "match-adjacent-spacing": {
           "description": "Vergrößere die Abstände zwischen Inline-Tray-Icons, um den visuellen Abstand benachbarter Leisten-Widgets anzupassen (einschließlich Kapselinnenabstand)",
           "label": "Abstand benachbarter Widgets anpassen"
@@ -3857,6 +3967,10 @@
         "reversed": {
           "description": "Kehre die Reihenfolge der Balken von niedrigen zu hohen Frequenzen um",
           "label": "Umgekehrt"
+        },
+        "rule-length": {
+          "description": "Eine feine Linie quer über die Leiste in der Mitte der Lücke ziehen, so viele Pixel lang (0 = keine Linie)",
+          "label": "Linienlänge"
         },
         "scale": {
           "description": "Skaliere dieses Widget relativ zur Inhaltsskala der Leiste",
@@ -3987,6 +4101,10 @@
           "description": "Integrierter Widget-Typ für dieses benannte Widget",
           "label": "Typ"
         },
+        "uppercase": {
+          "description": "Den Text in Großbuchstaben setzen",
+          "label": "Versalien"
+        },
         "urgent-color": {
           "description": "Farbe für dringende Arbeitsbereiche; feste Hex-Farben werden ebenfalls unterstützt",
           "label": "Dringend-Farbe"
@@ -4026,6 +4144,17 @@
         "workspace-label-placement": {
           "description": "Ecke, am Rand zentriert oder innerhalb der Kapsel",
           "label": "Platzierung der Arbeitsbereichsbeschriftung"
+        },
+        "count": {
+          "label": "Immer anzeigen",
+          "workspaces-description": "Arbeitsbereiche 1 bis zu dieser Zahl auch leer anzeigen (0 = nur belegte)"
+        },
+        "two-digit-labels": {
+          "label": "Zweistellige Nummern"
+        },
+        "dock-pins": {
+          "label": "Dock-Favoriten",
+          "taskbar-description": "Die im Dock angehefteten Apps zeigen und dorthin anheften, wenn diese Taskleiste keine eigene Liste hat"
         }
       },
       "types": {

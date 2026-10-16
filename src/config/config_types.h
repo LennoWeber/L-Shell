@@ -139,12 +139,17 @@ struct BarConfig {
   bool autoHide = false;             // slide out when the pointer leaves; reveal on edge approach
   bool smartAutoHide = false;        // hide while the active workspace has windows; show when it is empty
   bool showOnWorkspaceSwitch = true; // with auto_hide: briefly reveal when the active workspace changes
+  // The bar behaves like the island: an event (volume, brightness, media, a notification) dims the
+  // widgets for a moment and shows in the bar itself instead of an OSD popup or an island capsule.
+  bool eventMorph = false;
 
   [[nodiscard]] constexpr bool isAutoHideEnabled() const noexcept { return autoHide || smartAutoHide; }
   bool reserveSpace = true;    // reserve compositor exclusive zone; applies with or without auto_hide
   std::string layer = "top";   // top | overlay; attached panels use the same layer
   std::int32_t thickness = 30; // the Slate menu bar; the island sits in its middle
   float backgroundOpacity = Style::slateTint;
+  // The strip's paper: the shell surface by default; a design may lay the bar in its desktop's ground color.
+  ColorSpec background = colorSpecFromRole(ColorRole::Surface);
   bool compositorBlur = true;
   // Inside outline for the bar background; attached panels inherit the resolved values.
   ColorSpec border = colorSpecFromRole(ColorRole::Outline);
@@ -249,6 +254,8 @@ struct ShellSessionConfig {
   // the power actions as wide buttons).
   bool grid = false;
   std::int32_t gridColumns = 3;
+  // The grid as tiles divided by 1px rules, each its glyph over a short name, at the foot of the panel (Monolith).
+  bool hairline = false;
   bool showShortcuts = true;
   // Optional overrides for built-in session power commands. Empty = auto-detect at runtime.
   struct ShellSessionPowerConfig {
@@ -557,8 +564,16 @@ struct BackdropConfig {
   bool operator==(const BackdropConfig&) const = default;
 };
 
+enum class LockscreenClockStyle : std::uint8_t {
+  Centered = 0, // macOS: a date line over a display-size clock, centered at the top
+  Corner = 1,   // Monolith: a versal date line over a huge clock in the bottom-left corner
+};
+
 struct LockscreenConfig {
   bool enabled = true;
+  LockscreenClockStyle clockStyle = LockscreenClockStyle::Centered;
+  // Palette ink straight on a paper wallpaper, instead of white over the dimmed wallpaper.
+  bool ink = false;
   // Lock on PrepareForSleep (lid close / systemctl suspend) via logind sleep-delay inhibit.
   // Distinct from idle/session lock_and_suspend actions.
   bool lockBeforeSuspend = true;
@@ -595,6 +610,11 @@ template <typename T> struct EnumOption {
   T value;
   std::string_view key;
   std::string_view labelKey;
+};
+
+constexpr EnumOption<LockscreenClockStyle> kLockscreenClockStyles[] = {
+    {LockscreenClockStyle::Centered, "centered", "settings.options.lockscreen.clock-style.centered"},
+    {LockscreenClockStyle::Corner, "corner", "settings.options.lockscreen.clock-style.corner"},
 };
 
 template <typename T, std::size_t N>
@@ -645,6 +665,18 @@ constexpr EnumOption<DockLauncherPosition> kDockLauncherPositions[] = {
     {DockLauncherPosition::None, "none", "settings.options.dock-launcher-position.none"},
     {DockLauncherPosition::Start, "start", "settings.options.dock-launcher-position.start"},
     {DockLauncherPosition::End, "end", "settings.options.dock-launcher-position.end"},
+};
+
+// How the dock draws its apps: the app icons themselves, or each app on a rounded tile with the launcher on an
+// accent one (a shelf of tiles, as in the Atelier design).
+enum class DockItemStyle : std::uint8_t {
+  Icon = 0,
+  Tile = 1,
+};
+
+constexpr EnumOption<DockItemStyle> kDockItemStyles[] = {
+    {DockItemStyle::Icon, "icon", "settings.options.dock-item-style.icon"},
+    {DockItemStyle::Tile, "tile", "settings.options.dock-item-style.tile"},
 };
 
 struct DockMonitorOverride {
@@ -729,7 +761,9 @@ struct DockConfig {
   float inactiveOpacity = 1.0F;     // non-focused app icon opacity
   bool showDots = true;             // show optional running window dots below app icons
   bool showInstanceCount = false;   // show a badge with count when app has >1 window
+  DockItemStyle itemStyle = DockItemStyle::Icon;
   DockLauncherPosition launcherPosition = DockLauncherPosition::Start;
+  bool launcherSeparator = false;           // a hairline between the launcher and the apps
   std::string launcherIcon = "grid-dots";   // Tabler glyph name
   std::string launcherCustomImage = "";     // image path; overrides launcherIcon glyph when set
   bool launcherCustomImageColorize = false; // tint the custom image with the icon color role
@@ -762,6 +796,8 @@ struct DesktopWidgetState {
   // auto-fits the content's natural size. Resizing in the editor sets explicit values.
   float boxWidth = 0.0F;
   float boxHeight = 0.0F;
+  // Content scale multiplier on top of the accessibility ui_scale (1.0 = as drawn at scale 1).
+  float scale = 1.0F;
   float rotationRad = 0.0F;
   bool flipX = false;
   bool flipY = false;
@@ -773,6 +809,9 @@ struct DesktopWidgetState {
 
 struct DesktopWidgetsConfig {
   bool enabled = true;
+  // "always" shows the widgets whenever they are enabled; "home" shows them only while the focused
+  // output's active workspace holds no windows (an empty desk becomes the home dashboard).
+  std::string visibility = "always";
   std::int32_t schemaVersion = 2;
   DesktopWidgetsGridState grid;
   std::vector<DesktopWidgetState> widgets;
@@ -828,8 +867,24 @@ struct OsdConfig {
   bool operator==(const OsdConfig&) const = default;
 };
 
+enum class NotificationToastStyle : std::uint8_t {
+  Banner = 0, // macOS banner: the app's icon beside summary and body
+  Header = 1, // Monolith: a versal line naming the app over summary and body, actions as cells divided by rules
+};
+
+constexpr EnumOption<NotificationToastStyle> kNotificationToastStyles[] = {
+    {NotificationToastStyle::Banner, "banner", "settings.options.notification.style.banner"},
+    {NotificationToastStyle::Header, "header", "settings.options.notification.style.header"},
+};
+
 struct NotificationConfig {
   static constexpr std::int32_t kDefaultWidth = 360;
+
+  NotificationToastStyle style = NotificationToastStyle::Banner;
+
+  // False keeps new notifications out of the corner: no toasts at all (history still records them),
+  // for designs whose surface shows events in place instead.
+  bool showToasts = true;
 
   bool enableDaemon = true;
   bool showAppName = true;
@@ -889,6 +944,22 @@ enum class StorageKeySource : std::uint8_t {
 enum class PasswordMaskStyle : std::uint8_t {
   CircleFilled = 0,
   RandomIcons = 1,
+};
+
+// The icon set glyphs draw with. Tabler is the shell's own; the Material Symbols styles draw the equivalent
+// Material icon wherever there is one (assets/fonts/material-symbols.json) and Tabler otherwise.
+enum class IconStyle : std::uint8_t {
+  Tabler = 0,
+  Outlined = 1,
+  Rounded = 2,
+  Sharp = 3,
+};
+
+constexpr EnumOption<IconStyle> kIconStyles[] = {
+    {IconStyle::Tabler, "tabler", "settings.options.shell.icon-style.tabler"},
+    {IconStyle::Outlined, "outlined", "settings.options.shell.icon-style.outlined"},
+    {IconStyle::Rounded, "rounded", "settings.options.shell.icon-style.rounded"},
+    {IconStyle::Sharp, "sharp", "settings.options.shell.icon-style.sharp"},
 };
 
 constexpr EnumOption<PasswordMaskStyle> kPasswordMaskStyles[] = {
@@ -953,6 +1024,18 @@ enum class PanelTransparencyMode : std::uint8_t {
   Solid = 0,
   Soft = 1,
   Glass = 2,
+};
+
+// How a floating panel appears: grows a little from where it came from (macOS), or lifts a few pixels into place
+// as it fades in, like a card picked up from the desk (Atelier).
+enum class PanelReveal : std::uint8_t {
+  Grow = 0,
+  Lift = 1,
+};
+
+constexpr EnumOption<PanelReveal> kPanelReveals[] = {
+    {PanelReveal::Grow, "grow", "settings.options.shell.panel-reveal.grow"},
+    {PanelReveal::Lift, "lift", "settings.options.shell.panel-reveal.lift"},
 };
 
 constexpr EnumOption<PanelTransparencyMode> kPanelTransparencyModes[] = {
@@ -1059,6 +1142,8 @@ struct ShellConfig {
   struct ShadowConfig {
     ShadowDirection direction = ShadowDirection::Down;
     float alpha = 0.45F;
+    // Hue of the shadow; `alpha` sets its strength. Black by default, a design may cast a warm one.
+    ColorSpec color = ColorSpec{.role = std::nullopt, .fixed = rgba(0.0F, 0.0F, 0.0F, 1.0F), .alpha = 1.0F};
 
     bool operator==(const ShadowConfig&) const = default;
   };
@@ -1070,6 +1155,7 @@ struct ShellConfig {
     ColorSpec borderColor = colorSpecFromRole(ColorRole::Outline);
     float borderWidth = Style::borderWidth;
     bool shadow = true;                    // cast the global [shell.shadow] from panel surfaces
+    PanelReveal reveal = PanelReveal::Grow; // how floating panels appear
     bool listItemBackground = false;       // filled rounded background behind launcher/clipboard list items
     bool wallpaperShowNames = true;        // caption wallpaper picker thumbnails with their file name
     std::string floatingLayer = "overlay"; // top | overlay; attached panels follow their bar
@@ -1088,11 +1174,17 @@ struct ShellConfig {
     std::string sessionPosition = "center";
     std::string polkitPosition = "center";
     std::int32_t floatingOffset = 8; // logical px gap between a floating/detached panel and the bar edge
+    // Attached panels run their bar's whole length, sheets that slide out of it, instead of fitting their content.
+    bool attachedFullLength = false;
     bool openNearClickControlCenter = false;
     bool openNearClickLauncher = false;
     bool openNearClickClipboard = false;
     bool openNearClickWallpaper = false;
     bool openNearClickSession = false;
+    // A translucent, compositor-blurred veil over the whole screen while one of the modal panels
+    // (launcher, control center, clipboard, session) is open: the screen enters a mode, the panel
+    // floats large above it, and clicking the veil closes the panel.
+    bool scrim = false;
 
     bool operator==(const PanelConfig&) const = default;
   };
@@ -1100,11 +1192,13 @@ struct ShellConfig {
   enum class LauncherStyle : std::uint8_t {
     Spotlight = 0, // macOS Tahoe Spotlight: a capsule field, results grouped under headers on a rounded sheet
     Command = 1,   // a compact, square-cut command bar: dense one-line rows, type tags and key hints
+    Sheet = 2,     // Monolith: an underlined field over sections in versals, the session tiles at its foot
   };
 
   static constexpr EnumOption<LauncherStyle> kLauncherStyles[] = {
       {LauncherStyle::Command, "command", "settings.options.shell.launcher-style.command"},
       {LauncherStyle::Spotlight, "spotlight", "settings.options.shell.launcher-style.spotlight"},
+      {LauncherStyle::Sheet, "sheet", "settings.options.shell.launcher-style.sheet"},
   };
 
   // Launcher behavior/appearance. Panel placement for the launcher surface stays
@@ -1119,6 +1213,8 @@ struct ShellConfig {
     bool appGrid = false;
     bool showAppActions = false;
     bool sortByUsage = true;
+    // Recently used files (recently-used.xbel) in the global search, and under "Recent" in the empty sheet.
+    bool recentFiles = false;
     // Desktop entry IDs shown first in the launcher when it opens without a query.
     std::vector<std::string> pinned;
     /// When true, refresh currency exchange rates from libqalculate's online sources.
@@ -1227,6 +1323,12 @@ struct ShellConfig {
   bool cardBorders = false;
   bool showCloseButtons = false; // macOS popovers and panels dismiss without a close button
   std::string fontFamily = "Inter Variable";
+  // Typeface of headings and display numerals (panel titles, notification summaries, the lock screen clock, the
+  // launcher's search field); empty = font_family.
+  std::string displayFontFamily;
+  IconStyle iconStyle = IconStyle::Tabler;
+  std::int32_t iconWeight = 400; // Material Symbols stroke weight, 100-700
+  bool iconFill = false;         // Material Symbols drawn filled
   std::string lang; // empty = auto-detect from $LC_ALL/$LC_MESSAGES/$LANG
   std::string timeFormat = "{:%H:%M}";
   std::string dateFormat = "%A, %x";
@@ -1252,6 +1354,8 @@ struct ShellConfig {
   bool showLocation = true;
   bool appIconColorize = false;
   std::optional<ColorSpec> appIconColor;
+  // Draw apps in the launcher and the bar's taskbar as monochrome symbols of their category instead of their icons.
+  bool appIconGlyphs = false;
   bool launchAppsAsSystemdServices = false;
   std::string launchAppsCustomCommand;
   /// When false, disables Wayland clipboard integration (history panel, data-control binding, Input paste/copy hooks).
@@ -1793,6 +1897,7 @@ struct ControlCenterConfig {
   std::int32_t width = kDefaultWidth; // full-sidebar logical width; compact/none modes scale down from this
   bool showShortcutLabels = true;
   bool showSessionButton = true;
+  bool showHomeTitle = false; // a heading over the module grid, in the display typeface (Atelier's "Controls" card)
   CalendarTabConfig calendarTab;
   bool operator==(const ControlCenterConfig&) const = default;
 };

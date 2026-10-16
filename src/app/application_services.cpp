@@ -542,6 +542,7 @@ void Application::initStyleThemeAndWayland() {
     const bool cornerChanged =
         std::isfinite(lastCornerRadiusScale) && std::abs(corner - lastCornerRadiusScale) > 1.0e-4F;
     Style::setCornerRadiusScale(corner);
+    Style::setDisplayFontFamily(m_configService.config().shell.displayFontFamily);
     Style::setButtonBordersEnabled(m_configService.config().shell.buttonBorders);
     Style::setInputBordersEnabled(m_configService.config().shell.inputBorders);
     Style::setPopupBordersEnabled(m_configService.config().shell.popupBorders);
@@ -807,6 +808,7 @@ void Application::reconcileOutputSurfaces() {
   m_lockscreenWidgetsController.onOutputChange();
   m_screenCorners.onOutputChange();
   m_island.onOutputChange();
+  m_panelScrim.onOutputChange();
   m_hotCorners.onOutputChange();
   m_lockScreen.onOutputChange();
   m_idleGraceOverlay.onOutputChange();
@@ -852,6 +854,8 @@ void Application::initWaylandCallbacks() {
     }
     m_bar.onWorkspaceChanged();
     m_dock.onWorkspaceChanged();
+    // visibility = "home": an empty active workspace turns the desktop into the home dashboard.
+    m_desktopWidgetsController.onHomeRelevantChange();
     m_bar.refresh();
     m_windowSwitcher.onToplevelChange();
     m_expo.onWindowsChanged();
@@ -870,6 +874,7 @@ void Application::initWaylandCallbacks() {
     m_bar.scheduleSmartAutoHideReevaluation();
     m_dock.scheduleSmartAutoHideReevaluation();
     // Windows opening or closing on the active workspace decide whether the island and handle show.
+    m_desktopWidgetsController.onHomeRelevantChange();
     m_bar.refresh();
     m_dock.refresh();
     m_windowSwitcher.onToplevelChange();

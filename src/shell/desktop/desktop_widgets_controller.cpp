@@ -1,5 +1,6 @@
 #include "shell/desktop/desktop_widgets_controller.h"
 
+#include "compositors/compositor_platform.h"
 #include "config/config_service.h"
 #include "core/log.h"
 #include "ipc/ipc_service.h"
@@ -8,6 +9,7 @@
 #include "shell/desktop/editor/desktop_widgets_editor.h"
 #include "shell/desktop/editor/desktop_widgets_editor_types.h"
 #include "shell/lockscreen/lockscreen_widgets_controller.h"
+#include "shell/workspace_occupancy.h"
 
 #include <algorithm>
 #include <charconv>
@@ -93,6 +95,7 @@ DesktopWidgetsController::~DesktopWidgetsController() = default;
 void DesktopWidgetsController::initialize(const DesktopWidgetsControllerServices& services) {
   m_wayland = &services.widgets.wayland;
   m_config = services.widgets.config;
+  m_platform = services.widgets.platform;
   m_lockscreenWidgets = services.lockscreenWidgets;
   m_renderContext = services.widgets.renderContext;
   m_host = std::make_unique<DesktopWidgetsHost>();
@@ -106,6 +109,7 @@ void DesktopWidgetsController::initialize(const DesktopWidgetsControllerServices
   if (m_config != nullptr) {
     m_lastEnabled = m_config->config().desktopWidgets.enabled;
   }
+  updateHomeVisibility();
   if (placementChanged) {
     saveSnapshotToConfig();
   }
@@ -155,15 +159,24 @@ void DesktopWidgetsController::registerIpc(IpcService& ipc) {
 }
 
 bool DesktopWidgetsController::runtimeWantsVisible() const noexcept {
+  bool wants = false;
   switch (m_runtimeVisibility) {
   case RuntimeVisibility::ForceShown:
-    return true;
+    wants = true;
+    break;
   case RuntimeVisibility::ForceHidden:
-    return false;
+    wants = false;
+    break;
   case RuntimeVisibility::FollowConfig:
-    return m_config != nullptr && m_config->config().desktopWidgets.enabled;
+    wants = m_config != nullptr && m_config->config().desktopWidgets.enabled;
+    break;
   }
-  return false;
+  // visibility = "home" only gates the saved setting: an explicit ForceShown (a peek keybind) shows
+  // the dashboard even on a busy workspace, ForceHidden stays hidden either way.
+  if (m_runtimeVisibility == RuntimeVisibility::FollowConfig && wants && homeGated() && !m_homeVisible) {
+    wants = false;
+  }
+  return wants;
 }
 
 void DesktopWidgetsController::setRuntimeVisibility(RuntimeVisibility visibility) {
@@ -434,6 +447,29 @@ void DesktopWidgetsController::saveSnapshotToConfig() {
   m_config->setDesktopWidgetsState(m_snapshot);
 }
 
+bool DesktopWidgetsController::homeGated() const noexcept {
+  return m_config != nullptr && m_config->config().desktopWidgets.visibility == "home";
+}
+
+void DesktopWidgetsController::updateHomeVisibility() {
+  if (!homeGated() || m_platform == nullptr) {
+    m_homeVisible = true;
+    return;
+  }
+  m_homeVisible = shell::showsHome(*m_platform, nullptr);
+}
+
+void DesktopWidgetsController::onHomeRelevantChange() {
+  if (!m_initialized) {
+    return;
+  }
+  const bool wasVisible = m_homeVisible;
+  updateHomeVisibility();
+  if (m_homeVisible != wasVisible) {
+    applyVisibility();
+  }
+}
+
 void DesktopWidgetsController::applyVisibility() {
   if (!m_initialized || m_host == nullptr || m_config == nullptr) {
     return;
@@ -472,6 +508,7 @@ void DesktopWidgetsController::handleConfigReload() {
       m_runtimeVisibility = RuntimeVisibility::FollowConfig;
     }
   }
+  updateHomeVisibility();
   pruneWallpaperMasks();
 
   const bool calendarChanged = m_config != nullptr && m_config->lastChange().calendar;

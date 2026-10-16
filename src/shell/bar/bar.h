@@ -2,10 +2,13 @@
 
 #include "core/timer_manager.h"
 #include "ipc/ipc_invocation_context.h"
+#include "notification/notification.h"
+#include "notification/notification_manager.h"
 #include "shell/bar/bar_instance.h"
 #include "shell/bar/bar_services.h"
 #include "shell/bar/widget_action_dispatcher.h"
 #include "shell/bar/widget_factory.h"
+#include "shell/osd/osd_overlay.h"
 #include "ui/dialogs/layer_popup_host.h"
 #include "wayland/surface.h"
 
@@ -73,6 +76,11 @@ public:
   void scheduleSmartAutoHideReevaluation();
   void onSecondTick();
   void refresh();
+  // event_morph: True when a bar with event_morph consumed the event; the OSD then stays away, like
+  // the island's suppress_osd. The widgets dim for a moment and the event shows in the strip itself.
+  [[nodiscard]] bool takeOsdContent(const OsdContent& content);
+  // event_morph: notifications behave like events — a newly arrived notification shows in the strip.
+  void onNotificationEvent(const Notification& notification, NotificationEvent event);
   // The wallpaper changed: re-sample its tone under transparent menu bars (text color like macOS).
   void requestLayout();
   void setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)> callback);
@@ -150,6 +158,13 @@ private:
   [[nodiscard]] bool shouldReserveExclusiveZone(const BarInstance& instance) const noexcept;
   [[nodiscard]] bool barContentVisuallyShown(const BarInstance& instance) const noexcept;
   void revealAutoHideBar(BarInstance& instance);
+  // event_morph: the strip's own activity overlay (see takeOsdContent).
+  void buildMorphOverlay(BarInstance& instance);
+  void layoutMorphOverlay(BarInstance& instance, Renderer& renderer, float barAreaW, float barAreaH);
+  void applyMorphContent(BarInstance& instance);
+  void animateMorph(BarInstance& instance, bool show);
+  void showMorphRow();
+  void hideMorphRow();
   // The Slate hairline around the bar.
   static void applySlateChrome(BarInstance& instance, const Radii& radius);
   [[nodiscard]] bool isWorkspacePeekActive() const noexcept;
@@ -217,6 +232,15 @@ private:
   noctalia::bar::WidgetActionDispatcher m_actionDispatcher;
   Timer m_workspaceRevealDebounce;
   Timer m_workspacePeekHideTimer;
+  // event_morph state shared by all instances (the same event shows on every bar).
+  Timer m_morphResetTimer;
+  std::string m_morphGlyph;
+  std::string m_morphTitle;
+  std::string m_morphValue;
+  float m_morphLevel = 0.0F;
+  bool m_morphShowProgress = true;
+  bool m_morphActive = false;
+  int m_notificationEventCallbackId = -1;
   std::unordered_set<std::uint32_t> m_pendingWorkspaceRevealOutputs;
   std::unordered_map<std::uint32_t, std::string> m_lastActiveWorkspaceByOutput;
   bool m_overlayDisplaySuppressed = false;

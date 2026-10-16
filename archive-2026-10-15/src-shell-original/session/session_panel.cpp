@@ -1,0 +1,923 @@
+#include "shell/session/session_panel.h"
+
+#include "config/config_service.h"
+#include "core/deferred_call.h"
+#include "core/input/keybind_matcher.h"
+#include "core/log.h"
+#include "i18n/i18n.h"
+#include "shell/panel/panel_manager.h"
+#include "shell/session/session_action_meta.h"
+#include "shell/session/session_action_runner.h"
+#include "shell/session/session_tiles.h"
+#include "ui/builders.h"
+#include "ui/controls/box.h"
+#include "ui/controls/button.h"
+#include "ui/controls/countdown_ring.h"
+#include "ui/controls/flex.h"
+#include "ui/controls/grid_view.h"
+#include "ui/controls/label.h"
+#include "ui/palette.h"
+#include "ui/style.h"
+#include "util/string_utils.h"
+
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+
+namespace {
+
+  constexpr Logger kLog("session");
+  constexpr float kCountdownScrimAlpha = 0.58F;
+
+  // macOS menu rows: transparent until highlighted, then the accent color with white text.
+  [[nodiscard]] Button::ButtonPalette menuRowPalette() {
+    const Button::ButtonStateColors normal{
+        .bg = clearColorSpec(), .border = clearColorSpec(), .label = colorSpecFromRole(ColorRole::OnSurface)
+    };
+    const Button::ButtonStateColors highlighted{
+        .bg = colorSpecFromRole(ColorRole::Primary),
+        .border = clearColorSpec(),
+        .label = colorSpecFromRole(ColorRole::OnPrimary)
+    };
+    return Button::ButtonPalette{
+        .borderWidth = 0.0F,
+        .normal = normal,
+        .hover = highlighted,
+        .pressed = highlighted,
+        .disabled =
+            Button::ButtonStateColors{
+                .bg = clearColorSpec(),
+                .border = clearColorSpec(),
+                .label = colorSpecFromRole(ColorRole::OnSurface, 0.4F)
+            },
+        .selected = highlighted,
+    };
+  }
+
+  [[nodiscard]] ButtonVariant buttonVariantFor(SessionActionButtonVariant variant) {
+    switch (variant) {
+    case SessionActionButtonVariant::Default:
+      return ButtonVariant::Default;
+    case SessionActionButtonVariant::Primary:
+      return ButtonVariant::Primary;
+    case SessionActionButtonVariant::Secondary:
+      return ButtonVariant::Secondary;
+    case SessionActionButtonVariant::Destructive:
+      return ButtonVariant::Destructive;
+    case SessionActionButtonVariant::Outline:
+      return ButtonVariant::Outline;
+    case SessionActionButtonVariant::Ghost:
+      return ButtonVariant::Ghost;
+    }
+    return ButtonVariant::Default;
+  }
+
+} // namespace
+
+std::vector<SessionPanelActionConfig> SessionPanel::effectiveActions() const {
+  std::vector<SessionPanelActionConfig> src =
+      m_config != nullptr ? m_config->config().shell.session.actions : defaultSessionPanelActions();
+
+  std::vector<SessionPanelActionConfig> out;
+  out.reserve(src.size());
+  for (const auto& row : src) {
+    if (!row.enabled) {
+      continue;
+    }
+    if (!session_action::isKnown(row.action)) {
+      kLog.warn("session panel: skipping unknown action \"{}\"", row.action);
+      continue;
+    }
+    if (row.action == "command" && (!row.command.has_value() || StringUtils::trim(*row.command).empty())) {
+      kLog.warn("session panel: skipping \"command\" entry with no command");
+      continue;
+    }
+    if ((row.action == "lock" || row.action == "lock_and_suspend")
+        && m_config != nullptr
+        && !m_config->isLockScreenEnabled()) {
+      continue;
+    }
+    out.push_back(row);
+  }
+  if (sheetStyle()) {
+    std::ranges::stable_partition(out, [](const auto& action) { return !isPowerAction(action); });
+  }
+  return out;
+}
+
+bool SessionPanel::isPowerAction(const SessionPanelActionConfig& action) {
+  return action.action == "reboot" || action.action == "shutdown";
+}
+
+bool SessionPanel::sheetStyle() const { return !menuStyle() && !gridEnabled(); }
+
+bool SessionPanel::hairlineStyle() const { return gridEnabled() && m_config->config().shell.session.hairline; }
+
+std::optional<float> SessionPanel::contentPadding() const {
+  return hairlineStyle() ? std::optional<float>(kHairlinePadding) : std::nullopt;
+}
+
+std::optional<std::size_t> SessionPanel::sheetVerticalTarget(std::size_t from, bool down) const {
+  const std::size_t quiet = m_quietCount;
+  const std::size_t power = m_visibleEntries.size() - quiet;
+  if (quiet == 0 || power == 0) {
+    return std::nullopt;
+  }
+  const bool inQuiet = from < quiet;
+  if (inQuiet != down) {
+    return std::nullopt; // already on the row the key points to
+  }
+  const std::size_t fromCount = inQuiet ? quiet : power;
+  const std::size_t toCount = inQuiet ? power : quiet;
+  const std::size_t column = inQuiet ? from : from - quiet;
+  // Center of the source cell mapped onto the other row's cells.
+  const float center = (static_cast<float>(column) + 0.5F) / static_cast<float>(fromCount);
+  const auto target = std::min(toCount - 1, static_cast<std::size_t>(center * static_cast<float>(toCount)));
+  return inQuiet ? quiet + target : target;
+}
+
+PanelPlacement SessionPanel::panelPlacement() const noexcept {
+  return m_config != nullptr ? m_config->config().shell.panel.sessionPlacement : PanelPlacement::Attached;
+}
+
+float SessionPanel::preferredWidth() const {
+  if (hairlineStyle()) {
+    return scaled(kHairlineWidth);
+  }
+  if (menuStyle()) {
+    return scaled(kMenuWidth + Style::panelPadding * 2.0F);
+  }
+  if (sheetStyle()) {
+    const auto actions = effectiveActions();
+    const auto quiet =
+        static_cast<float>(std::ranges::count_if(actions, [](const auto& a) { return !isPowerAction(a); }));
+    const float columns = std::max({quiet, static_cast<float>(actions.size()) - quiet, 1.0F});
+    return scaled(kSheetTileWidth * columns + Style::spaceSm * (columns - 1.0F) + Style::panelPadding * 2.0F);
+  }
+  const std::size_t n = visibleColumnCount();
+  const float gap = Style::spaceMd;
+  const float w = kButtonMinWidth * static_cast<float>(n)
+      + gap * static_cast<float>(n > 1 ? n - 1 : 0)
+      + Style::panelPadding * 2.0F;
+  return scaled(w);
+}
+
+float SessionPanel::preferredHeight() const {
+  if (hairlineStyle()) {
+    // Title line, a padding's gap, then the tile rows and their rules.
+    const auto rows = static_cast<float>(visibleRowCount());
+    const float title = kHairlineTitleSize * 1.4F;
+    const float tiles = kHairlineTileHeight * rows + rows + 1.0F;
+    return std::ceil(scaled(kHairlinePadding * 3.0F + title + tiles));
+  }
+  if (menuStyle()) {
+    const auto rows = static_cast<float>(std::max<std::size_t>(1, entryCountForLayout()));
+    return std::ceil(scaled(kMenuRowHeight * rows + kMenuRowGap * (rows - 1.0F) + Style::panelPadding * 2.0F));
+  }
+  if (sheetStyle()) {
+    const auto actions = effectiveActions();
+    const bool hasQuiet = std::ranges::any_of(actions, [](const auto& a) { return !isPowerAction(a); });
+    const bool hasPower = std::ranges::any_of(actions, [](const auto& a) { return isPowerAction(a); });
+    const float h = (hasQuiet ? kSheetTileHeight : 0.0F)
+        + (hasPower ? kSheetPowerHeight : 0.0F)
+        + (hasQuiet && hasPower ? Style::spaceSm : 0.0F)
+        + Style::panelPadding * 2.0F;
+    return std::ceil(scaled(h));
+  }
+  const std::size_t rows = visibleRowCount();
+  const float gap = Style::spaceMd;
+  const float h = kActionButtonMinHeight * static_cast<float>(rows)
+      + gap * static_cast<float>(rows > 1 ? rows - 1 : 0)
+      + Style::panelPadding * 2.0F;
+  return std::ceil(scaled(h));
+}
+
+std::size_t SessionPanel::entryCountForLayout() const {
+  if (!m_visibleEntries.empty()) {
+    return m_visibleEntries.size();
+  }
+  return effectiveActions().size();
+}
+
+bool SessionPanel::gridEnabled() const { return m_config != nullptr && m_config->config().shell.session.grid; }
+
+// An explicit `grid = true` (a choice made before the menu existed) keeps the tiles.
+bool SessionPanel::menuStyle() const {
+  return m_config == nullptr || (m_config->config().shell.session.menu && !m_config->config().shell.session.grid);
+}
+
+std::size_t SessionPanel::visibleColumnCount() const {
+  const std::size_t n = std::max<std::size_t>(1, entryCountForLayout());
+  if (menuStyle()) {
+    return 1;
+  }
+  if (gridEnabled()) {
+    const auto columns = static_cast<std::size_t>(std::max(1, m_config->config().shell.session.gridColumns));
+    return std::min(columns, n);
+  }
+  if (n <= kMaxColumns) {
+    return n;
+  }
+  return std::min<std::size_t>(kMaxColumns, (n + 1) / 2);
+}
+
+std::size_t SessionPanel::visibleRowCount() const {
+  const std::size_t n = std::max<std::size_t>(1, entryCountForLayout());
+  const std::size_t columns = visibleColumnCount();
+  return (n + columns - 1) / columns;
+}
+
+void SessionPanel::create() {
+  const float scale = contentScale();
+  m_visibleEntries = effectiveActions();
+  m_quietCount = static_cast<std::size_t>(
+      std::ranges::count_if(m_visibleEntries, [](const auto& action) { return !isPowerAction(action); })
+  );
+  const std::size_t columns = visibleColumnCount();
+
+  const bool menu = menuStyle();
+  const bool sheet = sheetStyle();
+  const auto makeGrid = [scale](std::size_t gridColumns, float gap, float cellWidth, float cellHeight) {
+    auto grid = std::make_unique<GridView>();
+    grid->setColumns(std::max<std::size_t>(1, gridColumns));
+    grid->setColumnGap(gap * scale);
+    grid->setRowGap(gap * scale);
+    grid->setStretchItems(true);
+    grid->setUniformCellSize(true);
+    grid->setMinCellWidth(cellWidth * scale);
+    grid->setMinCellHeight(cellHeight * scale);
+    return grid;
+  };
+
+  std::unique_ptr<Node> rootLayout;
+  GridView* quietGrid = nullptr;
+  GridView* powerGrid = nullptr;
+  std::vector<std::unique_ptr<Button>> hairlineTiles;
+  if (hairlineStyle()) {
+    // The title on top, the tiles at the foot: in a full-length sheet they line up with the launcher's.
+    rootLayout = ui::column(
+        {.align = FlexAlign::Stretch, .justify = FlexJustify::SpaceBetween},
+        ui::label({
+            .text = i18n::upper(i18n::tr("session.title")),
+            .fontSize = kHairlineTitleSize * scale,
+            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+            .letterSpacing = 0.12F,
+        })
+    );
+  } else if (sheet) {
+    auto column = ui::column({.align = FlexAlign::Stretch, .gap = Style::spaceSm * scale});
+    if (m_quietCount > 0) {
+      quietGrid = static_cast<GridView*>(
+          column->addChild(makeGrid(m_quietCount, Style::spaceSm, kSheetTileWidth, kSheetTileHeight))
+      );
+    }
+    if (m_visibleEntries.size() > m_quietCount) {
+      powerGrid = static_cast<GridView*>(column->addChild(
+          makeGrid(m_visibleEntries.size() - m_quietCount, Style::spaceSm, kSheetTileWidth, kSheetPowerHeight)
+      ));
+    }
+    rootLayout = std::move(column);
+  } else {
+    auto grid = makeGrid(
+        columns, menu ? kMenuRowGap : Style::spaceMd, menu ? kMenuWidth : kButtonMinWidth,
+        menu ? kMenuRowHeight : kActionButtonMinHeight
+    );
+    grid->setColumnGap(Style::spaceMd * scale);
+    quietGrid = grid.get();
+    rootLayout = std::move(grid);
+  }
+  m_rootLayout = rootLayout.get();
+
+  m_visibleButtons.clear();
+  m_countdownOverlays.clear();
+  m_entryShortcutBadges.clear();
+  m_menuShortcuts.clear();
+  m_menuHovered.assign(m_visibleEntries.size(), false);
+  m_visibleButtons.reserve(m_visibleEntries.size());
+  m_countdownOverlays.reserve(m_visibleEntries.size());
+  m_entryShortcutBadges.reserve(m_visibleEntries.size());
+  for (std::size_t i = 0; i < m_visibleEntries.size(); ++i) {
+    const auto& cfg = m_visibleEntries[i];
+    if (cfg.shortcut.has_value() && cfg.shortcut->sym != 0) {
+      m_entryShortcutBadges.emplace_back(keyChordDisplayLabel(*cfg.shortcut));
+    } else {
+      m_entryShortcutBadges.emplace_back();
+    }
+    if (hairlineStyle()) {
+      auto tile = session_tiles::makeTile(cfg, scale, [this, i]() { armEntry(i); });
+      ActionCountdownOverlay overlay{};
+      attachCountdownOverlay(*tile, overlay, scale, true);
+      m_visibleButtons.push_back(tile.get());
+      m_countdownOverlays.push_back(overlay);
+      hairlineTiles.push_back(std::move(tile));
+      continue;
+    }
+    if (Button* b = createActionButton(cfg, i, scale); b != nullptr) {
+      ActionCountdownOverlay overlay{};
+      attachCountdownOverlay(*b, overlay, scale, sheet && isPowerAction(cfg));
+      m_visibleButtons.push_back(b);
+      m_countdownOverlays.push_back(overlay);
+      GridView* target = (sheet && i >= m_quietCount) ? powerGrid : quietGrid;
+      target->addChild(std::unique_ptr<Button>(b));
+    }
+  }
+  if (hairlineStyle()) {
+    rootLayout->addChild(session_tiles::makeGrid(std::move(hairlineTiles), columns, scale));
+  }
+
+  setRoot(std::move(rootLayout));
+
+  if (m_animations != nullptr) {
+    root()->setAnimationManager(m_animations);
+  }
+
+  updateSelectionVisuals();
+}
+
+Button* SessionPanel::createActionButton(const SessionPanelActionConfig& cfg, std::size_t index, float scale) {
+  const std::string labelText =
+      cfg.label.has_value() && !cfg.label->empty() ? *cfg.label : i18n::tr(session_action::labelKey(cfg.action));
+  const std::string glyph =
+      cfg.glyph.has_value() && !cfg.glyph->empty() ? *cfg.glyph : session_action::defaultGlyph(cfg.action);
+  const std::optional<std::string> badge = index < m_entryShortcutBadges.size()
+          && m_entryShortcutBadges[index].has_value()
+          && m_config->config().shell.session.showShortcuts
+      ? m_entryShortcutBadges[index]
+      : std::nullopt;
+
+  if (menuStyle()) {
+    auto row = ui::button({
+        .text = labelText,
+        .glyph = glyph,
+        .fontSize = Style::fontSizeBody * scale,
+        .glyphSize = (Style::fontSizeBody + 2.0F) * scale,
+        .contentAlign = ButtonContentAlign::Start,
+        .customPalette = menuRowPalette(),
+        .minWidth = kMenuWidth * scale,
+        .minHeight = kMenuRowHeight * scale,
+        .paddingV = 0.0F,
+        .paddingH = Style::spaceSm * scale,
+        .gap = Style::spaceSm * scale,
+        .radius = Style::scaledRadiusMd(scale),
+        .flexGrow = 1.0F,
+        .onClick = [this, index]() { armEntry(index); },
+        .onEnter =
+            [this, index]() {
+              if (index < m_menuHovered.size()) {
+                m_menuHovered[index] = true;
+              }
+              // Like a macOS menu, the pointer moves the one highlight; a running countdown keeps its row.
+              if (!m_pendingCountdown.has_value()) {
+                m_selectedIndex = index;
+                updateSelectionVisuals();
+                PanelManager::instance().refresh();
+              } else {
+                syncMenuShortcut(index);
+              }
+            },
+        .onLeave =
+            [this, index]() {
+              if (index < m_menuHovered.size()) {
+                m_menuHovered[index] = false;
+                syncMenuShortcut(index);
+              }
+            },
+        .configure =
+            [](Button& control) {
+              control.setFillHeight(true);
+              control.setTabStop(false);
+            },
+    });
+    Label* shortcut = nullptr;
+    const bool showShortcut = index < m_entryShortcutBadges.size()
+        && m_entryShortcutBadges[index].has_value()
+        && (m_config == nullptr || m_config->config().shell.session.showShortcuts);
+    if (showShortcut) {
+      shortcut = static_cast<Label*>(row->addChild(
+          ui::label({
+              .text = *m_entryShortcutBadges[index],
+              .fontSize = Style::fontSizeBody * scale,
+              .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+              .participatesInLayout = false,
+          })
+      ));
+    }
+    m_menuShortcuts.push_back(shortcut);
+    return row.release();
+  }
+
+  if (sheetStyle()) {
+    // Quiet actions: a tile with the glyph over the name. Power actions: a wide button, glyph beside the name.
+    const bool power = isPowerAction(cfg);
+    auto button = ui::button({
+        .text = labelText,
+        .glyph = glyph,
+        .fontSize = Style::fontSizeBody * scale,
+        .glyphSize = (power ? 16.0F : 22.0F) * scale,
+        .contentAlign = ButtonContentAlign::Center,
+        .variant = buttonVariantFor(cfg.variant),
+        .surfaceOpacity = panelCardOpacity(),
+        .badge = badge,
+        .minWidth = kSheetTileWidth * scale,
+        .minHeight = (power ? kSheetPowerHeight : kSheetTileHeight) * scale,
+        .paddingV = Style::spaceSm * scale,
+        .paddingH = Style::spaceMd * scale,
+        .gap = (power ? Style::spaceSm : Style::spaceXs + 2.0F) * scale,
+        .radius = Style::scaledRadiusLg(scale),
+        .flexGrow = 1.0F,
+        .onClick = [this, index]() { armEntry(index); },
+        .configure =
+            [power](Button& control) {
+              control.setDirection(power ? FlexDirection::Horizontal : FlexDirection::Vertical);
+              control.setAlign(FlexAlign::Center);
+              control.setJustify(FlexJustify::Center);
+              control.setFillHeight(true);
+              control.setTabStop(false);
+            },
+    });
+    return button.release();
+  }
+
+  auto button = ui::button({
+      .text = labelText,
+      .glyph = glyph,
+      .fontSize = (Style::fontSizeBody + 1.0F) * scale,
+      .glyphSize = 28.0F * scale,
+      .contentAlign = ButtonContentAlign::Center,
+      .variant = buttonVariantFor(cfg.variant),
+      .surfaceOpacity = panelCardOpacity(),
+      .badge = badge,
+      .minWidth = kButtonMinWidth * scale,
+      .minHeight = kActionButtonMinHeight * scale,
+      .paddingV = Style::spaceMd * scale,
+      .paddingH = Style::spaceMd * scale,
+      .gap = Style::spaceSm * scale,
+      .radius = Style::scaledRadiusLg(scale),
+      .flexGrow = 1.0F,
+      .onClick = [this, index]() { armEntry(index); },
+      .configure =
+          [](Button& control) {
+            control.setDirection(FlexDirection::Vertical);
+            control.setAlign(FlexAlign::Center);
+            control.setJustify(FlexJustify::Center);
+            control.setFillHeight(true);
+            control.setTabStop(false);
+          },
+  });
+  return button.release();
+}
+
+void SessionPanel::attachCountdownOverlay(
+    Button& button, ActionCountdownOverlay& overlay, float scale, bool wideButton
+) {
+  // A menu row shows a small ring where its shortcut sits; a sheet tile a mid-size one, a wide power button one
+  // that fits its height, a large tile a large one in its middle.
+  const bool small = menuStyle() || wideButton;
+  const float ringSize = (menuStyle() ? kMenuRowHeight - 8.0F
+                          : wideButton ? kSheetPowerHeight - 10.0F
+                          : sheetStyle() ? 52.0F
+                                         : 64.0F)
+      * scale;
+
+  auto overlayRoot = ui::column({
+      .out = &overlay.root,
+      .align = FlexAlign::Center,
+      .justify = FlexJustify::Center,
+      .visible = false,
+      .participatesInLayout = false,
+      .configure = [](Flex& root) { root.setZIndex(0); },
+  });
+
+  auto scrim = ui::box({
+      .out = &overlay.scrim,
+      .radius = Style::scaledRadiusLg(scale),
+      .participatesInLayout = false,
+      .configure = [](Box& box) { box.setZIndex(0); },
+  });
+  overlayRoot->addChild(std::move(scrim));
+
+  auto ring = std::make_unique<CountdownRing>();
+  ring->setRingSize(ringSize);
+  ring->setThickness(small ? 2.0F * scale : std::max(4.0F, 4.5F * scale));
+  ring->setFontSize((small ? Style::fontSizeMini : 18.0F) * scale);
+  ring->setParticipatesInLayout(false);
+  ring->setZIndex(1);
+  overlay.ring = ring.get();
+  overlayRoot->addChild(std::move(ring));
+
+  button.addChild(std::move(overlayRoot));
+}
+
+void SessionPanel::syncCountdownOverlayColors(std::size_t index) {
+  if (index >= m_countdownOverlays.size() || index >= m_visibleEntries.size()) {
+    return;
+  }
+  ActionCountdownOverlay& overlay = m_countdownOverlays[index];
+  const SessionActionButtonVariant variant = m_visibleEntries[index].variant;
+  const Button::ButtonPalette buttonPalette = Button::defaultPalette(buttonVariantFor(variant));
+  const Button::ButtonStateColors& state = buttonPalette.pressed;
+
+  ColorSpec scrimFill = state.bg;
+  scrimFill.alpha *= kCountdownScrimAlpha;
+
+  if (overlay.scrim != nullptr) {
+    overlay.scrim->setFill(scrimFill);
+  }
+  if (overlay.ring != nullptr) {
+    overlay.ring->setColor(state.label);
+  }
+}
+
+void SessionPanel::onPanelCardOpacityChanged(float opacity) {
+  for (Button* button : m_visibleButtons) {
+    if (button != nullptr) {
+      button->setSurfaceOpacity(opacity);
+    }
+  }
+}
+
+void SessionPanel::onOpen(std::string_view /*context*/) {
+  m_selectedIndex.reset();
+  m_pendingCountdown.reset();
+  m_actionQueued = false;
+  hideCountdownOverlays();
+  restoreEntryBadges();
+  updateSelectionVisuals();
+}
+
+void SessionPanel::armEntry(std::size_t index) {
+  if (index >= m_visibleEntries.size()) {
+    return;
+  }
+
+  const SessionPanelActionConfig& cfg = m_visibleEntries[index];
+  if (cfg.countdownSeconds <= 0.0) {
+    executeEntry(index);
+    return;
+  }
+
+  if (m_pendingCountdown.has_value() && m_pendingCountdown->index == index) {
+    executeEntry(index);
+    return;
+  }
+
+  cancelCountdown();
+  m_pendingCountdown = PendingCountdown{
+      .index = index,
+      .remainingMs = cfg.countdownSeconds * 1000.0,
+      .totalMs = cfg.countdownSeconds * 1000.0,
+  };
+  m_selectedIndex = index;
+  updateSelectionVisuals();
+  updateCountdownVisuals();
+  PanelManager::instance().requestLayout();
+  PanelManager::instance().requestFrameTick();
+  PanelManager::instance().refresh();
+}
+
+void SessionPanel::executeEntry(std::size_t index) {
+  if (index >= m_visibleEntries.size() || m_actionQueued) {
+    return;
+  }
+  SessionActionRunner* const actionRunner = m_actionRunner;
+  if (actionRunner == nullptr) {
+    kLog.warn("session panel: action runner unavailable");
+    return;
+  }
+
+  const SessionPanelActionConfig cfg = m_visibleEntries[index];
+  m_actionQueued = true;
+  m_pendingCountdown.reset();
+  DeferredCall::callLater([actionRunner, cfg]() {
+    PanelManager::instance().closePanel(/*animateClose=*/false);
+    actionRunner->invoke(cfg);
+  });
+}
+
+void SessionPanel::cancelCountdown() {
+  if (!m_pendingCountdown.has_value()) {
+    return;
+  }
+  m_pendingCountdown.reset();
+  hideCountdownOverlays();
+  restoreEntryBadges();
+  updateSelectionVisuals();
+  if (root() != nullptr) {
+    root()->markPaintDirty();
+  }
+  PanelManager::instance().refresh();
+}
+
+void SessionPanel::hideCountdownOverlays() {
+  for (auto& overlay : m_countdownOverlays) {
+    if (overlay.root != nullptr) {
+      overlay.root->setVisible(false);
+    }
+  }
+}
+
+void SessionPanel::syncMenuShortcut(std::size_t index) {
+  if (index >= m_menuShortcuts.size() || m_menuShortcuts[index] == nullptr) {
+    return;
+  }
+  const bool countdown = m_pendingCountdown.has_value() && m_pendingCountdown->index == index;
+  const bool highlighted = countdown
+      || (index < m_menuHovered.size() && m_menuHovered[index])
+      || (m_selectedIndex.has_value() && *m_selectedIndex == index);
+  Label* shortcut = m_menuShortcuts[index];
+  shortcut->setVisible(!countdown);
+  shortcut->setColor(
+      highlighted ? colorSpecFromRole(ColorRole::OnPrimary, 0.8F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
+  );
+}
+
+void SessionPanel::restoreEntryBadges() {
+  if (menuStyle()) {
+    // Menu rows carry their shortcut as a hint on the right, never as a badge.
+    for (std::size_t i = 0; i < m_menuShortcuts.size(); ++i) {
+      syncMenuShortcut(i);
+    }
+    return;
+  }
+  if (hairlineStyle()) {
+    return; // the tiles keep their number keys without drawing them
+  }
+  for (std::size_t i = 0; i < m_visibleButtons.size(); ++i) {
+    Button* button = m_visibleButtons[i];
+    if (button == nullptr) {
+      continue;
+    }
+    if (i < m_entryShortcutBadges.size()
+        && m_entryShortcutBadges[i].has_value()
+        && m_config->config().shell.session.showShortcuts) {
+      button->setBadge(*m_entryShortcutBadges[i]);
+    } else {
+      button->setBadge("");
+    }
+  }
+}
+
+void SessionPanel::updateCountdownVisuals() {
+  hideCountdownOverlays();
+  restoreEntryBadges();
+
+  if (!m_pendingCountdown.has_value()) {
+    return;
+  }
+
+  const std::size_t pendingIndex = m_pendingCountdown->index;
+  if (pendingIndex >= m_countdownOverlays.size()) {
+    return;
+  }
+
+  const int seconds = std::max(1, static_cast<int>(std::ceil(m_pendingCountdown->remainingMs / 1000.0)));
+  const float progress = m_pendingCountdown->totalMs > 0.0
+      ? static_cast<float>(std::clamp(m_pendingCountdown->remainingMs / m_pendingCountdown->totalMs, 0.0, 1.0))
+      : 0.0F;
+
+  ActionCountdownOverlay& overlay = m_countdownOverlays[pendingIndex];
+  if (overlay.root != nullptr) {
+    overlay.root->setVisible(true);
+  }
+  syncCountdownOverlayColors(pendingIndex);
+  if (overlay.ring != nullptr) {
+    overlay.ring->setProgress(progress);
+    overlay.ring->setSeconds(seconds);
+  }
+  if (menuStyle()) {
+    syncMenuShortcut(pendingIndex);
+  } else if (pendingIndex < m_visibleButtons.size()) {
+    if (Button* button = m_visibleButtons[pendingIndex]; button != nullptr) {
+      button->setBadge("");
+    }
+  }
+}
+
+void SessionPanel::layoutCountdownOverlays(Renderer& renderer) {
+  for (std::size_t i = 0; i < m_visibleButtons.size() && i < m_countdownOverlays.size(); ++i) {
+    Button* button = m_visibleButtons[i];
+    ActionCountdownOverlay& overlay = m_countdownOverlays[i];
+    if (button == nullptr || overlay.root == nullptr) {
+      continue;
+    }
+
+    const float width = button->width();
+    const float height = button->height();
+    overlay.root->setPosition(0.0F, 0.0F);
+    overlay.root->setFrameSize(width, height);
+
+    if (overlay.scrim != nullptr) {
+      overlay.scrim->setPosition(0.0F, 0.0F);
+      overlay.scrim->setFrameSize(width, height);
+      overlay.scrim->setSize(width, height);
+    }
+
+    if (overlay.ring != nullptr) {
+      const float ringSize = overlay.ring->ringSize();
+      const float ringX = menuStyle() ? width - ringSize - Style::spaceSm * contentScale() : (width - ringSize) * 0.5F;
+      const float ringY = (height - ringSize) * 0.5F;
+      overlay.ring->setPosition(ringX, ringY);
+      overlay.ring->layout(renderer);
+    }
+  }
+}
+
+void SessionPanel::onFrameTick(float deltaMs) {
+  if (!m_pendingCountdown.has_value()) {
+    return;
+  }
+
+  m_pendingCountdown->remainingMs -= static_cast<double>(deltaMs);
+  if (m_pendingCountdown->remainingMs <= 0.0) {
+    const std::size_t index = m_pendingCountdown->index;
+    executeEntry(index);
+    return;
+  }
+
+  updateCountdownVisuals();
+  PanelManager::instance().requestLayout();
+  if (root() != nullptr) {
+    root()->markPaintDirty();
+  }
+  PanelManager::instance().requestFrameTick();
+  PanelManager::instance().refresh();
+}
+
+bool SessionPanel::handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, bool pressed, bool preedit) {
+  if (!pressed || preedit) {
+    return false;
+  }
+
+  if (KeybindMatcher::matches(KeybindAction::Cancel, sym, modifiers)) {
+    if (m_pendingCountdown.has_value()) {
+      cancelCountdown();
+      return true;
+    }
+    return false;
+  }
+
+  if (m_visibleButtons.empty()) {
+    return false;
+  }
+
+  for (std::size_t i = 0; i < m_visibleEntries.size(); ++i) {
+    const auto& entryConfig = m_visibleEntries[i];
+    if (entryConfig.shortcut.has_value() && keyChordMatches(*entryConfig.shortcut, sym, modifiers)) {
+      armEntry(i);
+      return true;
+    }
+  }
+
+  const std::size_t lastIndex = m_visibleButtons.size() - 1;
+
+  const auto cancelCountdownOnSelectionChange = [this](std::optional<std::size_t> nextIndex) {
+    if (m_pendingCountdown.has_value() && (!nextIndex.has_value() || *nextIndex != m_pendingCountdown->index)) {
+      cancelCountdown();
+    }
+  };
+
+  const auto moveSelection = [this, &cancelCountdownOnSelectionChange](std::size_t index) {
+    cancelCountdownOnSelectionChange(index);
+    m_selectedIndex = index;
+    updateSelectionVisuals();
+    if (root() != nullptr) {
+      root()->markPaintDirty();
+    }
+    PanelManager::instance().refresh();
+    return true;
+  };
+
+  if (KeybindMatcher::matches(KeybindAction::Left, sym, modifiers)) {
+    if (!m_selectedIndex.has_value()) {
+      return moveSelection(lastIndex);
+    }
+    if (*m_selectedIndex > 0) {
+      return moveSelection(*m_selectedIndex - 1);
+    }
+    return true;
+  }
+
+  if (KeybindMatcher::matches(KeybindAction::Right, sym, modifiers)) {
+    if (!m_selectedIndex.has_value()) {
+      return moveSelection(0);
+    }
+    if (*m_selectedIndex < lastIndex) {
+      return moveSelection(*m_selectedIndex + 1);
+    }
+    return true;
+  }
+
+  if (KeybindMatcher::matches(KeybindAction::Up, sym, modifiers)) {
+    const std::size_t columns = visibleColumnCount();
+    if (!m_selectedIndex.has_value()) {
+      return moveSelection(lastIndex);
+    }
+    if (sheetStyle()) {
+      const auto target = sheetVerticalTarget(*m_selectedIndex, /*down=*/false);
+      return target.has_value() ? moveSelection(*target) : true;
+    }
+    if (*m_selectedIndex >= columns) {
+      return moveSelection(*m_selectedIndex - columns);
+    }
+    return true;
+  }
+
+  if (KeybindMatcher::matches(KeybindAction::Down, sym, modifiers)) {
+    const std::size_t columns = visibleColumnCount();
+    if (!m_selectedIndex.has_value()) {
+      return moveSelection(0);
+    }
+    if (sheetStyle()) {
+      const auto target = sheetVerticalTarget(*m_selectedIndex, /*down=*/true);
+      return target.has_value() ? moveSelection(*target) : true;
+    }
+    if (*m_selectedIndex + columns <= lastIndex) {
+      return moveSelection(*m_selectedIndex + columns);
+    }
+    return true;
+  }
+
+  if (KeybindMatcher::matches(KeybindAction::Validate, sym, modifiers)) {
+    if (!m_selectedIndex.has_value()) {
+      return false;
+    }
+    Button* button = m_visibleButtons[*m_selectedIndex];
+    if (button != nullptr && button->enabled()) {
+      armEntry(*m_selectedIndex);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void SessionPanel::updateSelectionVisuals() {
+  for (std::size_t i = 0; i < m_visibleButtons.size(); ++i) {
+    Button* button = m_visibleButtons[i];
+    if (button == nullptr) {
+      continue;
+    }
+    const bool countdownActive = m_pendingCountdown.has_value() && m_pendingCountdown->index == i;
+    if (countdownActive) {
+      button->setSelected(false);
+      button->setHoveredVisual(false);
+      button->setPressedVisual(true);
+      continue;
+    }
+
+    button->setHoveredVisual(false);
+    button->setPressedVisual(false);
+    const bool keyboardSelected = m_selectedIndex.has_value() && i == *m_selectedIndex;
+    button->setSelected(keyboardSelected);
+  }
+  for (std::size_t i = 0; i < m_menuShortcuts.size(); ++i) {
+    syncMenuShortcut(i);
+  }
+}
+
+void SessionPanel::doLayout(Renderer& renderer, float width, float height) {
+  if (m_rootLayout == nullptr) {
+    return;
+  }
+
+  m_rootLayout->setSize(width, height);
+  m_rootLayout->layout(renderer);
+
+  for (Button* button : m_visibleButtons) {
+    if (button != nullptr) {
+      button->updateInputArea();
+    }
+  }
+  for (std::size_t i = 0; i < m_menuShortcuts.size() && i < m_visibleButtons.size(); ++i) {
+    Label* shortcut = m_menuShortcuts[i];
+    const Button* row = m_visibleButtons[i];
+    if (shortcut == nullptr || row == nullptr) {
+      continue;
+    }
+    shortcut->measure(renderer);
+    shortcut->setPosition(
+        std::round(row->width() - shortcut->width() - Style::spaceMd * contentScale()),
+        std::round((row->height() - shortcut->height()) * 0.5F)
+    );
+  }
+  layoutCountdownOverlays(renderer);
+}
+
+void SessionPanel::doUpdate(Renderer& /*renderer*/) {}
+
+void SessionPanel::onClose() {
+  m_pendingCountdown.reset();
+  m_selectedIndex.reset();
+  m_rootLayout = nullptr;
+  m_quietCount = 0;
+  m_visibleEntries.clear();
+  m_visibleButtons.clear();
+  m_countdownOverlays.clear();
+  m_entryShortcutBadges.clear();
+  m_menuShortcuts.clear();
+  m_menuHovered.clear();
+  clearReleasedRoot();
+}

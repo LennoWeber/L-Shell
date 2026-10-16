@@ -7,6 +7,7 @@
 #include "launcher/launcher_provider.h"
 #include "shell/panel/panel_manager.h"
 #include "system/desktop_entry_launch.h"
+#include "ui/app_glyph.h"
 #include "util/fuzzy_match.h"
 #include "util/string_utils.h"
 
@@ -261,7 +262,7 @@ std::vector<LauncherResult> AppProvider::query(std::string_view text) const {
     result.origin = originLabel(entry.origin);
     result.originGlyph = originGlyph(entry.origin);
     result.iconName = entry.icon.empty() ? std::string(kDefaultAppIcon) : entry.icon;
-    result.glyphName = "app-window";
+    result.glyphName = std::string(appGlyph(entry));
     if (const auto index = primaryCategoryIndex(entry.categories)) {
       result.category = appCategoryLabel(kAppCategories[*index].id);
     }

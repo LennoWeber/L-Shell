@@ -303,7 +303,9 @@ void DesktopWidgetsHost::createInstance(const DesktopWidgetState& state, const W
   }
 
   const float baseUiScale = m_config != nullptr ? m_config->config().accessibility.uiScale : 1.0F;
-  auto widget = m_factory->create(state.type, state.settings, desktop_widgets::widgetContentScale(baseUiScale));
+  auto widget = m_factory->create(
+      state.type, state.settings, desktop_widgets::widgetContentScale(baseUiScale) * state.scale
+  );
   if (widget == nullptr) {
     return;
   }
@@ -488,7 +490,9 @@ void DesktopWidgetsHost::prepareFrame(DesktopWidgetInstance& instance, bool need
   buildScene(instance);
 
   const float baseUiScale = m_config != nullptr ? m_config->config().accessibility.uiScale : 1.0F;
-  instance.widget->setContentScale(desktop_widgets::widgetContentScale(baseUiScale));
+  instance.widget->setContentScale(
+      desktop_widgets::widgetContentScale(baseUiScale) * instance.state.scale
+  );
   instance.widget->setBox(instance.state.boxWidth, instance.state.boxHeight);
 
   if (needsUpdate) {

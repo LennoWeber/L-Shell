@@ -226,6 +226,36 @@ const std::unordered_map<std::string, std::string_view> kAliases = {
     return icons;
   }
 
+  [[nodiscard]] std::unordered_map<char32_t, GlyphRegistry::MaterialGlyph> loadMaterialSubstitutes() {
+    std::unordered_map<char32_t, GlyphRegistry::MaterialGlyph> substitutes;
+    const std::filesystem::path path = paths::assetPath("fonts/material-symbols.json");
+    std::ifstream file(path);
+    if (!file.is_open()) {
+      kLog.warn("failed to open Material Symbols index: {}", path.string());
+      return substitutes;
+    }
+    try {
+      const auto root = nlohmann::json::parse(file);
+      const auto& tabler = tablerIcons();
+      for (const auto& [name, value] : root.items()) {
+        const auto tablerIt = tabler.find(name);
+        if (tablerIt == tabler.end() || !value.is_object()) {
+          continue;
+        }
+        const auto codepoint = parseCodepointLiteral(value.value("codepoint", std::string{}));
+        if (!codepoint.has_value()) {
+          continue;
+        }
+        substitutes.emplace(
+            tablerIt->second, GlyphRegistry::MaterialGlyph{.codepoint = *codepoint, .fill = value.value("fill", false)}
+        );
+      }
+    } catch (const nlohmann::json::exception& e) {
+      kLog.warn("failed to parse Material Symbols index '{}': {}", path.string(), e.what());
+    }
+    return substitutes;
+  }
+
 } // namespace
 
 bool GlyphRegistry::contains(std::string_view name) {
@@ -272,6 +302,11 @@ const std::unordered_map<std::string, GlyphRegistry::TablerGlyphMetadata>& Glyph
 }
 
 const std::unordered_map<std::string, char32_t>& GlyphRegistry::tablerIcons() { return ::tablerIcons(); }
+
+const std::unordered_map<char32_t, GlyphRegistry::MaterialGlyph>& GlyphRegistry::materialSubstitutes() {
+  static const std::unordered_map<char32_t, MaterialGlyph> substitutes = loadMaterialSubstitutes();
+  return substitutes;
+}
 
 std::optional<std::string_view> GlyphRegistry::categoryFor(std::string_view name) {
   const auto& metadata = tablerGlyphMetadata();

@@ -36,10 +36,12 @@
 #include "wayland/wayland_seat.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <format>
 #include <optional>
+#include <ranges>
 #include <string>
 
 PanelManager* PanelManager::s_instance = nullptr;
@@ -307,6 +309,8 @@ namespace {
   constexpr float kDetachedRevealScale = 0.96F;
   // Notification Center slides in from the right screen edge instead of scaling.
   constexpr float kEdgeSlideDistance = 20.0F;
+  // shell.panel.reveal = "lift": the panel rises this far into place while it fades in.
+  constexpr float kLiftDistance = 4.0F;
 
   [[nodiscard]] bool glassPanels(const ConfigService* config) {
     return config != nullptr && config->config().shell.panel.transparencyMode == PanelTransparencyMode::Glass;
@@ -683,6 +687,7 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
 
   m_activePanel = it->second.get();
   m_activePanelId = panelId;
+  syncScrim(request.output);
   m_screenPositionOverride = std::string(request.screenPosition);
   m_activePanel->setContentScale(shell::panel_surface::contentScale(m_config));
   m_pendingOpenContext = std::string(request.context);
@@ -823,6 +828,8 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     m_detachedSlideY = 0.0F;
     if (panelId == NotificationCenterPanel::kPanelId) {
       m_detachedSlideX = panelPosition.ends_with("_left") ? -kEdgeSlideDistance : kEdgeSlideDistance;
+    } else if (m_config->config().shell.panel.reveal == PanelReveal::Lift) {
+      m_detachedSlideY = kLiftDistance;
     }
   }
 
@@ -1100,17 +1107,27 @@ void PanelManager::openPanel(const std::string& panelId, PanelOpenRequest reques
     const auto shadowBleed = shell::surface_shadow::bleed(m_activePanel->hasDecoration(), shadowConfig);
     const auto cornerOutset = static_cast<std::int32_t>(std::ceil(cornerRadius));
 
+    // A sheet (shell.panel.attached_full_length) runs the bar's whole length; it has no ends to round or shade.
+    const bool fullLength = m_config->config().shell.panel.attachedFullLength;
+    if (fullLength) {
+      if (barIsVertical) {
+        panelHeight = static_cast<std::uint32_t>(std::max(1, barRect.bottom - barRect.top));
+      } else {
+        panelWidth = static_cast<std::uint32_t>(std::max(1, barRect.right - barRect.left));
+      }
+    }
+
     // Cross-axis outset wraps the concave-corner overhang and shadow bleed.
     // Main-axis bleed extends only away from the bar edge.
     std::int32_t crossOutsetStart = 0;
     std::int32_t crossOutsetEnd = 0;
     std::int32_t mainBleedAway = 0;
     if (barIsVertical) {
-      crossOutsetStart = std::max(shadowBleed.up, shadowBleed.down) + cornerOutset + 2;
+      crossOutsetStart = fullLength ? 0 : std::max(shadowBleed.up, shadowBleed.down) + cornerOutset + 2;
       crossOutsetEnd = crossOutsetStart;
       mainBleedAway = (barIsLeft ? shadowBleed.right : shadowBleed.left) + 2;
     } else {
-      crossOutsetStart = std::max(shadowBleed.left, shadowBleed.right) + cornerOutset + 2;
+      crossOutsetStart = fullLength ? 0 : std::max(shadowBleed.left, shadowBleed.right) + cornerOutset + 2;
       crossOutsetEnd = crossOutsetStart;
       mainBleedAway = (barIsBottom ? shadowBleed.up : shadowBleed.down) + 2;
     }
@@ -1563,6 +1580,7 @@ void PanelManager::closePanel(bool animateClose) {
   }
 
   kLog.debug("panel manager: closing \"{}\"", m_activePanelId);
+  syncScrim(nullptr);
 
   // Drop the outside-click handlers as soon as close starts.
   // During the close animation we want clicks on apps to behave normally.
@@ -1639,6 +1657,7 @@ void PanelManager::destroyPanel() {
     m_activePanel->onClose();
   }
   m_bgNode = nullptr;
+  m_sheetEdgeNode = nullptr;
   m_contentNode = nullptr;
   m_detachedRevealClipNode = nullptr;
   m_detachedRevealContentNode = nullptr;
@@ -1906,6 +1925,21 @@ bool PanelManager::onPointerEvent(const PointerEvent& event) {
 }
 
 bool PanelManager::isOpen() const noexcept { return m_surface != nullptr && m_activePanel != nullptr; }
+
+void PanelManager::syncScrim(wl_output* output) {
+  if (m_scrimRequestCallback == nullptr || m_config == nullptr) {
+    return;
+  }
+  if (!m_config->config().shell.panel.scrim) {
+    m_scrimRequestCallback(false, nullptr);
+    return;
+  }
+  // Only the modal panels veil the screen; attached widgets like settings stay anchored to their
+  // trigger and keep the desktop visible around them.
+  static const std::array kModalPanelIds{"launcher", "control-center", "clipboard", "session"};
+  const bool modal = m_activePanel != nullptr && std::ranges::contains(kModalPanelIds, m_activePanelId);
+  m_scrimRequestCallback(modal && isOpen(), output);
+}
 
 bool PanelManager::isOpenPanel(std::string_view panelId) const noexcept {
   if (m_persistentHost.hasPanel(panelId)) {
@@ -2812,6 +2846,11 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
         applySlateChrome(*bg, m_config);
       }
       m_bgNode = sceneParent->addChild(std::move(bg));
+      if (m_attachedToBar && m_config != nullptr && m_config->config().shell.panel.attachedFullLength) {
+        m_sheetEdgeNode = static_cast<Box*>(
+            sceneParent->addChild(ui::box({.fill = colorSpecFromRole(ColorRole::Outline), .radius = 0.0F}))
+        );
+      }
     }
 
     if (hasDecoration && m_attachedToBar && m_attachedContactShadow) {
@@ -2955,6 +2994,15 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
     if (!m_attachedToBar) {
       static_cast<Box*>(m_bgNode)->setRadius(floatingPanelRadius());
     }
+  }
+
+  if (m_sheetEdgeNode != nullptr) {
+    const float line = std::max(1.0F, std::round(Style::borderWidth * m_activePanel->contentScale()));
+    const std::string& bar = m_attachedBarPosition;
+    const float x = bar == "left" ? panelX + panelW - line : panelX;
+    const float y = bar == "top" ? panelY + panelH - line : panelY;
+    m_sheetEdgeNode->setPosition(x, y);
+    m_sheetEdgeNode->setSize(barIsVertical ? line : panelW, barIsVertical ? panelH : line);
   }
 
   if (m_panelContactShadowNode != nullptr) {

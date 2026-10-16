@@ -57,6 +57,25 @@ const noctalia::bar::WidgetDefinition<WorkspacesWidget::Options>& workspacesWidg
                           .group = "workspaces.list",
                       },
               }),
+              field<&Options::count>({
+                  .key = "count",
+                  .minValue = 0.0,
+                  .maxValue = 20.0,
+                  .step = 1.0,
+                  .presentation =
+                      settings::WidgetSettingPresentation{
+                          .descriptionKey = "settings.widgets.settings.count.workspaces-description",
+                          .group = "workspaces.list",
+                      },
+              }),
+              field<&Options::twoDigitLabels>({
+                  .key = "two_digit_labels",
+                  .presentation =
+                      settings::WidgetSettingPresentation{
+                          .group = "workspaces.list",
+                          .visibleWhen = labelsShown(),
+                      },
+              }),
               field<&Options::showLabels>({
                   .key = "show_labels",
                   .presentation =
@@ -134,6 +153,21 @@ const noctalia::bar::WidgetDefinition<WorkspacesWidget::Options>& workspacesWidg
                               .value = WorkspacesStyle::FocusHint,
                               .configValue = "focus_hint",
                               .labelKey = "settings.widgets.options.focus-hint",
+                          },
+                          {
+                              .value = WorkspacesStyle::Underline,
+                              .configValue = "underline",
+                              .labelKey = "settings.widgets.options.underline",
+                          },
+                          {
+                              .value = WorkspacesStyle::Box,
+                              .configValue = "box",
+                              .labelKey = "settings.widgets.options.box",
+                          },
+                          {
+                              .value = WorkspacesStyle::Squares,
+                              .configValue = "squares",
+                              .labelKey = "settings.widgets.options.squares",
                           },
                       },
                   .presentation =

@@ -357,6 +357,121 @@ namespace {
   // countdown would also repaint every banner for its whole lifetime.
   bool showToastProgressAccent(Urgency urgency) { return urgency == Urgency::Critical; }
 
+  // Header style (Monolith): no icon; a versal line with an accent square names the app, the summary and body
+  // follow, and the actions are equal cells divided by 1px rules. All sizes are before the notification scale.
+  constexpr float kHeaderPadV = 14.0F;
+  constexpr float kHeaderPadH = 16.0F;
+  constexpr float kHeaderMarkSize = 8.0F;
+  constexpr float kHeaderMetaSize = 11.0F;
+  constexpr float kHeaderMetaTracking = 0.1F;
+  constexpr float kHeaderSummarySize = 15.0F;
+  constexpr float kHeaderActionSize = 12.0F;
+  constexpr float kHeaderActionPadV = 8.0F;
+
+  [[nodiscard]] bool headerStyle(const ConfigService* config) {
+    return config != nullptr && config->config().notification.style == NotificationToastStyle::Header;
+  }
+
+  // The first action reads as the default one; the others are quieter.
+  std::unique_ptr<Button> makeHeaderActionButton(std::string_view label, float scale, bool primary) {
+    const auto state = [](ColorRole bg, ColorRole label) {
+      return Button::ButtonStateColors{
+          .bg = colorSpecFromRole(bg), .border = clearColorSpec(), .label = colorSpecFromRole(label)
+      };
+    };
+    const ColorRole ink = primary ? ColorRole::OnSurface : ColorRole::OnSurfaceVariant;
+    return ui::button({
+        .text = std::string(label),
+        .fontSize = kHeaderActionSize * scale,
+        .contentAlign = ButtonContentAlign::Center,
+        .customPalette =
+            Button::ButtonPalette{
+                .borderWidth = 0.0F,
+                .normal = state(ColorRole::Surface, ink),
+                .hover = state(ColorRole::Hover, ColorRole::OnHover),
+                .pressed = state(ColorRole::Hover, ColorRole::OnHover),
+                .disabled = state(ColorRole::Surface, ColorRole::OnSurfaceVariant),
+            },
+        .paddingV = kHeaderActionPadV * scale,
+        .paddingH = kHeaderActionPadV * scale,
+        .radius = 0.0F,
+        .flexGrow = 1.0F,
+    });
+  }
+
+  std::unique_ptr<Flex> headerCardContent(
+      std::string_view appName, std::string_view summary, std::string_view body, int bodyLines,
+      std::vector<std::unique_ptr<Button>> buttons, std::unique_ptr<Flex> inlineReplyRow, Node** outActionsRow,
+      float scale, float cardW
+  ) {
+    const float textWidth = std::max(0.0F, cardW - kHeaderPadH * 2.0F * scale);
+    const auto gap = [scale](float height) { return ui::box({.fill = clearColorSpec(), .height = height * scale}); };
+    auto column = ui::column({
+        .align = FlexAlign::Stretch,
+        .paddingV = kHeaderPadV * scale,
+        .paddingH = kHeaderPadH * scale,
+        .width = cardW,
+    });
+
+    const std::string now = i18n::tr("notifications.toast.now");
+    const std::string meta = appName.empty() ? now : std::string(appName) + " · " + now;
+    column->addChild(
+        ui::row(
+            {.align = FlexAlign::Center, .gap = kHeaderMarkSize * scale},
+            ui::box({
+                .fill = colorSpecFromRole(ColorRole::Primary),
+                .width = kHeaderMarkSize * scale,
+                .height = kHeaderMarkSize * scale,
+            }),
+            ui::label({
+                .text = i18n::upper(meta),
+                .fontSize = kHeaderMetaSize * scale,
+                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+                .maxWidth = textWidth - kHeaderMarkSize * 2.0F * scale,
+                .maxLines = 1,
+                .letterSpacing = kHeaderMetaTracking,
+            })
+        )
+    );
+    column->addChild(gap(8.0F));
+    column->addChild(
+        ui::label({
+            .text = std::string(summary),
+            .fontSize = kHeaderSummarySize * scale,
+            .fontWeight = FontWeight::Medium,
+            .color = colorSpecFromRole(ColorRole::OnSurface),
+            .maxWidth = textWidth,
+            .maxLines = kMaxSummaryLines,
+        })
+    );
+    if (bodyLines > 0 && !StringUtils::isBlank(body)) {
+      column->addChild(gap(2.0F));
+      column->addChild(
+          ui::label({
+              .text = std::string(body),
+              .fontSize = bodyFontSize(scale),
+              .color = colorSpecFromRole(ColorRole::OnSurface, 0.75F),
+              .maxWidth = textWidth,
+              .maxLines = std::max(1, bodyLines),
+          })
+      );
+    }
+    if (!buttons.empty()) {
+      column->addChild(gap(12.0F));
+      const float rule = std::max(1.0F, std::round(Style::borderWidth * scale));
+      auto row = ui::row({.align = FlexAlign::Stretch, .gap = rule, .fill = colorSpecFromRole(ColorRole::Outline)});
+      for (auto& button : buttons) {
+        row->addChild(std::move(button));
+      }
+      *outActionsRow = row.get();
+      column->addChild(std::move(row));
+    }
+    if (inlineReplyRow != nullptr) {
+      column->addChild(std::move(inlineReplyRow));
+    }
+    return column;
+  }
+
   std::vector<std::unique_ptr<Button>>
   collectNotificationActionButtons(const std::vector<std::string>& actions, float scale) {
     std::vector<std::unique_ptr<Button>> buttons;
@@ -409,6 +524,24 @@ namespace {
         : textMaxWidth;
     const bool showAppName = shouldShowNotificationAppName(config, appName);
 
+    if (headerStyle(config)) {
+      std::vector<std::unique_ptr<Button>> buttons;
+      if (shouldShowNotificationActions(config)) {
+        for (auto& button : collectNotificationActionButtons(actions, scale)) {
+          const std::string label = button->label() != nullptr ? button->label()->text() : std::string{};
+          buttons.push_back(makeHeaderActionButton(label, scale, buttons.empty()));
+        }
+      }
+      Node* actionsRow = nullptr;
+      auto card = headerCardContent(
+          showAppName ? appName : std::string_view{}, StringUtils::trimLeadingBlankLines(summary),
+          StringUtils::trimLeadingBlankLines(body), bodyLines,
+          std::move(buttons), nullptr, &actionsRow, scale, cardW
+      );
+      card->layout(renderer);
+      return std::ceil(std::min(maxCardHeight, card->height()));
+    }
+
     auto card = ui::column(
         {.maxHeight = maxCardHeight, .clipChildren = true, .width = cardW},
         ui::progressBar({
@@ -446,6 +579,7 @@ namespace {
             .text = StringUtils::trimLeadingBlankLines(summary),
             .fontSize = summaryFontSize(scale),
             .fontWeight = FontWeight::Bold,
+            .fontFamily = Style::displayFont(),
             .color = colorSpecFromRole(ColorRole::OnSurface),
             .maxWidth = topTextMaxWidth,
             .maxLines = std::max(1, summaryLines),
@@ -707,6 +841,10 @@ void NotificationToast::requestRedraw() {
 void NotificationToast::onNotificationEvent(const Notification& n, NotificationEvent event) {
   switch (event) {
   case NotificationEvent::Added:
+    // [notification].show_toasts = false: no corner banners; the history still records everything.
+    if (m_config != nullptr && !m_config->config().notification.showToasts) {
+      break;
+    }
     if (m_notifications != nullptr
         && m_notifications->doNotDisturb()
         && n.dndPolicy == NotificationDndPolicy::Respect) {
@@ -2411,6 +2549,7 @@ InputArea* NotificationToast::buildCard(
       ? std::max(0.0F, textMaxWidth - closeButtonSize(scale) - Style::spaceSm * scale)
       : textMaxWidth;
   const bool showAppName = shouldShowNotificationAppName(m_config, entry.appName);
+  const bool header = headerStyle(m_config);
 
   auto viewport = ui::inputArea({});
   viewport->setAcceptedButtons(InputArea::buttonMask({BTN_LEFT, BTN_RIGHT}));
@@ -2459,120 +2598,126 @@ InputArea* NotificationToast::buildCard(
       })
   );
 
-  auto contentRow = ui::row({
-      .align = FlexAlign::Start,
-      .gap = iconTextGap(scale),
-      .padding = cardInnerPad(scale),
-      .width = cardW,
-  });
+  std::unique_ptr<Flex> contentRow;
+  if (!header) {
+    contentRow = ui::row({
+        .align = FlexAlign::Start,
+        .gap = iconTextGap(scale),
+        .padding = cardInnerPad(scale),
+        .width = cardW,
+    });
 
-  auto iconSlot = ui::node({
-      .width = iconSize,
-      .height = iconSize,
-  });
+    auto iconSlot = ui::node({
+        .width = iconSize,
+        .height = iconSize,
+    });
 
-  bool iconAssigned = false;
-  if (entry.icon.has_value()) {
-    const std::string& rawIcon = *entry.icon;
-    if (rawIcon.size() > kNoctaliaGlyphIconPrefix.size()
-        && std::string_view(rawIcon.data(), kNoctaliaGlyphIconPrefix.size()) == kNoctaliaGlyphIconPrefix) {
-      const std::string_view glyphName(
-          rawIcon.data() + kNoctaliaGlyphIconPrefix.size(), rawIcon.size() - kNoctaliaGlyphIconPrefix.size()
-      );
-      if (!glyphName.empty()) {
-        iconSlot->addChild(
-            ui::glyph({
-                .glyph = std::string(glyphName),
-                .glyphSize = iconGlyphSize,
-                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-                .configure = [iconSize, &renderer](Glyph& glyph) {
-                  glyph.measure(renderer);
-                  glyph.setPosition(
-                      std::round((iconSize - glyph.width()) * 0.5F), std::round((iconSize - glyph.height()) * 0.5F)
-                  );
-                },
-            })
+    bool iconAssigned = false;
+    if (entry.icon.has_value()) {
+      const std::string& rawIcon = *entry.icon;
+      if (rawIcon.size() > kNoctaliaGlyphIconPrefix.size()
+          && std::string_view(rawIcon.data(), kNoctaliaGlyphIconPrefix.size()) == kNoctaliaGlyphIconPrefix) {
+        const std::string_view glyphName(
+            rawIcon.data() + kNoctaliaGlyphIconPrefix.size(), rawIcon.size() - kNoctaliaGlyphIconPrefix.size()
         );
-        iconAssigned = true;
+        if (!glyphName.empty()) {
+          iconSlot->addChild(
+              ui::glyph({
+                  .glyph = std::string(glyphName),
+                  .glyphSize = iconGlyphSize,
+                  .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+                  .configure = [iconSize, &renderer](Glyph& glyph) {
+                    glyph.measure(renderer);
+                    glyph.setPosition(
+                        std::round((iconSize - glyph.width()) * 0.5F), std::round((iconSize - glyph.height()) * 0.5F)
+                    );
+                  },
+              })
+          );
+          iconAssigned = true;
+        }
       }
     }
-  }
-  if (!iconAssigned) {
-    if (entry.imageData.has_value()) {
-      const auto& image = *entry.imageData;
-      if (image.width > 0 && image.height > 0 && !image.data.empty()) {
-        auto appIcon = ui::image({
-            .fit = ImageFit::Cover,
-            .radius = notificationIconRadius(iconSize, scale),
-            .width = iconSize,
-            .height = iconSize,
-            .configure = [](Image& control) { control.setPosition(0.0F, 0.0F); },
-        });
-        const bool validImageMetadata = image.bitsPerSample == 8
-            && ((image.channels == 4 && image.hasAlpha) || (image.channels == 3 && !image.hasAlpha));
-        const PixmapFormat format = image.channels == 3 ? PixmapFormat::RGB : PixmapFormat::RGBA;
-        if (validImageMetadata
-            && appIcon->setSourceRaw(
-                renderer, image.data.data(), image.data.size(), image.width, image.height, image.rowStride, format, true
-            )) {
-          iconSlot->addChild(std::move(appIcon));
-          iconAssigned = true;
-        } else if (!validImageMetadata) {
-          kLog.warn(
-              "notification toast: unsupported image-data avatar metadata for #{} (alpha={}, bits={}, channels={})",
-              entry.notificationId, image.hasAlpha, image.bitsPerSample, image.channels
-          );
+    if (!iconAssigned) {
+      if (entry.imageData.has_value()) {
+        const auto& image = *entry.imageData;
+        if (image.width > 0 && image.height > 0 && !image.data.empty()) {
+          auto appIcon = ui::image({
+              .fit = ImageFit::Cover,
+              .radius = notificationIconRadius(iconSize, scale),
+              .width = iconSize,
+              .height = iconSize,
+              .configure = [](Image& control) { control.setPosition(0.0F, 0.0F); },
+          });
+          const bool validImageMetadata = image.bitsPerSample == 8
+              && ((image.channels == 4 && image.hasAlpha) || (image.channels == 3 && !image.hasAlpha));
+          const PixmapFormat format = image.channels == 3 ? PixmapFormat::RGB : PixmapFormat::RGBA;
+          if (validImageMetadata
+              && appIcon->setSourceRaw(
+                  renderer, image.data.data(), image.data.size(), image.width, image.height, image.rowStride, format,
+                  true
+              )) {
+            iconSlot->addChild(std::move(appIcon));
+            iconAssigned = true;
+          } else if (!validImageMetadata) {
+            kLog.warn(
+                "notification toast: unsupported image-data avatar metadata for #{} (alpha={}, bits={}, channels={})",
+                entry.notificationId, image.hasAlpha, image.bitsPerSample, image.channels
+            );
+          } else {
+            kLog.warn(
+                "notification toast: failed to load image-data avatar for #{} ({}x{}, bytes={})", entry.notificationId,
+                image.width, image.height, image.data.size()
+            );
+          }
         } else {
           kLog.warn(
-              "notification toast: failed to load image-data avatar for #{} ({}x{}, bytes={})", entry.notificationId,
+              "notification toast: invalid image-data avatar for #{} ({}x{}, bytes={})", entry.notificationId,
               image.width, image.height, image.data.size()
           );
         }
-      } else {
-        kLog.warn(
-            "notification toast: invalid image-data avatar for #{} ({}x{}, bytes={})", entry.notificationId,
-            image.width, image.height, image.data.size()
-        );
+      }
+
+      if (!iconAssigned) {
+        const std::string iconPath = resolveNotificationIconPath(entry);
+        if (!iconPath.empty()) {
+          auto appIcon = ui::image({
+              .fit = ImageFit::Cover,
+              .radius = notificationIconRadius(iconSize, scale),
+              .width = iconSize,
+              .height = iconSize,
+              .configure = [](Image& image) { image.setPosition(0.0F, 0.0F); },
+          });
+          if (appIcon->setSourceFile(renderer, iconPath, static_cast<int>(std::round(iconSize)))) {
+            iconSlot->addChild(std::move(appIcon));
+            iconAssigned = true;
+          } else {
+            kLog.warn(
+                "notification toast: failed to load icon image for #{} from '{}'", entry.notificationId, iconPath
+            );
+          }
+        }
       }
     }
 
     if (!iconAssigned) {
-      const std::string iconPath = resolveNotificationIconPath(entry);
-      if (!iconPath.empty()) {
-        auto appIcon = ui::image({
-            .fit = ImageFit::Cover,
-            .radius = notificationIconRadius(iconSize, scale),
-            .width = iconSize,
-            .height = iconSize,
-            .configure = [](Image& image) { image.setPosition(0.0F, 0.0F); },
-        });
-        if (appIcon->setSourceFile(renderer, iconPath, static_cast<int>(std::round(iconSize)))) {
-          iconSlot->addChild(std::move(appIcon));
-          iconAssigned = true;
-        } else {
-          kLog.warn("notification toast: failed to load icon image for #{} from '{}'", entry.notificationId, iconPath);
-        }
-      }
+      iconSlot->addChild(
+          ui::glyph({
+              .glyph = "bell",
+              .glyphSize = iconGlyphSize,
+              .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+              .configure = [iconSize, &renderer](Glyph& glyph) {
+                glyph.measure(renderer);
+                glyph.setPosition(
+                    std::round((iconSize - glyph.width()) * 0.5F), std::round((iconSize - glyph.height()) * 0.5F)
+                );
+              },
+          })
+      );
     }
-  }
 
-  if (!iconAssigned) {
-    iconSlot->addChild(
-        ui::glyph({
-            .glyph = "bell",
-            .glyphSize = iconGlyphSize,
-            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-            .configure = [iconSize, &renderer](Glyph& glyph) {
-              glyph.measure(renderer);
-              glyph.setPosition(
-                  std::round((iconSize - glyph.width()) * 0.5F), std::round((iconSize - glyph.height()) * 0.5F)
-              );
-            },
-        })
-    );
+    contentRow->addChild(std::move(iconSlot));
   }
-
-  contentRow->addChild(std::move(iconSlot));
 
   const std::string displaySummary = StringUtils::trimLeadingBlankLines(entry.summary);
   const std::string displayBody = StringUtils::trimLeadingBlankLines(entry.body);
@@ -2585,12 +2730,14 @@ InputArea* NotificationToast::buildCard(
           .text = displaySummary,
           .fontSize = summaryFontSize(scale),
           .fontWeight = FontWeight::Bold,
+          .fontFamily = Style::displayFont(),
           .color = colorSpecFromRole(ColorRole::OnSurface),
           .maxWidth = topTextMaxWidth,
           .maxLines = kMaxSummaryLines,
       })
   );
   std::unique_ptr<Flex> actionsRow;
+  std::vector<std::unique_ptr<Button>> actionButtons;
   std::unique_ptr<Flex> inlineReplyRow;
   std::unique_ptr<Input> inlineReplyInput;
   std::unique_ptr<Button> inlineReplySendButton;
@@ -2601,7 +2748,7 @@ InputArea* NotificationToast::buildCard(
 
     // Build action buttons row (always visible initially)
     {
-      std::vector<std::unique_ptr<Button>> buttons;
+      std::vector<std::unique_ptr<Button>>& buttons = actionButtons;
       const std::size_t limit = std::min(entry.actions.size(), kMaxNotificationActions * 2);
       for (std::size_t i = 0; i + 1 < limit; i += 2) {
         const std::string actionKey = entry.actions[i];
@@ -2613,7 +2760,8 @@ InputArea* NotificationToast::buildCard(
           actionLabel = fallbackActionLabel();
         }
 
-        auto actionButton = makeNotificationActionButton(actionLabel, scale);
+        auto actionButton = header ? makeHeaderActionButton(actionLabel, scale, buttons.empty())
+                                   : makeNotificationActionButton(actionLabel, scale);
         actionButton->setCursorShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
         actionButton->setOnEnter([this, notificationId]() { beginPopupHover(notificationId); });
         actionButton->setOnLeave([this, notificationId, totalDuration]() {
@@ -2636,7 +2784,7 @@ InputArea* NotificationToast::buildCard(
         buttons.push_back(std::move(actionButton));
       }
 
-      if (!buttons.empty()) {
+      if (!buttons.empty() && !header) {
         actionsRow = ui::column({
             .padding = Style::spaceXs * scale,
         });
@@ -2716,55 +2864,68 @@ InputArea* NotificationToast::buildCard(
     }
   }
 
-  auto body = ui::label({
-      .text = displayBody,
-      .fontSize = bodyFontSize(scale),
-      .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-      .maxWidth = textMaxWidth,
-      .maxLines = std::max(1, entry.toastBodyLines),
-      .visible = entry.toastBodyLines > 0 && !StringUtils::isBlank(displayBody),
-      .participatesInLayout = entry.toastBodyLines > 0 && !StringUtils::isBlank(displayBody),
-  });
-  textColumn->addChild(std::move(body));
-
-  if (actionsRow != nullptr) {
-    *outActionsRow = actionsRow.get();
-    textColumn->addChild(std::move(actionsRow));
+  if (header) {
+    Node* actionsRowPtr = nullptr;
+    Node* inlineReplyRowPtr = inlineReplyRow.get();
+    foreground->addChild(headerCardContent(
+        showAppName ? std::string_view(entry.appName) : std::string_view{}, displaySummary, displayBody,
+        entry.toastBodyLines, std::move(actionButtons),
+        std::move(inlineReplyRow), &actionsRowPtr, scale, cardW
+    ));
+    *outActionsRow = actionsRowPtr;
+    *outInlineReplyRow = inlineReplyRowPtr;
+    *outInlineReplyInput = inlineReplyRowPtr != nullptr ? inlineReplyInputPtr : nullptr;
   } else {
-    *outActionsRow = nullptr;
-  }
+    auto body = ui::label({
+        .text = displayBody,
+        .fontSize = bodyFontSize(scale),
+        .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+        .maxWidth = textMaxWidth,
+        .maxLines = std::max(1, entry.toastBodyLines),
+        .visible = entry.toastBodyLines > 0 && !StringUtils::isBlank(displayBody),
+        .participatesInLayout = entry.toastBodyLines > 0 && !StringUtils::isBlank(displayBody),
+    });
+    textColumn->addChild(std::move(body));
 
-  if (inlineReplyRow != nullptr) {
-    *outInlineReplyRow = inlineReplyRow.get();
-    *outInlineReplyInput = inlineReplyInputPtr;
-    textColumn->addChild(std::move(inlineReplyRow));
-  } else {
-    *outInlineReplyRow = nullptr;
-    *outInlineReplyInput = nullptr;
-  }
+    if (actionsRow != nullptr) {
+      *outActionsRow = actionsRow.get();
+      textColumn->addChild(std::move(actionsRow));
+    } else {
+      *outActionsRow = nullptr;
+    }
 
-  if (showAppName) {
-    auto footerRow = ui::row(
-        {
-            .align = FlexAlign::Center,
-            .justify = FlexJustify::End,
-            .padding = Style::spaceXs * scale,
-            .width = textMaxWidth,
-        },
-        ui::label({
-            .text = entry.appName,
-            .fontSize = metaFontSize(scale),
-            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-            .maxWidth = textMaxWidth,
-            .maxLines = 1,
-            .textAlign = TextAlign::End,
-        })
-    );
-    textColumn->addChild(std::move(footerRow));
-  }
+    if (inlineReplyRow != nullptr) {
+      *outInlineReplyRow = inlineReplyRow.get();
+      *outInlineReplyInput = inlineReplyInputPtr;
+      textColumn->addChild(std::move(inlineReplyRow));
+    } else {
+      *outInlineReplyRow = nullptr;
+      *outInlineReplyInput = nullptr;
+    }
 
-  contentRow->addChild(std::move(textColumn));
-  foreground->addChild(std::move(contentRow));
+    if (showAppName) {
+      auto footerRow = ui::row(
+          {
+              .align = FlexAlign::Center,
+              .justify = FlexJustify::End,
+              .padding = Style::spaceXs * scale,
+              .width = textMaxWidth,
+          },
+          ui::label({
+              .text = entry.appName,
+              .fontSize = metaFontSize(scale),
+              .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+              .maxWidth = textMaxWidth,
+              .maxLines = 1,
+              .textAlign = TextAlign::End,
+          })
+      );
+      textColumn->addChild(std::move(footerRow));
+    }
+
+    contentRow->addChild(std::move(textColumn));
+    foreground->addChild(std::move(contentRow));
+  }
   foreground->layout(renderer);
 
   const float cardHeight = std::min(maxCardHeight, foreground->height());

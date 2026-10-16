@@ -56,6 +56,8 @@ namespace {
   constexpr float kShortcutLabelHeight = 16.0F;
   constexpr float kShortcutRowGap = 8.0F;
   constexpr std::size_t kMaxConfiguredShortcuts = 6;
+  // control_center.show_home_title: the heading's line box over the grid.
+  constexpr float kHomeTitleHeight = 28.0F;
 
   constexpr auto kSliderCommitInterval = std::chrono::milliseconds(16);
   constexpr auto kSliderStateHoldoff = std::chrono::milliseconds(180);
@@ -89,12 +91,13 @@ namespace {
     return kShortcutCircleSize + (labels ? Style::spaceXs + kShortcutLabelHeight : 0.0F);
   }
 
-  // Slate well for a module tile: a light step over a dark panel, a near-white pane on a light
-  // one. Soft and glass panels lower the card opacity, which thins the well so the blur shows through.
+  // Slate well for a module tile: a light step over a dark panel, the palette's variant surface on a light one
+  // (white for Slate, a deeper paper for Atelier). Soft and glass panels lower the card opacity, which thins the
+  // well so the blur shows through.
   ColorSpec tileFill(float cardOpacity, bool light) {
     const float strength = 0.5F + 0.5F * std::clamp(cardOpacity, 0.0F, 1.0F);
     if (light) {
-      return fixedColorSpec(rgba(1.0F, 1.0F, 1.0F, 0.72F * strength));
+      return colorSpecFromRole(ColorRole::SurfaceVariant, 0.72F * strength);
     }
     return colorSpecFromRole(ColorRole::OnSurface, 0.10F * strength);
   }
@@ -155,7 +158,7 @@ namespace {
         .maxWidth = diameter,
         .maxHeight = diameter,
         .padding = 0.0F,
-        .radius = diameter * 0.5F,
+        .radius = Style::pillRadius(diameter),
         .onClick = std::move(onClick),
         .onRightClick = std::move(onRightClick),
     });
@@ -173,7 +176,7 @@ namespace {
         .maxWidth = size,
         .maxHeight = size,
         .padding = 0.0F,
-        .radius = size * 0.5F,
+        .radius = Style::pillRadius(size),
         .onClick = std::move(onClick),
     });
   }
@@ -259,6 +262,18 @@ std::unique_ptr<Flex> HomeTab::create() {
       .justify = FlexJustify::Start,
       .gap = gap,
   });
+
+  if (showHomeTitle()) {
+    root->addChild(ui::label({
+        .text = i18n::tr("control-center.home.heading"),
+        .fontSize = Style::fontSizeHeader * scale,
+        .fontWeight = FontWeight::SemiBold,
+        .fontFamily = Style::displayFont(),
+        .color = colorSpecFromRole(ColorRole::OnSurface),
+        .height = kHomeTitleHeight * scale,
+        .maxLines = 1,
+    }));
+  }
 
   // --- Top block: connectivity (2x2) | focus (2x1) above caffeine and night light (1x1 each) ---
   auto connectivity = ui::column({
@@ -853,6 +868,9 @@ void HomeTab::navigate(std::string_view tab) {
 float HomeTab::naturalHeight(float scale) const {
   const float gap = kGridGap * scale;
   float height = kCellHeight * 2.0F * scale + gap;
+  if (showHomeTitle()) {
+    height += kHomeTitleHeight * scale + gap;
+  }
   if (targetDisplay() != nullptr) {
     height += gap + kSliderTileHeight * scale;
   }
@@ -864,6 +882,10 @@ float HomeTab::naturalHeight(float scale) const {
         gap + rows * shortcutCellHeight(showShortcutLabels(m_config)) * scale + (rows - 1.0F) * kShortcutRowGap * scale;
   }
   return std::ceil(height);
+}
+
+bool HomeTab::showHomeTitle() const {
+  return m_config != nullptr && m_config->config().controlCenter.showHomeTitle;
 }
 
 std::size_t HomeTab::shortcutItemCount() const {

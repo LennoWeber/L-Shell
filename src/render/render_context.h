@@ -37,6 +37,8 @@ public:
   // best-effort callers may ignore it, render paths must skip the frame.
   bool makeCurrent(RenderTarget& target);
   void setTextFontFamily(std::string family);
+  // The icon font glyphs draw with: empty = Tabler, else a Material Symbols font (see CairoGlyphRenderer).
+  void setIconStyle(std::string materialFontPath, int weight, bool fill);
   void setTextBaseDirection(bool rtl);
   void notifyFontConfigChanged();
 
@@ -61,7 +63,7 @@ private:
   // an explicit scale; no call mutates any shared render scale.
   [[nodiscard]] TextMetrics measureTextScaled(
       float scale, std::string_view text, float fontSize, FontWeight fontWeight, float maxWidth, int maxLines,
-      TextAlign align, std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup
+      TextAlign align, std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup, TextSpacing spacing
   );
   [[nodiscard]] TextMetrics
   measureFontScaled(float scale, float fontSize, FontWeight fontWeight, std::string_view fontFamily);
@@ -87,6 +89,9 @@ private:
   CairoTextRenderer m_textRenderer;
   CairoGlyphRenderer m_glyphRenderer;
   std::string m_textFontFamily = "sans-serif";
+  std::string m_iconFontPath;
+  int m_iconWeight = 400;
+  bool m_iconFill = false;
   bool m_textBaseDirRtl = false;
   std::uint64_t m_textMetricsGeneration = 1;
   std::uint64_t m_gpuResourceGeneration = 0;

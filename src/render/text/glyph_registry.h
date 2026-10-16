@@ -11,6 +11,13 @@
 // 3. Native Tabler icon names from assets/fonts/tabler.json.
 namespace GlyphRegistry {
 
+  // The Material Symbols glyph drawn for a Tabler icon when a design asks for Material icons
+  // (assets/fonts/material-symbols.json, built by tools/generate_material_symbols.py).
+  struct MaterialGlyph {
+    char32_t codepoint = 0; // in assets/fonts/material-symbols-<style>.ttf
+    bool fill = false;      // filled by name ("bell-filled"), whatever the design's fill setting
+  };
+
   struct TablerGlyphMetadata {
     char32_t codepoint = 0;
     std::string category;
@@ -23,6 +30,8 @@ namespace GlyphRegistry {
   [[nodiscard]] const std::unordered_map<std::string, TablerGlyphMetadata>& tablerGlyphMetadata();
   // Full Tabler icon catalog (loaded from assets/fonts/tabler.json on first registry use).
   [[nodiscard]] const std::unordered_map<std::string, char32_t>& tablerIcons();
+  // Tabler codepoint -> its Material Symbols equivalent.
+  [[nodiscard]] const std::unordered_map<char32_t, MaterialGlyph>& materialSubstitutes();
   [[nodiscard]] std::optional<std::string_view> categoryFor(std::string_view name);
   // Hand-curated Noctalia alias -> native Tabler icon name map.
   [[nodiscard]] const std::unordered_map<std::string, std::string_view>& aliases();

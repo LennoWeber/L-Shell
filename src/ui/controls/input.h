@@ -71,6 +71,8 @@ public:
   /// Surface.
   void setSurfaceRole(ColorRole role);
   void setFrameRadius(float radius);
+  // Caret width and, for single-line inputs, height (0 = in proportion to the control height).
+  void setCaretSize(float width, float height = 0.0F);
   [[nodiscard]] bool enabled() const noexcept { return m_enabled; }
   [[nodiscard]] bool passwordRevealed() const noexcept { return m_passwordRevealed; }
   void selectAll();
@@ -226,6 +228,8 @@ private:
   float m_scrollOffsetY = 0.0F;
   // Sticky caret column for Up/Down runs; negative = unset.
   float m_goalCaretX = -1.0F;
+  float m_caretWidth = 1.25F;
+  float m_caretHeight = 0.0F;
   bool m_cursorBlinkVisible = true;
   Timer m_cursorBlinkTimer;
 

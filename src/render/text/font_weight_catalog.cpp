@@ -127,7 +127,8 @@ namespace text {
         return entry;
       }
 
-      const std::string family = StringUtils::trim(std::string(fontFamily));
+      // Axes after " @" (see CairoTextRenderer) are not part of the family name.
+      const std::string family = StringUtils::trim(std::string(fontFamily.substr(0, fontFamily.find(" @"))));
       const std::string queryFamily = family.empty() ? "sans-serif" : family;
 
       FcObjectSet* objectSet = FcObjectSetBuild(FC_WEIGHT, FC_VARIABLE, nullptr);

@@ -25,6 +25,10 @@ enum class WorkspacesStyle : std::uint8_t {
   Regular,
   Minimal,
   FocusHint,
+  // Label-led like Minimal, with a marker for the focused workspace:
+  Underline, // a line under the focused label
+  Box,       // the focused label on a filled box
+  Squares,   // no labels: a filled square for the focused workspace, outlined squares for the others
 };
 
 enum class WorkspacesLabelSource : std::uint8_t {
@@ -52,6 +56,9 @@ public:
     float activePillSize = 2.2F;
     float inactivePillSize = 1.0F;
     bool focusedOutputOnly = false;
+    // Always list workspaces 1..count, occupied or not (0 = only the ones the compositor reports).
+    std::size_t count = 0;
+    bool twoDigitLabels = false; // "01" instead of "1"
   };
 
   WorkspacesWidget(CompositorPlatform& platform, ConfigService& config, wl_output* output, Options options);
@@ -97,7 +104,16 @@ private:
   void buildDesktopIconIndex();
   void syncActiveWindowIcon(Renderer& renderer, Item& item);
   [[nodiscard]] bool shouldShowWorkspaceLabel(const Workspace& workspace, std::string_view label) const noexcept;
-  [[nodiscard]] bool isMinimal() const noexcept { return m_style == WorkspacesStyle::Minimal; }
+  // Label-led styles: the label carries the state, no pill behind it.
+  [[nodiscard]] bool isMinimal() const noexcept {
+    return m_style == WorkspacesStyle::Minimal || hasMarker();
+  }
+  // Label-led styles that still mark the focused workspace.
+  [[nodiscard]] bool hasMarker() const noexcept {
+    return m_style == WorkspacesStyle::Underline || m_style == WorkspacesStyle::Box
+        || m_style == WorkspacesStyle::Squares;
+  }
+  [[nodiscard]] float squareSize() const noexcept;
   [[nodiscard]] bool isFocusHint() const noexcept { return m_style == WorkspacesStyle::FocusHint; }
   // FocusHint is the only style that draws the focused app icon.
   [[nodiscard]] bool showsActiveIcon() const noexcept { return isFocusHint() && m_showIcons; }
@@ -158,6 +174,7 @@ private:
     float opacity = 1.0F;
   };
 
+  void appendPlaceholderWorkspaces(std::vector<WorkspaceState>& current) const;
   [[nodiscard]] bool workspaceUsesFocusedStyle(const Workspace& workspace, wl_output* output) const;
   [[nodiscard]] ColorSpec workspaceFillColor(const Workspace& workspace, wl_output* output) const;
   [[nodiscard]] ColorSpec workspaceTextColor(const Workspace& workspace, wl_output* output) const;
@@ -179,6 +196,8 @@ private:
   float m_inactivePillSize = 1.0F;
   WorkspacesStyle m_style = WorkspacesStyle::Regular;
   bool m_focusedOutputOnly = false;
+  std::size_t m_count = 0;
+  bool m_twoDigitLabels = false;
   bool m_changeColorOnHover = true;
   wl_output* m_lastFocusedOutput = nullptr;
   std::string m_cachedActiveWindowAppId;

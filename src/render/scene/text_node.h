@@ -105,6 +105,16 @@ public:
     markLayoutDirty();
   }
 
+  [[nodiscard]] TextSpacing spacing() const noexcept { return m_spacing; }
+
+  void setSpacing(TextSpacing spacing) {
+    if (m_spacing == spacing) {
+      return;
+    }
+    m_spacing = spacing;
+    markLayoutDirty();
+  }
+
   [[nodiscard]] bool hasShadow() const noexcept { return m_hasShadow; }
   [[nodiscard]] const Color& shadowColor() const noexcept { return m_shadowColor; }
   [[nodiscard]] float shadowOffsetX() const noexcept { return m_shadowOffsetX; }
@@ -137,6 +147,7 @@ private:
   TextEllipsize m_ellipsize = TextEllipsize::End;
   int m_fontWeight = static_cast<int>(FontWeight::Normal);
   bool m_useMarkup = false;
+  TextSpacing m_spacing;
   bool m_hasShadow = false;
   Color m_shadowColor;
   float m_shadowOffsetX = 0.0F;

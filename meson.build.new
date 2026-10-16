@@ -1,0 +1,230 @@
+project('noctalia', ['c', 'cpp'],
+  version: files('VERSION'),
+  meson_version: '>=1.1',
+  default_options: [
+    'cpp_std=c++23',
+    'cpp_extensions=false',
+    'warning_level=0',
+    'b_ndebug=if-release',
+  ],
+)
+
+cc  = meson.get_compiler('c')
+cpp = meson.get_compiler('cpp')
+
+is_libcxx = cpp.get_define('_LIBCPP_VERSION', prefix: '#include <version>' ) != ''
+if is_libcxx
+  add_project_arguments('-fexperimental-library', language: 'cpp')
+  add_project_link_arguments('-lc++experimental', language: 'cpp')
+endif
+
+sanitize = get_option('b_sanitize') != 'none'
+
+if get_option('buildtype') != 'release'
+  if is_libcxx
+    add_project_arguments('-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE', language: 'cpp')
+  else
+    add_project_arguments('-D_GLIBCXX_ASSERTIONS', language: 'cpp')
+  endif
+endif
+
+tests_opt = get_option('tests')
+build_tests = tests_opt.enabled() or (tests_opt.auto() and get_option('buildtype') == 'debug' and not sanitize)
+
+if get_option('buildtype') == 'release'
+  add_project_arguments(
+    '-ffunction-sections', '-fdata-sections',
+    language: ['c', 'cpp'],
+  )
+  add_project_link_arguments(
+    '-Wl,--gc-sections', '-Wl,--as-needed',
+    language: ['c', 'cpp'],
+  )
+endif
+
+if get_option('native_optimizations')
+  add_project_arguments('-march=native', '-mtune=native', language: ['c', 'cpp'])
+endif
+
+# Dependencies
+sdbus_cpp_dep       = dependency('sdbus-c++')
+wayland_client_dep  = dependency('wayland-client')
+wayland_protos_dep  = dependency('wayland-protocols')
+wayland_egl_dep     = dependency('wayland-egl')
+freetype2_dep       = dependency('freetype2')
+fontconfig_dep      = dependency('fontconfig')
+cairo_dep           = dependency('cairo')
+cairo_ft_dep        = dependency('cairo-ft')
+pango_dep           = dependency('pango')
+pangocairo_dep      = dependency('pangocairo')
+pangoft2_dep        = dependency('pangoft2')
+harfbuzz_dep       = dependency('harfbuzz')
+librsvg_dep         = dependency('librsvg-2.0')
+xkbcommon_dep       = dependency('xkbcommon')
+glib_dep            = dependency('glib-2.0')
+gobject_dep         = dependency('gobject-2.0')
+gio_dep             = dependency('gio-2.0')
+libsecret_dep       = dependency('libsecret-1', version: '>=0.20')
+libsodium_dep       = dependency('libsodium', version: '>=1.0.18')
+polkit_agent_dep    = dependency('polkit-agent-1')
+polkit_gobject_dep  = dependency('polkit-gobject-1')
+pipewire_dep        = dependency('libpipewire-0.3', include_type: 'system')
+wireplumber_dep     = dependency('wireplumber-0.5', include_type: 'system')
+curl_dep            = dependency('libcurl')
+libqalculate_dep    = dependency('libqalculate')
+libxml2_dep         = dependency('libxml-2.0')
+md4c_dep            = dependency('md4c')
+nlohmann_dep        = dependency('nlohmann_json')
+tomlplusplus_dep    = dependency('tomlplusplus')
+libical_dep         = dependency('libical')
+pam_dep             = cc.find_library('pam')
+dl_dep              = cpp.find_library('dl', required: false)
+
+jemalloc_option = get_option('jemalloc')
+is_glibc = cpp.get_define('__GLIBC__', prefix: '#include <features.h>') != ''
+
+if jemalloc_option.enabled() and not is_glibc
+  error('jemalloc support requires glibc')
+endif
+
+if is_glibc
+  jemalloc_dep = dependency('jemalloc', required: jemalloc_option)
+endif
+
+egl_dep = dependency('egl', required: false)
+gles2_dep = dependency('glesv2', required: false)
+
+if not egl_dep.found()
+  egl_dep = dependency('wayland-egl', required: false)
+endif
+
+if not gles2_dep.found()
+  gles2_dep = dependency('epoxy')
+endif
+
+# Include directories
+include_dirs = [
+  include_directories('src'),
+  include_directories('third_party'),
+]
+
+# Collect all source files
+app_sources = []
+auth_sources = []
+calendar_sources = []
+config_sources = []
+core_sources = []
+design_sources = []
+launcher_sources = []
+net_sources = []
+render_sources = []
+scripting_sources = []
+shell_sources = []
+system_sources = []
+ui_sources = []
+util_sources = []
+wayland_sources = []
+
+# Find all existing source files
+import os
+import glob
+
+def get_files(pattern):
+    files = []
+    for f in glob.glob(pattern, recursive=True):
+        if os.path.exists(f):
+            files.append(f)
+    return sorted(set(files))
+
+# Application files
+app_files = get_files('src/app/*.cpp') + get_files('src/app/*.h')
+
+# Auth files  
+auth_files = get_files('src/auth/*.cpp') + get_files('src/auth/*.h')
+
+# Calendar files
+calendar_files = get_files('src/calendar/*.cpp') + get_files('src/calendar/*.h')
+
+# Config files
+config_files = get_files('src/config/*.cpp') + get_files('src/config/*.h') + \
+              get_files('src/config/**/*.cpp') + get_files('src/config/**/*.h')
+
+# Core files
+core_files = get_files('src/core/*.cpp') + get_files('src/core/*.h') + \
+             get_files('src/core/**/*.cpp') + get_files('src/core/**/*.h')
+
+# Design files (my new implementations)
+design_files = get_files('src/shell/design/*.cpp') + get_files('src/shell/design/*.h') + \
+              get_files('src/shell/design/**/*.cpp') + get_files('src/shell/design/**/*.h')
+
+# Launcher files
+launcher_files = get_files('src/launcher/*.cpp') + get_files('src/launcher/*.h')
+
+# Net files
+net_files = get_files('src/net/*.cpp') + get_files('src/net/*.h')
+
+# Render files
+render_files = get_files('src/render/*.cpp') + get_files('src/render/*.h') + \
+              get_files('src/render/**/*.cpp') + get_files('src/render/**/*.h')
+
+# Scripting files
+scripting_files = get_files('src/scripting/*.cpp') + get_files('src/scripting/*.h')
+
+# Shell files (bar, control_center, etc.)
+shell_files = get_files('src/shell/*.cpp') + get_files('src/shell/*.h') + \
+              get_files('src/shell/bar/*.cpp') + get_files('src/shell/bar/*.h') + \
+              get_files('src/shell/bar/**/*.cpp') + get_files('src/shell/bar/**/*.h') + \
+              get_files('src/shell/control_center/*.cpp') + get_files('src/shell/control_center/*.h') + \
+              get_files('src/shell/control_center/**/*.cpp') + get_files('src/shell/control_center/**/*.h') + \
+              get_files('src/shell/**/*.cpp') + get_files('src/shell/**/*.h')
+
+# System files
+system_files = get_files('src/system/*.cpp') + get_files('src/system/*.h')
+
+# UI files
+ui_files = get_files('src/ui/*.cpp') + get_files('src/ui/*.h') + \
+           get_files('src/ui/**/*.cpp') + get_files('src/ui/**/*.h')
+
+# Util files
+util_files = get_files('src/util/*.cpp') + get_files('src/util/*.h')
+
+# Wayland files
+wayland_files = get_files('src/wayland/*.cpp') + get_files('src/wayland/*.h')
+
+# Combine all files
+all_files = (
+    app_files + auth_files + calendar_files + config_files + core_files +
+    design_files + launcher_files + net_files + render_files +
+    scripting_files + shell_files + system_files + ui_files + util_files + wayland_files
+)
+
+# Filter for meson build
+sources = []
+for f in all_files:
+    if f.endswith('.cpp') or f.endswith('.c'):
+        sources.append(f)
+
+headers = []
+for f in all_files:
+    if f.endswith('.h'):
+        headers.append(f)
+
+# Create executable
+noctalia_exe = executable(
+  'noctalia',
+  sources = sources,
+  include_directories: include_dirs,
+  dependencies: [
+    sdbus_cpp_dep, wayland_client_dep, wayland_protos_dep, wayland_egl_dep,
+    freetype2_dep, fontconfig_dep, cairo_dep, cairo_ft_dep,
+    pango_dep, pangocairo_dep, pangoft2_dep, harfbuzz_dep,
+    librsvg_dep, xkbcommon_dep, glib_dep, gobject_dep, gio_dep,
+    libsecret_dep, libsodium_dep, polkit_agent_dep, polkit_gobject_dep,
+    pipewire_dep, wireplumber_dep, curl_dep, libqalculate_dep,
+    libxml2_dep, md4c_dep, nlohmann_dep, tomlplusplus_dep, libical_dep,
+    pam_dep, dl_dep, egl_dep, gles2_dep
+  ],
+  c_args: ['-Wno-pedantic', '-Wno-conversion'],
+  cpp_args: ['-Wno-pedantic', '-Wno-conversion'],
+  install: true,
+)

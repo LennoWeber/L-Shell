@@ -15,6 +15,9 @@ public:
     std::string verticalFormat;
     std::string tooltipFormat;
     std::string timezone;
+    bool uppercase = false;   // set in capitals ("DI 13")
+    float letterSpacing = 0.0F; // extra tracking, in em
+    float lineHeight = 0.0F;    // stacked lines' baseline distance as a multiple of the font size; 0 = the font's
   };
 
   ClockWidget(wl_output* output, Options options);
@@ -30,6 +33,9 @@ private:
   std::string m_verticalFormat;
   std::string m_tooltipFormat;
   std::string m_timezone;
+  bool m_uppercase = false;
+  float m_letterSpacing = 0.0F;
+  float m_lineHeight = 0.0F;
   bool m_isVertical = false;
   Label* m_label = nullptr;
   Label* m_secondaryLabel = nullptr;

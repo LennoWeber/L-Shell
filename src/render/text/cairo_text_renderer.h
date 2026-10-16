@@ -68,7 +68,7 @@ public:
   [[nodiscard]] TextMetrics measure(
       float contentScale, std::string_view text, float fontSize, FontWeight fontWeight = FontWeight::Normal,
       float maxWidth = 0.0F, int maxLines = 0, TextAlign align = TextAlign::Start, std::string_view fontFamily = {},
-      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false
+      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false, TextSpacing spacing = {}
   );
   // Metrics of `fontFamily` (empty = the active family set by setFontFamily()).
   [[nodiscard]] TextMetrics
@@ -86,7 +86,7 @@ public:
       float contentScale, float surfaceWidth, float surfaceHeight, float x, float baselineY, std::string_view text,
       float fontSize, const Color& color, const Mat3& transform, FontWeight fontWeight = FontWeight::Normal,
       float maxWidth = 0.0F, int maxLines = 0, TextAlign align = TextAlign::Start, std::string_view fontFamily = {},
-      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false
+      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false, TextSpacing spacing = {}
   );
 
 private:
@@ -102,6 +102,7 @@ private:
     TextEllipsize ellipsize = TextEllipsize::End;
     FontWeight fontWeight = FontWeight::Normal;
     bool useMarkup = false;
+    TextSpacing spacing;
 
     bool operator==(const CacheKey& other) const noexcept;
   };
@@ -123,6 +124,7 @@ private:
     TextEllipsize ellipsize = TextEllipsize::End;
     FontWeight fontWeight = FontWeight::Normal;
     bool useMarkup = false;
+    TextSpacing spacing;
 
     bool operator==(const MetricsKey& other) const noexcept;
   };
@@ -184,7 +186,7 @@ private:
   PangoLayout* buildLayout(
       float contentScale, std::string_view text, float fontSize, FontWeight fontWeight, float maxWidthPxScaled,
       int maxLines, TextAlign align, std::string_view fontFamily = {}, TextEllipsize ellipsize = TextEllipsize::End,
-      bool useMarkup = false
+      bool useMarkup = false, TextSpacing spacing = {}
   ) const;
   // Render a layout into a new GL texture; fills out fields of `entry`.
   // When `tinted` is true, rasterizes as CAIRO_FORMAT_A8 and uploads alpha
@@ -198,7 +200,7 @@ private:
   CacheEntry* lookupOrRasterize(
       float contentScale, std::string_view text, float fontSize, FontWeight fontWeight, float maxWidth, int maxLines,
       TextAlign align, const Color& color, std::string_view fontFamily = {},
-      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false
+      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false, TextSpacing spacing = {}
   );
   void touch(CacheMap::iterator it);
   void evict(CacheMap::iterator it);

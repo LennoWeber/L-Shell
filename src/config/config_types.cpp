@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 #include <utility>
 #include <xkbcommon/xkbcommon-keysyms.h>
@@ -38,13 +39,27 @@ namespace {
   }
 
   ColorSpec parseColorSpecString(const std::string& raw, std::string_view context) {
-    const std::string trimmed = StringUtils::trim(raw);
+    std::string trimmed = StringUtils::trim(raw);
+    // "<role or hex>/<alpha>" tints a color: "primary/0.18" is the palette's primary at 18 % opacity.
+    float alpha = 1.0F;
+    if (const auto slash = trimmed.find('/'); slash != std::string::npos) {
+      const std::string alphaText = StringUtils::trim(trimmed.substr(slash + 1));
+      char* end = nullptr;
+      const float parsed = std::strtof(alphaText.c_str(), &end);
+      if (alphaText.empty() || end == nullptr || *end != '\0' || !(parsed >= 0.0F && parsed <= 1.0F)) {
+        throw std::runtime_error(colorSpecError(raw, context));
+      }
+      alpha = parsed;
+      trimmed = StringUtils::trim(trimmed.substr(0, slash));
+    }
     Color fixed;
     if (tryParseHexColor(trimmed, fixed)) {
-      return fixedColorSpec(fixed);
+      ColorSpec spec = fixedColorSpec(fixed);
+      spec.alpha = alpha;
+      return spec;
     }
     if (auto role = colorRoleFromToken(trimmed)) {
-      return colorSpecFromRole(*role);
+      return colorSpecFromRole(*role, alpha);
     }
     throw std::runtime_error(colorSpecError(raw, context));
   }
@@ -627,6 +642,11 @@ namespace {
 
 std::string colorSpecToConfigString(const ColorSpec& spec) {
   if (spec.role.has_value()) {
+    if (spec.alpha < 0.999F) {
+      char alpha[16];
+      std::snprintf(alpha, sizeof(alpha), "%.2f", static_cast<double>(spec.alpha));
+      return std::string(colorRoleToken(*spec.role)) + "/" + alpha;
+    }
     return std::string(colorRoleToken(*spec.role));
   }
   Color color = spec.fixed;

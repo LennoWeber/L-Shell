@@ -1,0 +1,162 @@
+#pragma once
+
+#include "render/animation/animation.h"
+#include "ui/signal.h"
+
+#include <optional>
+#include <string>
+
+namespace Style {
+
+  inline constexpr int barThicknessDefault = 34;
+
+  inline constexpr int animFast = 100;
+  inline constexpr int animNormal = 200;
+  inline constexpr int animSlow = 400;
+  // Exits are shorter than entrances and accelerate away (use with Easing::EaseInCubic).
+  inline constexpr int animExit = 150;
+
+  // Springs (see Spring in animation.h). Slate motion is quick and settles without a wobble: snappy for moves,
+  // smooth for exits and resizes, island for the island's unfold.
+  inline constexpr Spring springSnappy{.durationMs = 260.0F, .bounce = 0.05F};
+  inline constexpr Spring springSmooth{.durationMs = 260.0F, .bounce = 0.0F};
+  inline constexpr Spring springIsland{.durationMs = 340.0F, .bounce = 0.08F};
+
+  // Slate radii (before [shell].corner_radius_scale), concentric: an inner radius is the outer one minus the
+  // padding between them. Chips and small controls, controls and rows, cards and tiles, surfaces.
+  inline constexpr float radiusSm = 5.0F;
+  inline constexpr float radiusMd = 8.0F;
+  inline constexpr float radiusLg = 12.0F;
+  inline constexpr float radiusXl = 16.0F;
+
+  // Slate (DESIGN.md): fill opacity of the one shell material over the compositor blur. Every surface default
+  // (bar, island, dock, panels, OSD, toasts) uses it, so they read as one material.
+  inline constexpr float slateTint = 0.84F;
+
+  inline constexpr float borderWidth = 1.0F;
+  inline constexpr float emphasizedBorderWidth = 3.0F;
+  inline constexpr float focusRingWidth = 2.0F;
+  inline constexpr float disabledOutlineAlpha = 0.5F;
+
+  inline constexpr float spaceXs = 4.0F;
+  inline constexpr float spaceSm = 8.0F;
+  inline constexpr float spaceMd = 12.0F;
+  inline constexpr float spaceLg = 16.0F;
+
+  inline constexpr float cardPadding = 14.0F;
+  inline constexpr float panelPadding = 14.0F;
+
+  // Default inner inset for bar widget capsules (logical px, before bar content scale).
+  inline constexpr float barCapsulePadding = 6.0F;
+  inline constexpr float baseGlyphSize = 16.0F;
+
+  // macOS type scale: caption, body (13 pt, the system font size), title 3, and a large header.
+  inline constexpr float fontSizeMini = 11.0F;
+  inline constexpr float fontSizeCaption = 12.0F;
+  inline constexpr float fontSizeBody = 13.0F;
+  inline constexpr float fontSizeTitle = 15.0F;
+  inline constexpr float fontSizeHeader = 20.0F;
+
+  // Control heights, a touch roomier than AppKit's for a 1080p desktop.
+  inline constexpr float controlHeightSm = 28.0F;
+  inline constexpr float controlHeight = 32.0F;
+  inline constexpr float controlHeightLg = 38.0F;
+  inline constexpr float scrollWheelStep = 56.0F;
+  // Pointer distance in logical px before an armed drag becomes active.
+  inline constexpr float dragStartThreshold = 6.0F;
+
+  // Base scrollbar thickness at rest, and while the pointer is over it. The bar overlays the
+  // content as it expands, so hovering never reflows the scroll view.
+  inline constexpr float scrollbarWidth = 6.0F;
+  inline constexpr float scrollbarHoverWidth = 12.0F;
+  inline constexpr float scrollbarGap = spaceSm;
+  // Shortest the thumb gets on a long document; it must stay a usable drag target and read as a
+  // bar rather than a lozenge next to the hovered thickness.
+  inline constexpr float scrollbarMinThumbHeight = 32.0F;
+  // Pointer margin on the content side of the bar, so a thin bar stays an easy grab target.
+  inline constexpr float scrollbarHitSlop = 6.0F;
+
+  // Growth cap (logical px, before content scale) for menus/dropdowns that size to their content.
+  inline constexpr float menuAutoMaxWidth = 420.0F;
+
+  // Window switcher carousel geometry and depth treatment.
+  inline constexpr float windowSwitcherDimOpacity = 0.3F;
+  inline constexpr float windowSwitcherSelectedCardWidth = 500.0F;
+  inline constexpr float windowSwitcherNearCardWidth = 380.0F;
+  inline constexpr float windowSwitcherFarCardWidth = 280.0F;
+  inline constexpr float windowSwitcherCompactCardWidth = 220.0F;
+  inline constexpr float windowSwitcherPreviewAspect = 1.6F;
+  inline constexpr float windowSwitcherCardOverlap = controlHeightLg + spaceLg;
+  inline constexpr float windowSwitcherNarrowLayoutThreshold = 0.72F;
+  inline constexpr float windowSwitcherPreviewIconScale = 0.12F;
+  inline constexpr float windowSwitcherFallbackIconScale = 0.28F;
+  inline constexpr float windowSwitcherCaptionHeight = controlHeightLg;
+  inline constexpr float windowSwitcherCaptionLineGap = -spaceXs;
+  inline constexpr float windowSwitcherIncomingCardScale = 0.9F;
+  inline constexpr float windowSwitcherIncomingCardSlide = 0.25F;
+  inline constexpr float windowSwitcherOutgoingCardSlide = 0.3F;
+  inline constexpr float windowSwitcherRevealScale = 0.95F;
+
+  // Toggle preset geometry. Track height = thumb + 2 * inset; track width = thumb + 2 * inset + travel.
+  inline constexpr float toggleThumbSizeSm = 14.0F;
+  inline constexpr float toggleInsetSm = 2.0F;
+  inline constexpr float toggleTravelSm = 12.0F;
+  inline constexpr float toggleThumbSizeMd = 18.0F;
+  inline constexpr float toggleInsetMd = 2.0F;
+  inline constexpr float toggleTravelMd = 16.0F;
+  inline constexpr float toggleThumbSizeLg = 22.0F;
+  inline constexpr float toggleInsetLg = 4.0F;
+  inline constexpr float toggleTravelLg = 20.0F;
+
+  // Slider geometry.
+  inline constexpr float sliderDefaultWidth = 180.0F;
+  inline constexpr float sliderTrackHeight = 5.0F;
+  inline constexpr float sliderThumbSize = 20.0F;
+  inline constexpr float sliderHorizontalPadding = 2.0F;
+
+  // Typeface of headings and display numerals ([shell].display_font_family); empty = the shell font. Labels that
+  // are headings pass it as their font family.
+  [[nodiscard]] const std::string& displayFontFamily() noexcept;
+  void setDisplayFontFamily(std::string family);
+  // The display typeface as a label font family: unset (the label keeps the shell font) when there is none.
+  [[nodiscard]] inline std::optional<std::string> displayFont() {
+    const std::string& family = displayFontFamily();
+    return family.empty() ? std::nullopt : std::optional<std::string>{family};
+  }
+
+  [[nodiscard]] float cornerRadiusScale() noexcept;
+  void setCornerRadiusScale(float scale) noexcept;
+
+  [[nodiscard]] bool buttonBordersEnabled() noexcept;
+  void setButtonBordersEnabled(bool enabled);
+  Signal<>& buttonBordersChanged();
+
+  [[nodiscard]] bool inputBordersEnabled() noexcept;
+  void setInputBordersEnabled(bool enabled);
+  Signal<>& inputBordersChanged();
+
+  [[nodiscard]] bool popupBordersEnabled() noexcept;
+  void setPopupBordersEnabled(bool enabled);
+
+  [[nodiscard]] bool rtl() noexcept;
+  void setRtl(bool rtl) noexcept;
+
+  [[nodiscard]] bool cardBordersEnabled() noexcept;
+  void setCardBordersEnabled(bool enabled);
+
+  [[nodiscard]] bool popupShadowsEnabled() noexcept;
+  void setPopupShadowsEnabled(bool enabled);
+
+  [[nodiscard]] bool closeButtonsEnabled() noexcept;
+  void setCloseButtonsEnabled(bool enabled);
+
+  [[nodiscard]] float scaledRadius(float radius, float localScale = 1.0F) noexcept;
+  [[nodiscard]] float scaledRadiusSm(float localScale = 1.0F) noexcept;
+  [[nodiscard]] float scaledRadiusMd(float localScale = 1.0F) noexcept;
+  [[nodiscard]] float scaledRadiusLg(float localScale = 1.0F) noexcept;
+  [[nodiscard]] float scaledRadiusXl(float localScale = 1.0F) noexcept;
+  // Radius of a pill or disc `extent` across: half of it, eased toward square as corner roundness drops below 1
+  // (0 draws a square, so a design without rounding has none anywhere).
+  [[nodiscard]] float pillRadius(float extent) noexcept;
+
+} // namespace Style

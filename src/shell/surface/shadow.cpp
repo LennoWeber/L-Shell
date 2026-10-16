@@ -1,6 +1,7 @@
 #include "shell/surface/shadow.h"
 
 #include "render/core/color.h"
+#include "ui/palette.h"
 
 #include <algorithm>
 
@@ -25,8 +26,9 @@ namespace shell::surface_shadow {
   style(const ShellConfig::ShadowConfig& shadow, float backgroundOpacity, const Shape& shape) noexcept {
     const auto offset = shadowDirectionOffset(shadow.direction);
     const float shadowAlpha = std::clamp(shadow.alpha, 0.0F, 1.0F) * std::clamp(backgroundOpacity, 0.0F, 1.0F);
+    const Color hue = resolveColorSpec(shadow.color);
     return RoundedRectStyle{
-        .fill = rgba(0.0F, 0.0F, 0.0F, shadowAlpha),
+        .fill = withAlpha(hue, hue.a * shadowAlpha),
         .border = Color{},
         .fillMode = FillMode::Solid,
         .corners = shape.corners,

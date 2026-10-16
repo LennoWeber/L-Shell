@@ -143,6 +143,7 @@ private:
 
   [[nodiscard]] const BrightnessDisplay* targetDisplay() const;
   [[nodiscard]] std::size_t shortcutItemCount() const;
+  [[nodiscard]] bool showHomeTitle() const;
   [[nodiscard]] float volumeSliderMax() const;
   void queueBrightness(float value);
   void flushBrightness();

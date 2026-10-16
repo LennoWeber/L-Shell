@@ -1,0 +1,1873 @@
+#include "shell/switcher/window_switcher.h"
+
+#include "capture/toplevel_thumbnail_capture.h"
+#include "compositors/compositor_platform.h"
+#include "config/config_service.h"
+#include "core/deferred_call.h"
+#include "core/input/key_modifiers.h"
+#include "core/input/key_symbols.h"
+#include "core/input/keybind_matcher.h"
+#include "core/log.h"
+#include "core/timer_manager.h"
+#include "core/ui_phase.h"
+#include "i18n/i18n.h"
+#include "ipc/ipc_service.h"
+#include "render/animation/animation_manager.h"
+#include "render/core/renderer.h"
+#include "render/render_context.h"
+#include "render/scene/input_area.h"
+#include "render/scene/input_dispatcher.h"
+#include "render/scene/node.h"
+#include "shell/surface/material.h"
+#include "shell/surface/shadow.h"
+#include "shell/switcher/window_switcher_apps_style.h"
+#include "shell/switcher/window_switcher_carousel_style.h"
+#include "shell/switcher/window_switcher_compact_style.h"
+#include "shell/switcher/window_switcher_entries.h"
+#include "shell/switcher/window_switcher_grid_style.h"
+#include "shell/switcher/window_switcher_membership.h"
+#include "shell/switcher/window_switcher_tile.h"
+#include "system/icon_resolver.h"
+#include "ui/app_icon_colorization.h"
+#include "ui/builders.h"
+#include "ui/palette.h"
+#include "ui/style.h"
+#include "util/string_utils.h"
+#include "wayland/layer_surface.h"
+#include "wayland/wayland_connection.h"
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cmath>
+#include <deque>
+#include <limits>
+#include <linux/input-event-codes.h>
+#include <memory>
+#include <optional>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <wayland-client-core.h>
+#include <wayland-client-protocol.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
+
+namespace {
+
+  // Logical size the Command-Tab (apps) style draws app icons at; see window_switcher_apps_style.cpp.
+  constexpr float kAppsIconSize = 96.0F;
+
+  constexpr Logger kLog("window-switcher");
+  constexpr std::size_t kVisibleCards = 5;
+  constexpr float kVisibleOpacityThreshold = 0.01F;
+  constexpr auto kSwitcherHoldDelay = std::chrono::milliseconds(120);
+  constexpr float kSwitcherFadeMs = 120.0F;
+  // Carousel steps spring and keep their speed when Tab is pressed again mid-step.
+  constexpr float kMaxCarriedStepVelocity = 0.02F; // progress per ms
+
+  [[nodiscard]] WindowSwitcherStyleLayout computeSwitcherLayout(
+      float screenWidth, float screenHeight, float scale, std::size_t windowCount, std::size_t selectedIndex,
+      const ShellConfig::WindowSwitcherConfig& config
+  ) {
+    const WindowSwitcherStyleContext context{
+        .screenWidth = screenWidth,
+        .screenHeight = screenHeight,
+        .scale = scale,
+        .windowCount = windowCount,
+        .selectedIndex = selectedIndex,
+        .showCaption = config.showCaption,
+        .showCount = config.showCount,
+    };
+    if (config.style == ShellConfig::WindowSwitcherStyle::Compact) {
+      return computeWindowSwitcherCompactLayout(context);
+    }
+    if (config.style == ShellConfig::WindowSwitcherStyle::Grid) {
+      return computeWindowSwitcherGridLayout(context);
+    }
+    if (config.style == ShellConfig::WindowSwitcherStyle::Apps) {
+      return computeWindowSwitcherAppsLayout(context);
+    }
+    return computeWindowSwitcherCarouselLayout(context);
+  }
+
+  using switcher_entries::activateWindowSwitcherEntry;
+  using switcher_entries::applyLiveToplevel;
+  using switcher_entries::canonicalWindowId;
+  using switcher_entries::currentFocusedWindowKey;
+  using switcher_entries::identityKeysEqual;
+  using switcher_entries::indexLiveToplevelsByIdentity;
+  using switcher_entries::makeEntryFromAssignment;
+  using switcher_entries::makeEntryFromToplevel;
+  using switcher_entries::resolveCloseHandle;
+
+  [[nodiscard]] float shellUiScale(const ConfigService* config) noexcept {
+    return config != nullptr ? config->config().accessibility.uiScale : 1.0F;
+  }
+
+  [[nodiscard]] const WaylandOutput* findOutput(const WaylandConnection& wayland, wl_output* output) {
+    for (const auto& entry : wayland.outputs()) {
+      if (entry.output == output) {
+        return &entry;
+      }
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] std::string identityKeyForEntry(const WindowSwitcherEntry& entry) { return entry.identityKey; }
+
+  struct WindowSwitcherCandidate {
+    WindowSwitcherEntry entry;
+    std::string workspaceKey;
+    std::int32_t sortX = 0;
+    std::int32_t sortY = 0;
+    std::uint64_t toplevelOrder = 0;
+    // Windows with no MRU rank sort after every ranked window.
+    std::size_t mruIndex = std::numeric_limits<std::size_t>::max();
+  };
+
+  // Identity keys of every window the switcher can list right now. Compositors reuse
+  // window ids (Hyprland reuses addresses), so MRU ranks must expire with the window.
+  [[nodiscard]] std::unordered_set<std::string> liveWindowKeys(const CompositorPlatform& platform) {
+    std::unordered_set<std::string> keys;
+    keys.reserve(32);
+    for (const auto& assignment : platform.workspaceWindowAssignments()) {
+      if (std::string key = canonicalWindowId(assignment.windowId); !key.empty()) {
+        keys.insert(std::move(key));
+      }
+    }
+
+    std::unordered_map<std::string, ToplevelInfo> liveToplevelByIdentity;
+    indexLiveToplevelsByIdentity(platform, nullptr, liveToplevelByIdentity);
+    for (const auto& live : liveToplevelByIdentity) {
+      keys.insert(live.first);
+    }
+    return keys;
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  focusedWindowAssignmentKey(const CompositorPlatform& platform, wl_output* output) {
+    const std::string focusedKey = currentFocusedWindowKey(platform);
+    if (focusedKey.empty()) {
+      return std::nullopt;
+    }
+    for (const auto& assignment : platform.workspaceWindowAssignments(output)) {
+      if (assignment.workspaceKey.empty() || assignment.windowId.empty()) {
+        continue;
+      }
+      const std::string key = canonicalWindowId(assignment.windowId);
+      if (identityKeysEqual(key, focusedKey)) {
+        return assignment.workspaceKey;
+      }
+    }
+    return std::nullopt;
+  }
+
+  [[nodiscard]] switcher_membership::OutputMembership
+  buildOutputMembership(const CompositorPlatform& platform, wl_output* output) {
+    switcher_membership::OutputMembership membership;
+    membership.workspaces = platform.workspaces(output);
+    membership.overlayKeys = platform.openOverlayWorkspaceKeys(output);
+    membership.assignments = platform.workspaceWindowAssignments(output);
+    const bool hasActive =
+        std::ranges::any_of(membership.workspaces, [](const Workspace& workspace) { return workspace.active; });
+    // Without an active workspace the focus is the only hint of what the user sees.
+    if (!hasActive) {
+      membership.focusedKey = focusedWindowAssignmentKey(platform, output).value_or(std::string{});
+    }
+    return membership;
+  }
+
+  [[nodiscard]] std::vector<switcher_membership::OutputMembership> collectOutputMemberships(
+      const CompositorPlatform& platform, const WaylandConnection& wayland, wl_output* outputFilter
+  ) {
+    std::vector<switcher_membership::OutputMembership> memberships;
+    const auto appendForOutput = [&](wl_output* output) {
+      if (output != nullptr) {
+        memberships.push_back(buildOutputMembership(platform, output));
+      }
+    };
+
+    if (outputFilter != nullptr) {
+      appendForOutput(outputFilter);
+      return memberships;
+    }
+    memberships.reserve(wayland.outputs().size());
+    for (const auto& output : wayland.outputs()) {
+      appendForOutput(output.output);
+    }
+    return memberships;
+  }
+
+  [[nodiscard]] std::vector<WorkspaceWindowAssignment> collectSwitcherAssignments(
+      const CompositorPlatform& platform, const WaylandConnection& wayland, wl_output* outputFilter,
+      bool currentWorkspaceOnly, bool& membershipFilterApplied
+  ) {
+    membershipFilterApplied = false;
+    if (!currentWorkspaceOnly) {
+      return platform.workspaceWindowAssignments(outputFilter);
+    }
+
+    const std::vector<switcher_membership::OutputMembership> memberships =
+        collectOutputMemberships(platform, wayland, outputFilter);
+    // No output reports assignments: turning the filter on would then hide every window,
+    // since the switcher drops the toplevels it has no assignment for. Better unfiltered.
+    if (!switcher_membership::hasWorkspaceMembershipData(memberships)) {
+      return platform.workspaceWindowAssignments(outputFilter);
+    }
+
+    membershipFilterApplied = true;
+    return switcher_membership::assignmentsOnVisibleWorkspaces(memberships);
+  }
+
+  void buildWindowEntries(
+      const CompositorPlatform& platform, const WaylandConnection& wayland, IconResolver& iconResolver, int iconSize,
+      wl_output* outputFilter, std::vector<WindowSwitcherEntry>& out, const std::string& focusedKey,
+      const std::deque<std::string>* mruKeys, bool currentWorkspaceOnly
+  ) {
+    bool membershipFilterApplied = false;
+    const std::vector<WorkspaceWindowAssignment> assignments =
+        collectSwitcherAssignments(platform, wayland, outputFilter, currentWorkspaceOnly, membershipFilterApplied);
+
+    std::unordered_map<std::string, WorkspaceWindowAssignment> assignmentByIdentity;
+    assignmentByIdentity.reserve(assignments.size());
+    for (const auto& assignment : assignments) {
+      const std::string key = canonicalWindowId(assignment.windowId);
+      if (key.empty()) {
+        continue;
+      }
+      assignmentByIdentity.try_emplace(key, assignment);
+    }
+
+    std::unordered_map<std::string, ToplevelInfo> liveToplevelByIdentity;
+    indexLiveToplevelsByIdentity(platform, outputFilter, liveToplevelByIdentity);
+
+    std::unordered_set<std::string> seenKeys;
+    std::vector<WindowSwitcherCandidate> candidates;
+    candidates.reserve(assignmentByIdentity.size() + liveToplevelByIdentity.size());
+
+    // Empty while MRU ordering is off, which leaves every candidate at rank max.
+    std::unordered_map<std::string_view, std::size_t> mruRanks;
+    if (mruKeys != nullptr) {
+      mruRanks.reserve(mruKeys->size());
+      for (std::size_t i = 0; i < mruKeys->size(); ++i) {
+        mruRanks.try_emplace((*mruKeys)[i], i);
+      }
+    }
+
+    auto addCandidate = [&](WindowSwitcherCandidate candidate, const std::string& key) {
+      if (key.empty() || seenKeys.contains(key)) {
+        return;
+      }
+      seenKeys.insert(key);
+      candidate.entry.identityKey = key;
+      if (const auto rank = mruRanks.find(key); rank != mruRanks.end()) {
+        candidate.mruIndex = rank->second;
+      }
+      candidates.push_back(std::move(candidate));
+    };
+
+    for (const auto& [key, assignment] : assignmentByIdentity) {
+      WindowSwitcherCandidate candidate;
+      candidate.entry = makeEntryFromAssignment(platform, wayland, iconResolver, iconSize, assignment);
+      candidate.workspaceKey = assignment.workspaceKey;
+      candidate.sortX = assignment.x;
+      candidate.sortY = assignment.y;
+      if (const auto live = liveToplevelByIdentity.find(key); live != liveToplevelByIdentity.end()) {
+        applyLiveToplevel(candidate.entry, live->second);
+        candidate.toplevelOrder = live->second.order;
+      }
+      addCandidate(std::move(candidate), key);
+    }
+
+    for (const auto& [key, info] : liveToplevelByIdentity) {
+      if (seenKeys.contains(key)) {
+        continue;
+      }
+      if (membershipFilterApplied) {
+        continue;
+      }
+      WindowSwitcherCandidate candidate;
+      candidate.entry = makeEntryFromToplevel(platform, iconResolver, iconSize, info.appId, info);
+      candidate.toplevelOrder = info.order;
+      addCandidate(std::move(candidate), key);
+    }
+
+    std::ranges::stable_sort(candidates, [](const WindowSwitcherCandidate& a, const WindowSwitcherCandidate& b) {
+      if (a.mruIndex != b.mruIndex) {
+        return a.mruIndex < b.mruIndex;
+      }
+      if (a.workspaceKey != b.workspaceKey) {
+        return a.workspaceKey < b.workspaceKey;
+      }
+      if (a.sortY != b.sortY) {
+        return a.sortY < b.sortY;
+      }
+      if (a.sortX != b.sortX) {
+        return a.sortX < b.sortX;
+      }
+      if (a.toplevelOrder != b.toplevelOrder) {
+        return a.toplevelOrder < b.toplevelOrder;
+      }
+      const std::string titleA = !a.entry.title.empty() ? a.entry.title : a.entry.appId;
+      const std::string titleB = !b.entry.title.empty() ? b.entry.title : b.entry.appId;
+      return StringUtils::toLower(titleA) < StringUtils::toLower(titleB);
+    });
+
+    out.clear();
+    out.reserve(candidates.size());
+
+    if (!focusedKey.empty()) {
+      for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+        const std::string key = identityKeyForEntry(it->entry);
+        if (identityKeysEqual(key, focusedKey)) {
+          out.push_back(std::move(it->entry));
+          candidates.erase(it);
+          break;
+        }
+      }
+    }
+
+    for (auto& candidate : candidates) {
+      out.push_back(std::move(candidate.entry));
+    }
+  }
+
+} // namespace
+
+WindowSwitcher::WindowSwitcher() = default;
+
+WindowSwitcher::~WindowSwitcher() {
+  cancelShortcutModifierReleaseCheck();
+  destroySurface();
+}
+
+struct WindowSwitcher::Instance {
+  wl_output* output = nullptr;
+  float uiLayoutScale = 1.0F;
+  std::unique_ptr<LayerSurface> surface;
+  AnimationManager animations;
+  std::unique_ptr<Node> sceneRoot;
+  InputArea* input = nullptr;
+  InputArea* panel = nullptr;
+  Box* panelBackground = nullptr;
+  Box* dimmer = nullptr;
+  InputArea* strip = nullptr;
+  std::vector<WindowSwitcherTile*> tiles;
+  Label* counterLabel = nullptr;
+  Box* countBackground = nullptr;
+  Label* emptyLabel = nullptr;
+  Flex* workspaceBar = nullptr;
+  std::string workspaceSignature;
+  InputDispatcher inputDispatcher;
+  WindowSwitcherStyleLayout styleLayout;
+  AnimationManager::Id carouselAnimId = 0;
+  bool contentSyncPending = false;
+  bool pointerInside = false;
+  bool revealStarted = false;
+  // Command-Tab style hold: the switcher appears only once the shortcut is held this long.
+  Timer revealDelay;
+  ShellConfig::WindowSwitcherStyle style = ShellConfig::WindowSwitcherStyle::Carousel;
+  bool showCaption = true;
+  bool showCount = true;
+  bool showAppIcon = true;
+};
+
+void WindowSwitcher::initialize(
+    WaylandConnection& wayland, RenderContext* renderContext, CompositorPlatform& platform, ConfigService* config,
+    AsyncTextureCache* asyncTextures
+) {
+  m_wayland = &wayland;
+  m_renderContext = renderContext;
+  m_platform = &platform;
+  m_config = config;
+  m_asyncTextures = asyncTextures;
+  m_thumbnailCapture = std::make_unique<ToplevelThumbnailCapture>(wayland);
+}
+
+void WindowSwitcher::registerIpc(IpcService& ipc) {
+  ipc.bind(noctalia::cli::msg::overview, [this](const std::string& args) -> std::string {
+    const std::string token = StringUtils::trim(args);
+    if (token == "close") {
+      if (m_active && m_overviewMode) {
+        hide();
+      }
+      return "ok\n";
+    }
+    if (!token.empty() && token != "toggle") {
+      return "error: unknown overview action '" + token + "'\n";
+    }
+    if (m_platform == nullptr) {
+      return "error: compositor unavailable\n";
+    }
+    wl_output* output = m_platform->preferredInteractiveOutput();
+    if (output == nullptr && m_wayland != nullptr && !m_wayland->outputs().empty()) {
+      output = m_wayland->outputs().front().output;
+    }
+    if (output == nullptr) {
+      return "error: no output available\n";
+    }
+    toggleOverview(output);
+    return "ok\n";
+  });
+
+  ipc.bind(noctalia::cli::msg::windowSwitcher, [this](const std::string& args) -> std::string {
+    const std::string token = StringUtils::trim(args);
+    if (token == "close" || token == "hide") {
+      if (m_active) {
+        hide();
+      }
+      return "ok\n";
+    }
+    if (!token.empty() && token != "hold") {
+      return "error: unknown window-switcher action '" + token + "'\n";
+    }
+    if (m_platform == nullptr) {
+      return "error: compositor unavailable\n";
+    }
+    wl_output* output = m_platform->preferredInteractiveOutput();
+    if (output == nullptr && m_wayland != nullptr && !m_wayland->outputs().empty()) {
+      output = m_wayland->outputs().front().output;
+    }
+    if (output == nullptr) {
+      return "error: no output available\n";
+    }
+    const bool wasActive = m_active;
+    const std::uint32_t modifiers = m_active && m_wayland != nullptr ? m_wayland->keyboardModifiers() : 0;
+    showFromShortcut(output, modifiers);
+    if (token == "hold" && !wasActive && m_active) {
+      m_shortcutState.expectHeldModifier();
+    }
+    return "ok\n";
+  });
+}
+
+void WindowSwitcher::onConfigReload() {
+  if (!m_active) {
+    return;
+  }
+  refreshWindows();
+  if (m_instance != nullptr) {
+    m_instance->styleLayout = {};
+  }
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::onOutputChange() {
+  if (!m_active) {
+    m_windows.clear();
+    m_selectedIndex = 0;
+    destroySurface();
+    return;
+  }
+  if (m_instance != nullptr && m_output != nullptr) {
+    const auto* out = findOutput(*m_wayland, m_output);
+    if (out == nullptr) {
+      hide();
+    }
+  }
+}
+
+bool WindowSwitcher::mruEnabled() const { return m_config != nullptr && m_config->config().shell.windowSwitcher.mru; }
+
+ShellConfig::WindowSwitcherConfig WindowSwitcher::effectiveConfig() const {
+  ShellConfig::WindowSwitcherConfig config =
+      m_config != nullptr ? m_config->config().shell.windowSwitcher : ShellConfig::WindowSwitcherConfig{};
+  if (m_overviewMode) {
+    config.style = ShellConfig::WindowSwitcherStyle::Grid;
+    config.currentWorkspaceOnly = true;
+    config.showAllOutputs = false;
+    config.showCount = false;
+    config.mru = false; // a stable arrangement reads better than recency order
+  } else if (config.style == ShellConfig::WindowSwitcherStyle::Apps) {
+    // Command-Tab shows no counter, and the icons are the content.
+    config.showCount = false;
+    config.showAppIcon = true;
+  }
+  return config;
+}
+
+std::string WindowSwitcher::workspaceSignature() const {
+  std::string signature;
+  if (m_platform == nullptr || m_output == nullptr) {
+    return signature;
+  }
+  for (const auto& workspace : m_platform->workspaces(m_output)) {
+    signature += workspace.id;
+    signature += workspace.active ? '*' : ' ';
+    signature += workspace.name;
+    signature += '\n';
+  }
+  return signature;
+}
+
+void WindowSwitcher::toggleOverview(wl_output* output) {
+  if (m_active && m_overviewMode) {
+    hide();
+    return;
+  }
+  if (m_active) {
+    hide(); // leave an alt-tab session for the overview
+  }
+  m_overviewMode = true;
+  showWithDirection(output, 1);
+  if (!m_active) {
+    m_overviewMode = false;
+    return;
+  }
+  // Mission Control highlights the focused window, not the next one like alt-tab.
+  const std::string focusedKey = m_platform != nullptr ? currentFocusedWindowKey(*m_platform) : std::string{};
+  for (std::size_t index = 0; index < m_windows.size(); ++index) {
+    if (!focusedKey.empty() && identityKeysEqual(identityKeyForEntry(m_windows[index]), focusedKey)) {
+      m_selectedIndex = index;
+      break;
+    }
+  }
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::recordFocusedWindow() {
+  if (m_platform == nullptr || !mruEnabled()) {
+    return;
+  }
+  promoteMruKey(currentFocusedWindowKey(*m_platform));
+}
+
+void WindowSwitcher::promoteMruKey(const std::string& key) {
+  if (key.empty() || m_platform == nullptr) {
+    return;
+  }
+
+  const std::unordered_set<std::string> live = liveWindowKeys(*m_platform);
+  std::erase_if(m_mruKeys, [&](const std::string& existing) { return existing != key && !live.contains(existing); });
+
+  auto it = std::ranges::find(m_mruKeys, key);
+  if (it == m_mruKeys.end()) {
+    m_mruKeys.insert(m_mruKeys.begin(), key);
+    return;
+  }
+  if (it != m_mruKeys.begin()) {
+    std::rotate(m_mruKeys.begin(), it, it + 1);
+  }
+}
+
+void WindowSwitcher::onToplevelChange() {
+  if (!m_active) {
+    recordFocusedWindow();
+    return;
+  }
+  const std::size_t previousCount = m_windows.size();
+  refreshWindows();
+  if (m_instance != nullptr && m_windows.size() != previousCount) {
+    m_instance->styleLayout = {};
+  } else if (m_instance != nullptr) {
+    m_instance->contentSyncPending = true;
+  }
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::show(wl_output* output) { showWithDirection(output, 1); }
+
+void WindowSwitcher::showFromShortcut(wl_output* output, std::uint32_t modifiers) {
+  if (m_active && m_overviewMode) {
+    hide();
+  }
+  showWithDirection(output, (modifiers & KeyMod::Shift) != 0 ? -1 : 1);
+  if (!m_active) {
+    return;
+  }
+  m_shortcutSession = true;
+  captureShortcutModifiers(modifiers);
+}
+
+void WindowSwitcher::showWithDirection(wl_output* output, int direction) {
+  if (m_wayland == nullptr || m_renderContext == nullptr || m_platform == nullptr || output == nullptr) {
+    return;
+  }
+
+  const bool wasActive = m_active;
+  const bool outputChanged = output != m_output;
+  if (!wasActive) {
+    if (m_onOpen) {
+      m_onOpen();
+    }
+    recordFocusedWindow();
+    cancelShortcutModifierReleaseCheck();
+    m_shortcutState.reset();
+    ++m_shortcutSessionGeneration;
+    m_shortcutSession = false;
+  }
+  m_output = output;
+  const std::string focusedKey = currentFocusedWindowKey(*m_platform);
+  refreshWindows();
+
+  if (wasActive) {
+    cycleSelection(direction);
+  } else {
+    bool focusedListedFirst = false;
+    if (!focusedKey.empty() && !m_windows.empty()) {
+      const std::string frontKey = identityKeyForEntry(m_windows.front());
+      focusedListedFirst = identityKeysEqual(frontKey, focusedKey);
+    }
+    m_selectedIndex = 0;
+    if (m_windows.size() > 1 && focusedListedFirst) {
+      m_selectedIndex = direction < 0 ? m_windows.size() - 1 : 1;
+    }
+  }
+  m_active = true;
+
+  ensureSurface();
+  if (m_instance == nullptr) {
+    hide();
+    return;
+  }
+  requestSceneUpdate();
+  if (!wasActive || outputChanged) {
+    startThumbnailCaptures();
+  }
+}
+
+void WindowSwitcher::captureShortcutModifiers(std::uint32_t modifiers) { m_shortcutState.capture(modifiers); }
+
+void WindowSwitcher::hide() {
+  if (!m_active && m_instance == nullptr) {
+    return;
+  }
+
+  m_active = false;
+  m_overviewMode = false;
+  m_output = nullptr;
+  m_windows.clear();
+  m_selectedIndex = 0;
+  cancelShortcutModifierReleaseCheck();
+  m_shortcutState.reset();
+  ++m_shortcutSessionGeneration;
+  m_shortcutSession = false;
+  cancelThumbnailCaptures();
+  destroySurface();
+}
+
+void WindowSwitcher::refreshWindows() {
+  if (m_platform == nullptr) {
+    m_windows.clear();
+    return;
+  }
+
+  std::optional<std::string> selectedKey;
+  std::unordered_map<std::string, std::shared_ptr<const ScreencopyImage>> thumbnails;
+  thumbnails.reserve(m_windows.size());
+  for (const auto& entry : m_windows) {
+    if (entry.thumbnail != nullptr) {
+      if (std::string key = identityKeyForEntry(entry); !key.empty()) {
+        thumbnails.emplace(std::move(key), entry.thumbnail);
+      }
+    }
+  }
+  if (m_active && m_selectedIndex < m_windows.size()) {
+    selectedKey = identityKeyForEntry(m_windows[m_selectedIndex]);
+    if (selectedKey->empty()) {
+      selectedKey.reset();
+    }
+  }
+
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
+  const bool appsStyle = switcherConfig.style == ShellConfig::WindowSwitcherStyle::Apps;
+  int iconSize = static_cast<int>(std::round((Style::controlHeightLg + Style::spaceLg) * shellUiScale(m_config)));
+  if (appsStyle) {
+    // Command-Tab icons are large: resolve them at their drawn size in buffer pixels, not upscaled.
+    const auto* out = findOutput(*m_wayland, m_output);
+    const int bufferScale = out != nullptr ? std::max(out->scale, 1) : 1;
+    iconSize = static_cast<int>(std::round(kAppsIconSize * shellUiScale(m_config))) * bufferScale;
+  }
+  buildWindowEntries(
+      *m_platform, *m_wayland, m_iconResolver, iconSize, switcherConfig.showAllOutputs ? nullptr : m_output, m_windows,
+      currentFocusedWindowKey(*m_platform), switcherConfig.mru ? &m_mruKeys : nullptr,
+      switcherConfig.currentWorkspaceOnly
+  );
+  if (appsStyle) {
+    // Command-Tab switches apps: one icon per app, standing for its most recent window (the list is in MRU order).
+    std::unordered_set<std::string> seenApps;
+    std::erase_if(m_windows, [&seenApps](const WindowSwitcherEntry& entry) {
+      if (entry.appId.empty()) {
+        return false;
+      }
+      std::string app = entry.appId;
+      std::ranges::transform(app, app.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+      return !seenApps.insert(std::move(app)).second;
+    });
+  }
+
+  for (auto& entry : m_windows) {
+    const auto thumbnail = thumbnails.find(identityKeyForEntry(entry));
+    if (thumbnail != thumbnails.end()) {
+      entry.thumbnail = thumbnail->second;
+    }
+  }
+
+  if (selectedKey.has_value()) {
+    for (std::size_t i = 0; i < m_windows.size(); ++i) {
+      const std::string key = identityKeyForEntry(m_windows[i]);
+      if (identityKeysEqual(key, *selectedKey)) {
+        m_selectedIndex = i;
+        return;
+      }
+    }
+  }
+
+  if (m_selectedIndex >= m_windows.size()) {
+    m_selectedIndex = m_windows.empty() ? 0 : m_windows.size() - 1;
+  }
+}
+
+void WindowSwitcher::startThumbnailCaptures() {
+  cancelThumbnailCaptures();
+  // App icons need no window previews: no screencopy per window, nothing to wait for.
+  if (effectiveConfig().style == ShellConfig::WindowSwitcherStyle::Apps) {
+    return;
+  }
+  if (!m_active || m_wayland == nullptr || m_thumbnailCapture == nullptr || !m_thumbnailCapture->available()) {
+    return;
+  }
+
+  std::vector<bool> queued(m_windows.size(), false);
+  auto enqueue = [this, &queued](std::size_t index) {
+    if (index >= m_windows.size() || queued[index]) {
+      return;
+    }
+    queued[index] = true;
+    const WindowSwitcherEntry& entry = m_windows[index];
+    const std::string key = identityKeyForEntry(entry);
+    if (!key.empty() && entry.captureHandle != 0 && entry.thumbnail == nullptr) {
+      m_thumbnailQueue.push_back(ThumbnailRequest{.windowKey = key, .captureHandle = entry.captureHandle});
+    }
+  };
+  if (m_selectedIndex < m_windows.size()) {
+    enqueue(m_selectedIndex);
+    const std::size_t visibleCount = std::min(kVisibleCards, m_windows.size());
+    const std::size_t centerSlot = visibleCount / 2;
+    const std::size_t start = (m_selectedIndex + m_windows.size() - centerSlot) % m_windows.size();
+    for (std::size_t slot = 0; slot < visibleCount; ++slot) {
+      enqueue((start + slot) % m_windows.size());
+    }
+  }
+  for (std::size_t i = 0; i < m_windows.size(); ++i) {
+    enqueue(i);
+  }
+  captureNextThumbnail();
+}
+
+void WindowSwitcher::captureNextThumbnail() {
+  if (!m_active || m_wayland == nullptr || m_thumbnailCapture == nullptr || m_thumbnailCapture->busy()) {
+    return;
+  }
+
+  while (!m_thumbnailQueue.empty()) {
+    ThumbnailRequest request = std::move(m_thumbnailQueue.front());
+    m_thumbnailQueue.pop_front();
+    auto* handle = reinterpret_cast<ext_foreign_toplevel_handle_v1*>(request.captureHandle);
+    bool handleIsLive = false;
+    m_wayland->visitExtToplevelHandles([&](ext_foreign_toplevel_handle_v1* live) { handleIsLive |= live == handle; });
+    if (!handleIsLive) {
+      continue;
+    }
+
+    m_thumbnailCapture->capture(
+        handle, 640, 400,
+        [this, windowKey = std::move(request.windowKey)](std::optional<ScreencopyImage> image, std::string error) {
+          if (!error.empty()) {
+            kLog.debug("thumbnail capture skipped for {}: {}", windowKey, error);
+          } else if (m_active && image.has_value()) {
+            auto thumbnail = std::make_shared<ScreencopyImage>(std::move(*image));
+            for (auto& entry : m_windows) {
+              if (identityKeyForEntry(entry) == windowKey) {
+                entry.thumbnail = thumbnail;
+              }
+            }
+            if (m_instance != nullptr) {
+              m_instance->contentSyncPending = true;
+            }
+            requestSceneUpdate();
+          }
+          captureNextThumbnail();
+        }
+    );
+    return;
+  }
+}
+
+void WindowSwitcher::cancelThumbnailCaptures() {
+  m_thumbnailQueue.clear();
+  if (m_thumbnailCapture != nullptr) {
+    m_thumbnailCapture->cancelInFlight();
+  }
+}
+
+void WindowSwitcher::setSelectedIndex(std::size_t index) {
+  if (m_windows.empty()) {
+    m_selectedIndex = 0;
+    return;
+  }
+  m_selectedIndex = index % m_windows.size();
+  prioritizeSelectedThumbnail();
+  syncSelection(true);
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::cycleSelection(int delta) {
+  if (m_windows.empty()) {
+    return;
+  }
+  const auto count = m_windows.size();
+  const auto next = (static_cast<long>(m_selectedIndex) + delta) % static_cast<long>(count);
+  m_selectedIndex =
+      next >= 0 ? static_cast<std::size_t>(next) : static_cast<std::size_t>(next + static_cast<long>(count));
+  prioritizeSelectedThumbnail();
+  syncSelection(true);
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::navigateList(int delta) { cycleSelection(delta); }
+
+void WindowSwitcher::prioritizeSelectedThumbnail() {
+  if (m_selectedIndex >= m_windows.size() || m_windows[m_selectedIndex].thumbnail != nullptr) {
+    return;
+  }
+  const std::string selectedKey = identityKeyForEntry(m_windows[m_selectedIndex]);
+  const auto request = std::ranges::find_if(m_thumbnailQueue, [&](const ThumbnailRequest& queued) {
+    return queued.windowKey == selectedKey;
+  });
+  if (request != m_thumbnailQueue.end()) {
+    std::rotate(m_thumbnailQueue.begin(), request, request + 1);
+  }
+}
+
+void WindowSwitcher::activateSelected() {
+  if (m_platform == nullptr || m_windows.empty() || m_selectedIndex >= m_windows.size()) {
+    return;
+  }
+  const WindowSwitcherEntry entry = m_windows[m_selectedIndex];
+  if (mruEnabled()) {
+    promoteMruKey(identityKeyForEntry(entry));
+  }
+  // Hyprland ignores zwlr_foreign_toplevel_handle_v1.activate while an exclusive
+  // keyboard layer-shell surface is mapped (hyprwm/Hyprland#4829). Snapshot the
+  // selection, tear the overlay down, then activate on the next loop tick.
+  CompositorPlatform* platform = m_platform;
+  hide();
+  DeferredCall::callLater([platform, entry]() { activateWindowSwitcherEntry(*platform, entry); });
+}
+
+void WindowSwitcher::closeWindowAt(std::size_t index) {
+  if (!m_active || m_platform == nullptr || index >= m_windows.size()) {
+    return;
+  }
+  const WindowSwitcherEntry& entry = m_windows[index];
+  zwlr_foreign_toplevel_handle_v1* handle = nullptr;
+  if (entry.closeHandle != 0) {
+    handle = reinterpret_cast<zwlr_foreign_toplevel_handle_v1*>(entry.closeHandle);
+    if (!m_platform->containsWlrToplevelHandle(handle)) {
+      handle = nullptr;
+    }
+  }
+  if (handle == nullptr && !entry.windowId.empty()) {
+    handle = m_platform->toplevelHandleForCompositorWindowId(entry.windowId);
+  }
+  if (handle == nullptr) {
+    const std::uintptr_t resolved = resolveCloseHandle(*m_platform, entry.windowId, entry.appId, entry.title);
+    if (resolved != 0) {
+      handle = reinterpret_cast<zwlr_foreign_toplevel_handle_v1*>(resolved);
+      if (!m_platform->containsWlrToplevelHandle(handle)) {
+        handle = nullptr;
+      }
+    }
+  }
+  if (handle != nullptr) {
+    m_platform->closeToplevel(handle);
+  }
+
+  const std::size_t previousCount = m_windows.size();
+  refreshWindows();
+  if (m_windows.empty()) {
+    hide();
+    return;
+  }
+  if (m_selectedIndex >= m_windows.size()) {
+    m_selectedIndex = m_windows.size() - 1;
+  }
+  if (m_instance != nullptr) {
+    if (m_windows.size() != previousCount) {
+      m_instance->styleLayout = {};
+    } else {
+      m_instance->contentSyncPending = true;
+    }
+  }
+  requestSceneUpdate();
+}
+
+void WindowSwitcher::requestSceneUpdate() {
+  if (m_instance != nullptr && m_instance->surface != nullptr) {
+    m_instance->surface->requestLayout();
+    m_instance->surface->requestRedraw();
+  }
+}
+
+void WindowSwitcher::syncSelection(bool animate) {
+  if (m_instance == nullptr || m_instance->strip == nullptr || m_instance->surface == nullptr) {
+    return;
+  }
+  if (m_instance->tiles.size() != m_windows.size()) {
+    m_instance->styleLayout = {};
+    m_instance->contentSyncPending = true;
+    return;
+  }
+
+  struct CardTransition {
+    WindowSwitcherTile* tile = nullptr;
+    float fromX = 0.0F;
+    float fromY = 0.0F;
+    float fromScaleX = 1.0F;
+    float fromScaleY = 1.0F;
+    float fromOpacity = 1.0F;
+    float toX = 0.0F;
+    float toY = 0.0F;
+    float toScaleX = 1.0F;
+    float toScaleY = 1.0F;
+    float toOpacity = 1.0F;
+    bool hideOnComplete = false;
+  };
+
+  const std::vector<WindowSwitcherCardTarget> previousTargets = m_instance->styleLayout.cards;
+  const bool interrupted = m_instance->carouselAnimId != 0;
+  const float carriedVelocity =
+      std::clamp(m_instance->animations.velocity(m_instance->carouselAnimId), 0.0F, kMaxCarriedStepVelocity);
+  if (interrupted) {
+    m_instance->animations.cancel(m_instance->carouselAnimId);
+    m_instance->carouselAnimId = 0;
+  }
+
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
+  if (m_instance->surface->width() > 0 && m_instance->surface->height() > 0) {
+    m_instance->styleLayout = computeSwitcherLayout(
+        static_cast<float>(m_instance->surface->width()), static_cast<float>(m_instance->surface->height()),
+        m_instance->uiLayoutScale, m_windows.size(), m_selectedIndex, switcherConfig
+    );
+    positionPanel(
+        *m_instance, static_cast<float>(m_instance->surface->width()), static_cast<float>(m_instance->surface->height())
+    );
+  }
+
+  Renderer& renderer = m_instance->surface->renderTarget().renderer();
+  const std::vector<WindowSwitcherCardTarget>& targets = m_instance->styleLayout.cards;
+
+  std::vector<CardTransition> transitions;
+  transitions.reserve(m_instance->tiles.size());
+  for (std::size_t windowIndex = 0; windowIndex < m_instance->tiles.size(); ++windowIndex) {
+    WindowSwitcherTile* tile = m_instance->tiles[windowIndex];
+    if (tile == nullptr) {
+      continue;
+    }
+
+    const bool wasVisible = tile->visible();
+    const float oldVisualW = tile->width() * tile->scaleX();
+    const float oldVisualH = tile->height() * tile->scaleY();
+    const float oldVisualX = tile->x() + (tile->width() - oldVisualW) * 0.5F;
+    const float oldVisualY = tile->y() + (tile->height() - oldVisualH) * 0.5F;
+    const float oldOpacity = tile->opacity();
+    const WindowSwitcherCardTarget& target = targets[windowIndex];
+    const bool wasTargetVisible = windowIndex < previousTargets.size() && previousTargets[windowIndex].visible;
+
+    if (target.visible) {
+      tile->setCaptionBounds(target.captionMinX, target.captionMaxX);
+      tile->bind(
+          renderer, m_windows[windowIndex], target.depth, target.showCaption, target.wideCaption, target.iconPlacement,
+          target.closePlacement
+      );
+      tile->setCardSize(target.width, target.height);
+      tile->setZIndex(target.zIndex);
+      tile->setVisible(true);
+
+      if (!animate) {
+        tile->setPosition(target.x, target.y);
+        tile->setScale(1.0F);
+        tile->setOpacity(target.opacity);
+        continue;
+      }
+
+      float startVisualW = oldVisualW;
+      float startVisualH = oldVisualH;
+      float startVisualX = oldVisualX;
+      float startVisualY = oldVisualY;
+      float startOpacity = oldOpacity;
+      if (!wasVisible) {
+        startVisualW = target.width * Style::windowSwitcherIncomingCardScale;
+        startVisualH = target.height * Style::windowSwitcherIncomingCardScale;
+        startVisualX = target.x + target.direction * target.width * Style::windowSwitcherIncomingCardSlide;
+        startVisualY = target.y + (target.height - startVisualH) * 0.5F;
+        startOpacity = 0.0F;
+      } else if (interrupted && wasTargetVisible) {
+        // A card that entered during the cancelled step now occupies a stable
+        // slot and must not remain transparent through successive repeats.
+        startOpacity = target.opacity;
+      }
+
+      CardTransition transition;
+      transition.tile = tile;
+      transition.fromScaleX = target.width > 0.0F ? startVisualW / target.width : 1.0F;
+      transition.fromScaleY = target.height > 0.0F ? startVisualH / target.height : 1.0F;
+      transition.fromX = startVisualX - (target.width - startVisualW) * 0.5F;
+      transition.fromY = startVisualY - (target.height - startVisualH) * 0.5F;
+      transition.fromOpacity = startOpacity;
+      transition.toX = target.x;
+      transition.toY = target.y;
+      transition.toOpacity = target.opacity;
+      transitions.push_back(transition);
+      continue;
+    }
+
+    if (!wasVisible || !animate || (interrupted && !wasTargetVisible)) {
+      tile->setVisible(false);
+      tile->setScale(1.0F);
+      continue;
+    }
+
+    const float direction = oldVisualX + oldVisualW * 0.5F < m_instance->styleLayout.stripWidth * 0.5F ? -1.0F : 1.0F;
+    const float targetVisualW = oldVisualW * Style::windowSwitcherIncomingCardScale;
+    const float targetVisualH = oldVisualH * Style::windowSwitcherIncomingCardScale;
+    const float targetVisualX = oldVisualX + direction * oldVisualW * Style::windowSwitcherOutgoingCardSlide;
+    const float targetVisualY = oldVisualY + (oldVisualH - targetVisualH) * 0.5F;
+    tile->setZIndex(0);
+
+    CardTransition transition;
+    transition.tile = tile;
+    transition.fromX = tile->x();
+    transition.fromY = tile->y();
+    transition.fromScaleX = tile->scaleX();
+    transition.fromScaleY = tile->scaleY();
+    transition.fromOpacity = oldOpacity;
+    transition.toScaleX = tile->width() > 0.0F ? targetVisualW / tile->width() : 1.0F;
+    transition.toScaleY = tile->height() > 0.0F ? targetVisualH / tile->height() : 1.0F;
+    transition.toX = targetVisualX - (tile->width() - targetVisualW) * 0.5F;
+    transition.toY = targetVisualY - (tile->height() - targetVisualH) * 0.5F;
+    transition.toOpacity = 0.0F;
+    transition.hideOnComplete = true;
+    transitions.push_back(transition);
+  }
+
+  m_instance->contentSyncPending = false;
+  if (m_instance->emptyLabel != nullptr) {
+    m_instance->emptyLabel->setVisible(m_windows.empty());
+  }
+  if (m_instance->counterLabel != nullptr) {
+    if (m_windows.empty()) {
+      m_instance->counterLabel->setText(i18n::trp("window-switcher.count", 0));
+    } else {
+      m_instance->counterLabel->setText(std::to_string(m_selectedIndex + 1) + " / " + std::to_string(m_windows.size()));
+    }
+  }
+
+  if (!animate || transitions.empty()) {
+    return;
+  }
+
+  for (const CardTransition& transition : transitions) {
+    transition.tile->setPosition(transition.fromX, transition.fromY);
+    transition.tile->setScale(transition.fromScaleX, transition.fromScaleY);
+    transition.tile->setOpacity(transition.fromOpacity);
+  }
+
+  Instance* instance = m_instance;
+  InputArea* animationOwner = instance->strip;
+  instance->carouselAnimId = instance->animations.animateSpring(
+      0.0F, 1.0F, Style::springSnappy,
+      [instance, transitions](float progress) {
+        for (const CardTransition& transition : transitions) {
+          transition.tile->setPosition(
+              std::lerp(transition.fromX, transition.toX, progress),
+              std::lerp(transition.fromY, transition.toY, progress)
+          );
+          transition.tile->setScale(
+              std::lerp(transition.fromScaleX, transition.toScaleX, progress),
+              std::lerp(transition.fromScaleY, transition.toScaleY, progress)
+          );
+          transition.tile->setOpacity(
+              std::clamp(std::lerp(transition.fromOpacity, transition.toOpacity, progress), 0.0F, 1.0F)
+          );
+        }
+        if (instance->pointerInside) {
+          instance->inputDispatcher.syncPointerHover();
+        }
+      },
+      [this, instance, transitions]() {
+        if (m_instance != instance) {
+          return;
+        }
+        instance->carouselAnimId = 0;
+        for (const CardTransition& transition : transitions) {
+          if (transition.hideOnComplete) {
+            transition.tile->setVisible(false);
+            transition.tile->setScale(1.0F);
+          }
+        }
+        if (instance->pointerInside) {
+          instance->inputDispatcher.syncPointerHover();
+        }
+        if (instance->contentSyncPending) {
+          requestSceneUpdate();
+        }
+      },
+      animationOwner, carriedVelocity
+  );
+}
+
+bool WindowSwitcher::matchesTrigger(const KeyboardEvent& event) const noexcept {
+  if (!event.pressed || event.preedit) {
+    return false;
+  }
+  if (m_config == nullptr) {
+    return false;
+  }
+  const std::uint32_t shortcutModifiers = event.modifiers & WindowSwitcherShortcutState::kModifierMask;
+  if (shortcutModifiers == 0) {
+    return false;
+  }
+
+  const std::uint32_t normalizedModifiers = event.modifiers & ~shortcutModifiers;
+  return m_config->matchesKeybind(KeybindAction::TabNext, event.sym, normalizedModifiers)
+      || m_config->matchesKeybind(KeybindAction::TabPrevious, event.sym, normalizedModifiers);
+}
+
+bool WindowSwitcher::isModifierRelease(const KeyboardEvent& event) const noexcept {
+  return !event.pressed && (KeySymbol::modifierMask(event.sym) & m_shortcutState.modifiers()) != 0;
+}
+
+void WindowSwitcher::onKeyboardModifiers(std::uint32_t modifiers) {
+  if (!m_active || !m_shortcutSession) {
+    return;
+  }
+  if (!m_shortcutState.hasPendingRelease()) {
+    const bool focused = m_instance != nullptr
+        && m_instance->surface != nullptr
+        && m_wayland->lastKeyboardSurface() == m_instance->surface->wlSurface();
+    if (!m_shortcutState.hasPendingFocusCheck() || !focused) {
+      return;
+    }
+  }
+  m_shortcutState.updateModifiers(modifiers);
+  scheduleShortcutModifierReleaseCheck();
+}
+
+void WindowSwitcher::scheduleShortcutModifierReleaseCheck() {
+  if (!m_shortcutState.beginReleaseCheck()) {
+    return;
+  }
+
+  // Keep an input method's mirrored release and the following physical mask
+  // restoration ahead of the decision, even when the socket read is split.
+  if (m_wayland != nullptr && m_wayland->display() != nullptr) {
+    m_shortcutReleaseSync = wl_display_sync(m_wayland->display());
+    if (m_shortcutReleaseSync != nullptr) {
+      static constexpr wl_callback_listener kReleaseSyncListener = {
+          .done = &WindowSwitcher::handleShortcutModifierReleaseSync,
+      };
+      if (wl_callback_add_listener(m_shortcutReleaseSync, &kReleaseSyncListener, this) == 0) {
+        return;
+      }
+      wl_callback_destroy(m_shortcutReleaseSync);
+      m_shortcutReleaseSync = nullptr;
+    }
+  }
+
+  const std::uint64_t generation = m_shortcutSessionGeneration;
+  DeferredCall::callLater([this, generation]() {
+    if (generation != m_shortcutSessionGeneration) {
+      return;
+    }
+    completeShortcutModifierReleaseCheck();
+  });
+}
+
+void WindowSwitcher::completeShortcutModifierReleaseCheck() {
+  if (!m_active || !m_shortcutSession || m_wayland == nullptr) {
+    return;
+  }
+  if (!m_shortcutState.completeReleaseCheck(m_wayland->keyboardModifiers())) {
+    return;
+  }
+  activateSelected();
+  hide();
+}
+
+void WindowSwitcher::cancelShortcutModifierReleaseCheck() {
+  if (m_shortcutReleaseSync == nullptr) {
+    return;
+  }
+  wl_callback_destroy(m_shortcutReleaseSync);
+  m_shortcutReleaseSync = nullptr;
+}
+
+void WindowSwitcher::handleShortcutModifierReleaseSync(
+    void* data, wl_callback* callback, std::uint32_t /*callbackData*/
+) {
+  auto* self = static_cast<WindowSwitcher*>(data);
+  if (self->m_shortcutReleaseSync != callback) {
+    return;
+  }
+  self->m_shortcutReleaseSync = nullptr;
+  wl_callback_destroy(callback);
+  self->completeShortcutModifierReleaseCheck();
+}
+
+bool WindowSwitcher::onKeyboardEvent(const KeyboardEvent& event) {
+  if (m_active && m_instance == nullptr) {
+    hide();
+    return false;
+  }
+
+  if (!m_active) {
+    if (matchesTrigger(event)) {
+      if (m_platform == nullptr) {
+        return false;
+      }
+      wl_output* output = m_platform->preferredInteractiveOutput();
+      if (output == nullptr && m_wayland != nullptr && !m_wayland->outputs().empty()) {
+        output = m_wayland->outputs().front().output;
+      }
+      if (output == nullptr) {
+        return false;
+      }
+      showFromShortcut(output, event.modifiers);
+      return true;
+    }
+    return false;
+  }
+
+  if (m_shortcutSession) {
+    captureShortcutModifiers(event.modifiers);
+    if (!event.pressed) {
+      captureShortcutModifiers(KeySymbol::modifierMask(event.sym));
+    }
+  }
+
+  if (isModifierRelease(event)) {
+    if (m_shortcutState.noteRelease(KeySymbol::modifierMask(event.sym), event.modifiers)) {
+      scheduleShortcutModifierReleaseCheck();
+    }
+    return true;
+  }
+
+  if (!event.pressed || event.preedit) {
+    return true;
+  }
+
+  const std::uint32_t normalizedModifiers = event.modifiers & ~m_shortcutState.modifiers();
+  auto matchesAction = [&](KeybindAction action) {
+    if (m_config != nullptr) {
+      return m_config->matchesKeybind(action, event.sym, normalizedModifiers);
+    }
+    return KeybindMatcher::matches(action, event.sym, normalizedModifiers);
+  };
+
+  if (matchesAction(KeybindAction::Cancel)) {
+    hide();
+    return true;
+  }
+
+  if (matchesAction(KeybindAction::TabPrevious)) {
+    cycleSelection(-1);
+    return true;
+  }
+
+  if (matchesAction(KeybindAction::TabNext)) {
+    cycleSelection(1);
+    return true;
+  }
+
+  if (matchesAction(KeybindAction::Validate)) {
+    activateSelected();
+    hide();
+    return true;
+  }
+
+  if (matchesAction(KeybindAction::Left)) {
+    navigateList(-1);
+    return true;
+  }
+  if (matchesAction(KeybindAction::Right)) {
+    navigateList(1);
+    return true;
+  }
+  // In the grid, Up/Down move between rows; elsewhere they step like Left/Right.
+  const int rowStride = m_instance->styleLayout.columns > 0 ? static_cast<int>(m_instance->styleLayout.columns) : 1;
+  if (matchesAction(KeybindAction::Up)) {
+    navigateList(-rowStride);
+    return true;
+  }
+  if (matchesAction(KeybindAction::Down)) {
+    navigateList(rowStride);
+    return true;
+  }
+
+  return true;
+}
+
+bool WindowSwitcher::onPointerEvent(const PointerEvent& event) {
+  if (!m_active || m_instance == nullptr || m_instance->surface == nullptr) {
+    return false;
+  }
+
+  Instance* target = m_instance;
+  const bool onTarget =
+      event.surface != nullptr && target->surface != nullptr && event.surface == target->surface->wlSurface();
+
+  // Still invisible (hold delay): a click dismisses instead of picking a tile nobody can see.
+  if (target->revealDelay.active() && event.type == PointerEvent::Type::Button) {
+    if (event.pressed && onTarget) {
+      hide();
+      return true;
+    }
+    return onTarget;
+  }
+
+  switch (event.type) {
+  case PointerEvent::Type::Enter:
+    if (onTarget) {
+      target->pointerInside = true;
+      target->inputDispatcher.pointerEnter(static_cast<float>(event.sx), static_cast<float>(event.sy), event.serial);
+    }
+    return onTarget;
+  case PointerEvent::Type::Leave:
+    if (onTarget || target->pointerInside) {
+      target->pointerInside = false;
+      target->inputDispatcher.pointerLeave();
+    }
+    return onTarget || target->pointerInside;
+  case PointerEvent::Type::Motion:
+    if (onTarget) {
+      target->pointerInside = true;
+    }
+    if (onTarget || target->pointerInside) {
+      target->inputDispatcher.pointerMotion(static_cast<float>(event.sx), static_cast<float>(event.sy), 0);
+      return true;
+    }
+    return false;
+  case PointerEvent::Type::Button: {
+    const bool pressed = event.pressed;
+    if (onTarget) {
+      target->pointerInside = true;
+    }
+    if (!onTarget && !target->pointerInside) {
+      if (pressed) {
+        hide();
+        return true;
+      }
+      return false;
+    }
+    if (pressed
+        && onTarget
+        && (target->inputDispatcher.hoveredArea() == nullptr
+            || target->inputDispatcher.hoveredArea() == target->input)) {
+      hide();
+      return true;
+    }
+    return target->inputDispatcher.pointerButton(
+        static_cast<float>(event.sx), static_cast<float>(event.sy), event.button, pressed, event.serial, event.time,
+        event.touch
+    );
+  }
+  case PointerEvent::Type::Axis:
+    if (onTarget || target->pointerInside) {
+      return target->inputDispatcher.pointerAxis(
+          static_cast<float>(event.sx), static_cast<float>(event.sy), event.axis, event.axisSource, event.axisValue,
+          event.axisDiscrete, event.axisValue120, event.axisLines
+      );
+    }
+    return false;
+  }
+
+  return false;
+}
+
+void WindowSwitcher::ensureSurface() {
+  if (m_wayland == nullptr || m_renderContext == nullptr || m_output == nullptr) {
+    return;
+  }
+  const auto* output = findOutput(*m_wayland, m_output);
+  if (output == nullptr || !output->hasUsableGeometry()) {
+    return;
+  }
+
+  if (m_instance != nullptr && m_instance->output == m_output && m_instance->surface != nullptr) {
+    return;
+  }
+
+  destroySurface();
+
+  auto inst = std::make_unique<Instance>();
+  inst->output = m_output;
+  inst->uiLayoutScale = shellUiScale(m_config);
+
+  auto config = LayerSurfaceConfig{
+      .nameSpace = "noctalia-window-switcher",
+      .layer = LayerShellLayer::Overlay,
+      .anchor = LayerShellAnchor::Top | LayerShellAnchor::Bottom | LayerShellAnchor::Left | LayerShellAnchor::Right,
+      .width = 0,
+      .height = 0,
+      .exclusiveZone = -1,
+      .keyboard = LayerShellKeyboard::Exclusive,
+      .defaultWidth = static_cast<std::uint32_t>(output->effectiveLogicalWidth()),
+      .defaultHeight = static_cast<std::uint32_t>(output->effectiveLogicalHeight()),
+  };
+
+  inst->surface = std::make_unique<LayerSurface>(*m_wayland, std::move(config));
+  inst->surface->setRenderContext(m_renderContext);
+  inst->surface->setAnimationManager(&inst->animations);
+
+  auto* instPtr = inst.get();
+  inst->surface->setConfigureCallback([instPtr](std::uint32_t /*width*/, std::uint32_t /*height*/) {
+    if (instPtr->surface != nullptr) {
+      instPtr->surface->requestLayout();
+    }
+  });
+  inst->surface->setPrepareFrameCallback([this, instPtr](bool needsUpdate, bool needsLayout) {
+    if (!m_active || m_instance != instPtr) {
+      return;
+    }
+    prepareFrame(*instPtr, needsUpdate, needsLayout);
+  });
+  inst->surface->setFrameTickCallback([this, instPtr](float /*deltaMs*/) {
+    if (!m_active || m_instance != instPtr || instPtr->surface == nullptr) {
+      return;
+    }
+    positionPanel(
+        *instPtr, static_cast<float>(instPtr->surface->width()), static_cast<float>(instPtr->surface->height())
+    );
+  });
+  inst->surface->setClosedCallback([this]() { DeferredCall::callLater([this]() { hide(); }); });
+
+  if (!inst->surface->initialize(m_output)) {
+    kLog.warn("failed to initialize window switcher overlay");
+    return;
+  }
+
+  m_instance = inst.release();
+}
+
+void WindowSwitcher::destroySurface() {
+  if (m_instance == nullptr) {
+    return;
+  }
+
+  m_instance->inputDispatcher.setSceneRoot(nullptr);
+  m_instance->animations.cancelAll();
+  if (m_instance->surface != nullptr) {
+    m_instance->surface->setClosedCallback(nullptr);
+    m_instance->surface->setPrepareFrameCallback(nullptr);
+    m_instance->surface->setFrameTickCallback(nullptr);
+    m_instance->surface->setConfigureCallback(nullptr);
+    m_instance->surface->setSceneRoot(nullptr);
+  }
+  delete m_instance;
+  m_instance = nullptr;
+}
+
+void WindowSwitcher::prepareFrame(Instance& instance, bool /*needsUpdate*/, bool /*needsLayout*/) {
+  if (!m_active || m_renderContext == nullptr || instance.surface == nullptr) {
+    return;
+  }
+
+  const auto width = instance.surface->width();
+  const auto height = instance.surface->height();
+  if (width == 0 || height == 0) {
+    return;
+  }
+
+  m_renderContext->makeCurrent(instance.surface->renderTarget());
+  Renderer& renderer = instance.surface->renderTarget().renderer();
+
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
+  const auto layout = computeSwitcherLayout(
+      static_cast<float>(width), static_cast<float>(height), instance.uiLayoutScale, m_windows.size(), m_selectedIndex,
+      switcherConfig
+  );
+  const bool needsSceneBuild = instance.sceneRoot == nullptr
+      || static_cast<std::uint32_t>(std::round(instance.sceneRoot->width())) != width
+      || static_cast<std::uint32_t>(std::round(instance.sceneRoot->height())) != height
+      || instance.tiles.size() != m_windows.size()
+      || instance.style != switcherConfig.style
+      || instance.showCaption != switcherConfig.showCaption
+      || instance.showCount != switcherConfig.showCount
+      || instance.showAppIcon != switcherConfig.showAppIcon
+      || (m_overviewMode && instance.workspaceSignature != workspaceSignature());
+  if (needsSceneBuild) {
+    instance.styleLayout = layout;
+    buildScene(instance, width, height);
+  } else {
+    const bool layoutChanged = !instance.styleLayout.sameGeometryAs(layout);
+    instance.styleLayout = layout;
+    if ((instance.contentSyncPending || layoutChanged) && instance.carouselAnimId == 0) {
+      syncSelection(layoutChanged);
+    }
+    if (instance.sceneRoot != nullptr && instance.sceneRoot->layoutDirty()) {
+      instance.sceneRoot->layout(renderer);
+    }
+    positionPanel(instance, static_cast<float>(width), static_cast<float>(height));
+  }
+  if (instance.pointerInside) {
+    instance.inputDispatcher.syncPointerHover();
+  }
+}
+
+void WindowSwitcher::positionPanel(Instance& instance, float screenW, float screenH) {
+  if (instance.panel == nullptr || instance.strip == nullptr) {
+    return;
+  }
+  const WindowSwitcherStyleLayout& layout = instance.styleLayout;
+  const float panelX = std::round((screenW - layout.panelWidth) * 0.5F);
+  const float panelY = std::round((screenH - layout.panelHeight) * 0.5F);
+  instance.panel->setPosition(panelX, panelY);
+  instance.panel->setFrameSize(layout.panelWidth, layout.panelHeight);
+  if (instance.panelBackground != nullptr) {
+    instance.panelBackground->setVisible(layout.boxed);
+    instance.panelBackground->setPosition(0.0F, 0.0F);
+    instance.panelBackground->setFrameSize(layout.panelWidth, layout.panelHeight);
+  }
+  instance.strip->setPosition(layout.stripX, layout.stripY);
+  instance.strip->setFrameSize(layout.stripWidth, layout.stripHeight);
+  if (instance.countBackground != nullptr) {
+    instance.countBackground->setPosition(layout.countX, layout.countY);
+    instance.countBackground->setFrameSize(layout.countWidth, layout.countHeight);
+  }
+  if (instance.counterLabel != nullptr) {
+    instance.counterLabel->setPosition(
+        (layout.countWidth - instance.counterLabel->width()) * 0.5F,
+        (layout.countHeight - instance.counterLabel->height()) * 0.5F
+    );
+  }
+  if (instance.emptyLabel != nullptr) {
+    instance.emptyLabel->setPosition(
+        layout.stripX + (layout.stripWidth - instance.emptyLabel->width()) * 0.5F,
+        layout.stripY + (layout.stripHeight - instance.emptyLabel->height()) * 0.5F
+    );
+  }
+
+  std::vector<InputRect> blurRects;
+  // Nothing frosted while the switcher is still invisible (hold delay) or mostly faded.
+  if (!m_overviewMode && instance.panel->opacity() < 0.3F) {
+    instance.surface->clearBlurRegion();
+    return;
+  }
+  if (m_overviewMode) {
+    // Frosted desktop behind the whole overview, like Mission Control.
+    instance.surface->setBlurRegion(
+        {InputRect{0, 0, static_cast<int>(std::ceil(screenW)), static_cast<int>(std::ceil(screenH))}}
+    );
+    return;
+  }
+  if (layout.boxed && instance.panelBackground != nullptr) {
+    float left = 0.0F;
+    float top = 0.0F;
+    float right = 0.0F;
+    float bottom = 0.0F;
+    Node::transformedBounds(instance.panelBackground, left, top, right, bottom);
+    const int blurX = static_cast<int>(std::floor(left));
+    const int blurY = static_cast<int>(std::floor(top));
+    const int blurW = std::max(1, static_cast<int>(std::ceil(right) - std::floor(left)));
+    const int blurH = std::max(1, static_cast<int>(std::ceil(bottom) - std::floor(top)));
+    auto strips =
+        Surface::tessellateRoundedRect(blurX, blurY, blurW, blurH, Style::scaledRadiusXl(instance.uiLayoutScale));
+    blurRects.insert(blurRects.end(), strips.begin(), strips.end());
+  }
+  for (const WindowSwitcherTile* tile : instance.tiles) {
+    if (tile == nullptr || !tile->visible() || tile->opacity() <= kVisibleOpacityThreshold) {
+      continue;
+    }
+    float left = 0.0F;
+    float top = 0.0F;
+    float right = 0.0F;
+    float bottom = 0.0F;
+    Node::transformedBounds(tile, left, top, right, bottom);
+    const int blurX = static_cast<int>(std::floor(left));
+    const int blurY = static_cast<int>(std::floor(top));
+    const int blurW = std::max(1, static_cast<int>(std::ceil(right) - std::floor(left)));
+    const int blurH = std::max(1, static_cast<int>(std::ceil(bottom) - std::floor(top)));
+    auto strips =
+        Surface::tessellateRoundedRect(blurX, blurY, blurW, blurH, Style::scaledRadiusXl(instance.uiLayoutScale));
+    blurRects.insert(blurRects.end(), strips.begin(), strips.end());
+  }
+  if (instance.countBackground != nullptr) {
+    float left = 0.0F;
+    float top = 0.0F;
+    float right = 0.0F;
+    float bottom = 0.0F;
+    Node::transformedBounds(instance.countBackground, left, top, right, bottom);
+    const int blurX = static_cast<int>(std::floor(left));
+    const int blurY = static_cast<int>(std::floor(top));
+    const int blurW = std::max(1, static_cast<int>(std::ceil(right) - std::floor(left)));
+    const int blurH = std::max(1, static_cast<int>(std::ceil(bottom) - std::floor(top)));
+    auto strips =
+        Surface::tessellateRoundedRect(blurX, blurY, blurW, blurH, Style::scaledRadiusMd(instance.uiLayoutScale));
+    blurRects.insert(blurRects.end(), strips.begin(), strips.end());
+  }
+  instance.surface->setBlurRegion(blurRects);
+}
+
+void WindowSwitcher::buildWorkspaceBar(Instance& instance, InputArea& parent, Renderer& renderer, float width) {
+  if (m_platform == nullptr || m_output == nullptr) {
+    return;
+  }
+  const float scale = instance.uiLayoutScale;
+  auto bar = ui::row({
+      .out = &instance.workspaceBar,
+      .align = FlexAlign::Center,
+      .gap = Style::spaceSm * scale,
+      .padding = Style::spaceXs * scale,
+      .fill = colorSpecFromRole(ColorRole::Surface, 0.7F),
+      .radius = Style::scaledRadiusXl(scale),
+      .height = kWindowSwitcherWorkspaceBarHeight * scale,
+      .participatesInLayout = false,
+  });
+  for (const Workspace& workspace : m_platform->workspaces(m_output)) {
+    const std::string name = workspace.name.empty() ? std::to_string(workspace.index + 1) : workspace.name;
+    bar->addChild(
+        ui::button({
+            .text = i18n::tr("window-switcher.desktop", "name", name),
+            .fontSize = Style::fontSizeCaption * scale,
+            .variant = workspace.active ? ButtonVariant::Primary : ButtonVariant::Ghost,
+            .radius = Style::scaledRadiusLg(scale),
+            .onClick = [this, workspace]() {
+              // The workspace change refreshes the grid through onToplevelChange().
+              if (m_platform != nullptr && m_output != nullptr && !workspace.active) {
+                m_platform->activateWorkspace(m_output, workspace);
+              }
+            },
+        })
+    );
+  }
+  instance.workspaceSignature = workspaceSignature();
+  Flex* barNode = instance.workspaceBar;
+  parent.addChild(std::move(bar));
+  barNode->layout(renderer);
+  barNode->setPosition(std::round((width - barNode->width()) * 0.5F), std::round(Style::spaceLg * 2.0F * scale));
+}
+
+void WindowSwitcher::buildScene(Instance& instance, std::uint32_t width, std::uint32_t height) {
+  UiPhaseScope layoutPhase(UiPhase::Layout);
+
+  if (instance.carouselAnimId != 0) {
+    instance.animations.cancel(instance.carouselAnimId);
+    instance.carouselAnimId = 0;
+  }
+
+  const auto w = static_cast<float>(width);
+  const auto h = static_cast<float>(height);
+  const float scale = instance.uiLayoutScale;
+
+  Renderer& renderer = instance.surface->renderTarget().renderer();
+  instance.sceneRoot = ui::node({});
+  instance.sceneRoot->setAnimationManager(&instance.animations);
+  instance.sceneRoot->setSize(w, h);
+
+  auto input = ui::inputArea({});
+  input->setFrameSize(w, h);
+  input->setFocusable(true);
+  input->setAcceptedButtons(InputArea::buttonMask(BTN_LEFT));
+  input->setOnKeyDown([this](const InputArea::KeyData& key) {
+    KeyboardEvent event{
+        .sym = key.sym,
+        .utf32 = key.utf32,
+        .modifiers = key.modifiers,
+        .pressed = key.pressed,
+        .preedit = key.preedit,
+    };
+    (void)onKeyboardEvent(event);
+  });
+
+  const WindowSwitcherStyleLayout& layout = instance.styleLayout;
+
+  // The overview dims the desktop further, like Mission Control.
+  constexpr float kOverviewDimOpacity = 0.7F;
+  // Command-Tab leaves the desktop as it is: only the Slate panel appears.
+  const float dimOpacity =
+      m_overviewMode ? kOverviewDimOpacity : (layout.iconOnly ? 0.0F : Style::windowSwitcherDimOpacity);
+  input->addChild(
+      ui::box({
+          .out = &instance.dimmer,
+          .fill = colorSpecFromRole(ColorRole::Shadow),
+          .width = w,
+          .height = h,
+          .opacity = dimOpacity,
+          .participatesInLayout = false,
+      })
+  );
+
+  auto panel = ui::inputArea({
+      .out = &instance.panel,
+      .acceptedButtons = InputArea::buttonMask(BTN_LEFT),
+      .frameWidth = layout.panelWidth,
+      .frameHeight = layout.panelHeight,
+      .participatesInLayout = false,
+  });
+  panel->addChild(
+      ui::box({
+          .out = &instance.panelBackground,
+          .fill = colorSpecFromRole(ColorRole::Surface),
+          .border = scaleAlpha(colorSpecFromRole(ColorRole::Outline), Style::disabledOutlineAlpha),
+          .borderWidth = Style::borderWidth,
+          .radius = Style::scaledRadiusXl(scale),
+          .visible = layout.boxed,
+          .participatesInLayout = false,
+      })
+  );
+  if (layout.iconOnly) {
+    instance.panelBackground->setFill(colorSpecFromRole(ColorRole::Surface, shell::material::kTint));
+    shell::material::applyHairline(*instance.panelBackground, isResolvedLightTheme(), scale);
+  }
+  std::optional<ColorSpec> iconTint;
+  if (m_config != nullptr) {
+    iconTint = effectiveShellAppIconColorizationTint(m_config->config().shell);
+  }
+  const ShellConfig::ShadowConfig shadowConfig =
+      m_config != nullptr ? m_config->config().shell.shadow : ShellConfig::ShadowConfig{};
+  const float cardRadius = Style::scaledRadiusXl(scale);
+  const RoundedRectStyle selectedShadowStyle = shell::surface_shadow::style(
+      shadowConfig, 1.0F, shell::surface_shadow::Shape{.radius = Radii{cardRadius, cardRadius, cardRadius, cardRadius}}
+  );
+  auto strip = ui::inputArea({
+      .out = &instance.strip,
+      .frameWidth = layout.stripWidth,
+      .frameHeight = layout.stripHeight,
+      .participatesInLayout = false,
+  });
+  instance.tiles.clear();
+  instance.counterLabel = nullptr;
+  instance.countBackground = nullptr;
+  const ShellConfig::WindowSwitcherConfig switcherConfig = effectiveConfig();
+  instance.style = switcherConfig.style;
+  instance.showCaption = switcherConfig.showCaption;
+  instance.showCount = switcherConfig.showCount;
+  instance.showAppIcon = switcherConfig.showAppIcon;
+  if (!m_windows.empty()) {
+    for (std::size_t windowIndex = 0; windowIndex < m_windows.size(); ++windowIndex) {
+      auto tile = std::make_unique<WindowSwitcherTile>(scale, m_asyncTextures);
+      WindowSwitcherTile* tilePtr = tile.get();
+      const WindowSwitcherCardTarget& target = layout.cards[windowIndex];
+      tile->setCardSize(target.width, target.height);
+      tile->setVisible(false);
+      tile->setAppIconColorizeTint(iconTint);
+      tile->setShadowStyle(selectedShadowStyle);
+      tile->setIconOnly(layout.iconOnly);
+      tile->setShowCaption(switcherConfig.showCaption);
+      tile->setShowAppIcon(switcherConfig.showAppIcon);
+      tile->setOnInvalidate([this]() { requestSceneUpdate(); });
+      tile->setOnActivate([this, windowIndex]() {
+        setSelectedIndex(windowIndex);
+        activateSelected();
+      });
+      tile->setOnClose([this, windowIndex]() { closeWindowAt(windowIndex); });
+      instance.tiles.push_back(tilePtr);
+      strip->addChild(std::move(tile));
+    }
+  }
+  panel->addChild(std::move(strip));
+
+  if (switcherConfig.showCount) {
+    auto countBackground = ui::box({
+        .out = &instance.countBackground,
+        .fill = colorSpecFromRole(ColorRole::Surface),
+        .border = scaleAlpha(colorSpecFromRole(ColorRole::Outline), Style::disabledOutlineAlpha),
+        .borderWidth = Style::borderWidth,
+        .radius = Style::scaledRadiusMd(scale),
+        .width = layout.countWidth,
+        .height = layout.countHeight,
+        .participatesInLayout = false,
+    });
+    countBackground->addChild(
+        ui::label({
+            .out = &instance.counterLabel,
+            .fontSize = Style::fontSizeCaption * scale,
+            .fontWeight = FontWeight::Medium,
+            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+            .participatesInLayout = false,
+        })
+    );
+    panel->addChild(std::move(countBackground));
+  }
+
+  panel->addChild(
+      ui::label({
+          .out = &instance.emptyLabel,
+          .text = i18n::tr("window-switcher.empty"),
+          .fontSize = Style::fontSizeBody * scale,
+          .color = colorSpecFromRole(ColorRole::OnSurface),
+          .textAlign = TextAlign::Center,
+          .visible = m_windows.empty(),
+          .participatesInLayout = false,
+      })
+  );
+
+  input->addChild(std::move(panel));
+
+  instance.workspaceBar = nullptr;
+  instance.workspaceSignature.clear();
+  if (m_overviewMode) {
+    buildWorkspaceBar(instance, *input, renderer, w);
+  }
+
+  instance.input = input.get();
+  instance.sceneRoot->addChild(std::move(input));
+  syncSelection(false);
+  instance.sceneRoot->layout(renderer);
+  positionPanel(instance, w, h);
+
+  instance.surface->setSceneRoot(instance.sceneRoot.get());
+  instance.inputDispatcher.setSceneRoot(instance.sceneRoot.get());
+  instance.inputDispatcher.setCursorShapeCallback([this](std::uint32_t serial, std::uint32_t shape) {
+    if (m_wayland != nullptr) {
+      m_wayland->setCursorShape(serial, shape);
+    }
+  });
+  if (instance.input != nullptr) {
+    instance.inputDispatcher.setFocus(instance.input);
+  }
+
+  if (!instance.revealStarted && instance.panel != nullptr && instance.dimmer != nullptr) {
+    instance.revealStarted = true;
+    instance.panel->setOpacity(0.0F);
+    instance.dimmer->setOpacity(0.0F);
+    if (m_overviewMode) {
+      // The overview opens at once, growing slightly, like Mission Control.
+      instance.panel->setScale(Style::windowSwitcherRevealScale);
+      instance.animations.animate(
+          0.0F, 1.0F, Style::animNormal, Easing::EaseOutCubic,
+          [panelNode = instance.panel, dimmer = instance.dimmer, dimOpacity](float value) {
+            panelNode->setOpacity(value);
+            panelNode->setScale(Style::windowSwitcherRevealScale + (1.0F - Style::windowSwitcherRevealScale) * value);
+            dimmer->setOpacity(dimOpacity * value);
+          },
+          {}, instance.panel
+      );
+    } else {
+      // Command-Tab: a quick tap switches without any UI; held, the switcher fades in (no scale).
+      Instance* instPtr = &instance;
+      instance.revealDelay.start(kSwitcherHoldDelay, [instPtr, dimOpacity]() {
+        if (instPtr->panel == nullptr || instPtr->dimmer == nullptr || instPtr->surface == nullptr) {
+          return;
+        }
+        instPtr->animations.animateFade(
+            0.0F, 1.0F, kSwitcherFadeMs, Easing::EaseOutCubic,
+            [panelNode = instPtr->panel, dimmer = instPtr->dimmer, dimOpacity](float value) {
+              panelNode->setOpacity(value);
+              dimmer->setOpacity(dimOpacity * value);
+            },
+            {}, instPtr->panel
+        );
+        instPtr->surface->requestRedraw();
+      });
+    }
+  } else if (instance.revealDelay.active() && instance.panel != nullptr && instance.dimmer != nullptr) {
+    // Rebuilt during the hold: stay invisible until it ends.
+    instance.panel->setOpacity(0.0F);
+    instance.dimmer->setOpacity(0.0F);
+  }
+  // Again now that the reveal set the opacity: no frosted rectangle shows during the hold delay.
+  positionPanel(instance, w, h);
+}

@@ -77,13 +77,13 @@ void RadioButton::doLayout(Renderer& /*renderer*/) {
   if (m_outer != nullptr) {
     m_outer->setPosition(indicatorInset, indicatorInset);
     m_outer->setFrameSize(indicatorSize, indicatorSize);
-    m_outer->setRadius(indicatorSize * 0.5F);
+    m_outer->setRadius(Style::pillRadius(indicatorSize));
   }
 
   if (m_inner != nullptr) {
     m_inner->setPosition(indicatorInset + innerInset, indicatorInset + innerInset);
     m_inner->setFrameSize(innerSize, innerSize);
-    m_inner->setRadius(innerSize * 0.5F);
+    m_inner->setRadius(Style::pillRadius(innerSize));
   }
 
   if (m_inputArea != nullptr) {

@@ -19,6 +19,7 @@ namespace noctalia::config::schema {
   // Shell.
   inline constexpr Range<float> kAnimationSpeedRange{0.1F, 4.0F, 0.05F};
   inline constexpr Range<float> kCornerRadiusScaleRange{0.0F, 2.0F, 0.05F};
+  inline constexpr Range<std::int64_t> kIconWeightRange{100, 700, 50};
   inline constexpr Range<std::int64_t> kControlCenterWidthRange{600, 1200, 10};
   inline constexpr Range<std::int64_t> kNotificationWidthRange{240, 500, 10};
   inline constexpr Range<std::int64_t> kScreenCornersSizeRange{1, 100, 1};

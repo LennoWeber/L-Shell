@@ -2,6 +2,7 @@
 
 class ClipboardService;
 class CalendarService;
+class CompositorPlatform;
 class ConfigService;
 class FileWatcher;
 class HttpClient;
@@ -42,6 +43,8 @@ struct DesktopWidgetServices {
   WaylandConnection& wayland;
   ConfigService* config = nullptr;
   RenderContext* renderContext = nullptr;
+  // The compositor connection; needed by visibility = "home" to follow the focused output's workspace.
+  CompositorPlatform* platform = nullptr;
   DesktopWidgetRuntimeServices runtime;
   SharedTextureCache* textureCache = nullptr;
 };

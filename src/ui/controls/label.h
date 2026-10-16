@@ -53,6 +53,10 @@ public:
   // Which end of an overflowing single line gets the ellipsis (Start keeps the tail, e.g. file paths).
   void setEllipsize(TextEllipsize ellipsize);
   void setUseMarkup(bool markup);
+  // CSS-like spacing, both relative to the font size: extra advance per character in em (uppercase labels are
+  // tracked out), and the baseline-to-baseline distance of wrapped lines (0 keeps the font's own).
+  void setLetterSpacing(float em);
+  void setLineHeight(float factor);
   // Text uses the resolved font line box; InkCentered centers the current glyph ink.
   void setBaselineMode(LabelBaselineMode mode);
   void setShadow(const ColorSpec& color, float offsetX, float offsetY);

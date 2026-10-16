@@ -14,9 +14,12 @@
 #include "render/scene/node.h"
 #include "shell/dock/pinned_apps.h"
 #include "shell/panel/panel_manager.h"
+#include "shell/session/session_action_runner.h"
+#include "shell/session/session_tiles.h"
 #include "system/desktop_entry.h"
 #include "ui/app_icon_colorization.h"
 #include "ui/builders.h"
+#include "ui/controls/button.h"
 #include "ui/controls/context_menu_popup.h"
 #include "ui/controls/scroll_view.h"
 #include "ui/palette.h"
@@ -65,6 +68,29 @@ namespace {
   constexpr float kCommandFooterHeight = 32.0F;
   constexpr float kCommandDetailHeight = 220.0F;
   constexpr std::size_t kCommandVisibleRows = 9;
+  // The sheet (Monolith): a full-height column beside the rail. All sizes are before contentScale().
+  constexpr float kSheetWidth = 380.0F;
+  constexpr float kSheetPadding = 22.0F;
+  constexpr float kSheetSearchFontSize = 18.0F;
+  constexpr float kSheetSearchGlyphSize = 20.0F;
+  constexpr float kSheetSearchHeight = 24.0F;
+  constexpr float kSheetSearchGap = 10.0F;
+  constexpr float kSheetUnderline = 2.0F;
+  constexpr float kSheetRowHeight = 44.0F;
+  constexpr float kSheetRowPaddingH = 10.0F;
+  constexpr float kSheetRowGap = 12.0F;
+  constexpr float kSheetIconSize = 20.0F;
+  constexpr float kSheetTitleSize = 15.0F;
+  constexpr float kSheetQuietTitleSize = 14.0F;
+  constexpr float kSheetHeaderSize = 11.0F;
+  constexpr float kSheetHeaderGap = 6.0F;
+  constexpr float kSheetHintSize = 11.0F;
+  constexpr float kSheetQuietMetaSize = 12.0F;
+  constexpr float kSheetHeaderTracking = 0.12F;
+  constexpr float kSheetHintTracking = 0.08F;
+  constexpr float kSheetFallbackHeight = 600.0F;
+  // Rows per section while nothing is typed: the most used apps, the latest files.
+  constexpr std::size_t kSheetIdleRows = 6;
 
   [[nodiscard]] bool isSectionHeader(const LauncherResult& result) {
     return result.providerId == kSectionHeaderProviderId;
@@ -189,6 +215,8 @@ namespace {
     bool showAppOriginIndicator = true;
     bool compact = false;
     bool command = false; // command-bar rows: one line, fixed height
+    bool sheet = false;   // sheet rows: glyph and title, an accent fill when selected
+    bool appGlyphs = false; // apps drawn as their category glyph, not their icon (shell.app_icon_glyphs)
     std::optional<ColorSpec> appIconColorizeTint;
     std::optional<ColorSpec> listItemBackground;
   };
@@ -210,6 +238,9 @@ namespace {
   }
 
   [[nodiscard]] float launcherRowHeight(Renderer& renderer, const LauncherListStyle& style) {
+    if (style.sheet) {
+      return std::round(kSheetRowHeight * style.scale);
+    }
     if (style.command) {
       return std::round(kCommandRowHeight * style.scale);
     }
@@ -222,6 +253,9 @@ namespace {
   }
 
   [[nodiscard]] float launcherRowHeightEstimate(const LauncherListStyle& style) {
+    if (style.sheet) {
+      return std::round(kSheetRowHeight * style.scale);
+    }
     if (style.command) {
       return std::round(kCommandRowHeight * style.scale);
     }
@@ -262,11 +296,16 @@ namespace {
   }
 
   [[nodiscard]] LauncherListStyle
-  launcherListStyleFrom(const ConfigService* config, float scale, float cardOpacity, bool command) {
+  launcherListStyleFrom(const ConfigService* config, float scale, float cardOpacity, bool command, bool sheet) {
     LauncherListStyle style{
-        .scale = scale, .command = command, .appIconColorizeTint = std::nullopt, .listItemBackground = std::nullopt
+        .scale = scale,
+        .command = command,
+        .sheet = sheet,
+        .appIconColorizeTint = std::nullopt,
+        .listItemBackground = std::nullopt,
     };
     if (config != nullptr) {
+      style.appGlyphs = config->config().shell.appIconGlyphs;
       const auto& launcher = config->config().shell.launcher;
       style.showIcons = launcher.showIcons;
       style.showAppOriginIndicator = launcher.showAppOriginIndicator;
@@ -395,7 +434,7 @@ namespace {
       m_title->setFontSize(Style::fontSizeBody * m_style.scale);
       m_selected = selected;
       m_hovered = hovered;
-      m_iconPath = result.iconPath;
+      m_iconPath = m_style.appGlyphs ? std::string{} : result.iconPath;
       m_fallbackGlyph = result.glyphName.empty() ? "app-window" : result.glyphName;
       const float iconSize = launcherIconSize(m_style);
       m_iconTargetSize = static_cast<int>(std::round(iconSize));
@@ -683,7 +722,7 @@ namespace {
       m_marker->setSize(3.0F * scale, markerHeight);
 
       // Leading visual: an emoji or symbol badge, the app icon, or the provider's glyph.
-      m_iconPath = result.iconPath;
+      m_iconPath = m_style.appGlyphs ? std::string{} : result.iconPath;
       m_iconTargetSize = static_cast<int>(std::round(iconSize));
       const bool badge = !result.badge.empty();
       const bool showIcon = m_style.showIcons && !badge;
@@ -922,7 +961,7 @@ namespace {
     bind(Renderer& renderer, const LauncherResult& result, float width, float height, bool selected, bool hovered) {
       m_selected = selected;
       m_hovered = hovered;
-      m_iconPath = result.iconPath;
+      m_iconPath = m_style.appGlyphs ? std::string{} : result.iconPath;
       m_fallbackGlyph = result.glyphName.empty() ? "app-window" : result.glyphName;
       const float iconSize = launcherIconSize(m_style);
       m_iconTargetSize = static_cast<int>(std::round(iconSize));
@@ -1054,6 +1093,98 @@ namespace {
     bool m_reorderTarget = false;
   };
 
+  // Sheet row (Monolith): the result's glyph and title, and while selected a full accent fill with the Enter key
+  // named at its end. Quiet results (recent files) are a step smaller and muted, with their age at the end. A
+  // section header is a small versal title resting on the row below it.
+  class LauncherSheetRow final : public Node {
+  public:
+    explicit LauncherSheetRow(LauncherListStyle style) : m_style(style) {
+      addChild(ui::box({.out = &m_background}));
+      addChild(ui::glyph({.out = &m_glyph, .glyphSize = kSheetIconSize * style.scale}));
+      addChild(ui::label({.out = &m_title, .maxLines = 1}));
+      addChild(ui::label({.out = &m_trailing, .maxLines = 1}));
+    }
+
+    void setListStyle(LauncherListStyle style) { m_style = style; }
+
+    void
+    bind(Renderer& renderer, const LauncherResult& result, float width, float height, bool selected, bool hovered) {
+      const float scale = m_style.scale;
+      setSize(width, height);
+      m_background->setPosition(0.0F, 0.0F);
+      m_background->setSize(width, height);
+
+      if (isSectionHeader(result)) {
+        m_background->setFill(clearColorSpec());
+        m_glyph->setVisible(false);
+        m_trailing->setVisible(false);
+        m_title->setText(i18n::upper(result.title));
+        m_title->setFontSize(kSheetHeaderSize * scale);
+        m_title->setFontWeight(FontWeight::Normal);
+        m_title->setLetterSpacing(kSheetHeaderTracking);
+        m_title->setColor(colorSpecFromRole(ColorRole::OnSurfaceVariant));
+        m_title->setMaxWidth(width);
+        m_title->measure(renderer);
+        m_title->setPosition(0.0F, std::round(height - kSheetHeaderGap * scale - m_title->height()));
+        return;
+      }
+
+      const bool quiet = result.presentation == "quiet";
+      const ColorSpec ink = selected ? colorSpecFromRole(ColorRole::OnPrimary)
+          : quiet                    ? colorSpecFromRole(ColorRole::OnSurface, 0.75F)
+                                     : colorSpecFromRole(ColorRole::OnSurface);
+      m_background->setFill(
+          selected      ? colorSpecFromRole(ColorRole::Primary)
+              : hovered ? colorSpecFromRole(ColorRole::OnSurface, 0.06F)
+                        : clearColorSpec()
+      );
+
+      const float padding = kSheetRowPaddingH * scale;
+      const float iconSize = kSheetIconSize * scale;
+      m_glyph->setVisible(true);
+      m_glyph->setGlyph(result.glyphName.empty() ? "app-window" : result.glyphName);
+      m_glyph->setGlyphSize(iconSize);
+      m_glyph->setColor(ink);
+      m_glyph->measure(renderer);
+      m_glyph->setPosition(
+          padding + std::round((iconSize - m_glyph->width()) * 0.5F), std::round((height - m_glyph->height()) * 0.5F)
+      );
+
+      // Trailing: the Enter key on the selection, a quiet result's note otherwise.
+      float right = width - padding;
+      const std::string trailing = selected ? i18n::upper(i18n::tr("launcher.sheet.enter")) : result.trailing;
+      m_trailing->setVisible(!trailing.empty());
+      if (!trailing.empty()) {
+        m_trailing->setText(trailing);
+        m_trailing->setFontSize((selected ? kSheetHintSize : kSheetQuietMetaSize) * scale);
+        m_trailing->setLetterSpacing(selected ? kSheetHintTracking : 0.0F);
+        m_trailing->setColor(selected ? ink : colorSpecFromRole(ColorRole::OnSurfaceVariant));
+        m_trailing->setMaxWidth(width * 0.4F);
+        m_trailing->measure(renderer);
+        right -= m_trailing->width();
+        m_trailing->setPosition(std::round(right), std::round((height - m_trailing->height()) * 0.5F));
+        right -= kSheetRowGap * scale;
+      }
+
+      const float titleX = padding + iconSize + kSheetRowGap * scale;
+      m_title->setText(singleLinePreview(result.title));
+      m_title->setFontSize((quiet ? kSheetQuietTitleSize : kSheetTitleSize) * scale);
+      m_title->setFontWeight(selected ? FontWeight::Bold : FontWeight::Normal);
+      m_title->setLetterSpacing(0.0F);
+      m_title->setColor(ink);
+      m_title->setMaxWidth(std::max(0.0F, right - titleX));
+      m_title->measure(renderer);
+      m_title->setPosition(titleX, std::round((height - m_title->height()) * 0.5F));
+    }
+
+  private:
+    LauncherListStyle m_style{};
+    Box* m_background = nullptr;
+    Glyph* m_glyph = nullptr;
+    Label* m_title = nullptr;
+    Label* m_trailing = nullptr;
+  };
+
 } // namespace
 
 class LauncherResultAdapter final : public VirtualGridAdapter {
@@ -1066,11 +1197,12 @@ public:
 
   // `style.command` picks the row kind for the adapter's lifetime: tiles are pooled and never change kind.
   LauncherResultAdapter(LauncherListStyle style, AsyncTextureCache* cache)
-      : m_style(style), m_cache(cache), m_command(style.command) {}
+      : m_style(style), m_cache(cache), m_command(style.command), m_sheet(style.sheet) {}
 
   void setListStyle(LauncherListStyle style) {
     m_style = style;
     m_style.command = m_command;
+    m_style.sheet = m_sheet;
   }
   void setTagCallback(TagCallback callback) { m_tagFor = std::move(callback); }
   void setResults(const std::vector<LauncherResult>* results) { m_results = results; }
@@ -1089,6 +1221,9 @@ public:
   [[nodiscard]] std::size_t itemCount() const override { return m_results == nullptr ? 0U : m_results->size(); }
 
   [[nodiscard]] std::unique_ptr<Node> createTile() override {
+    if (m_sheet) {
+      return std::make_unique<LauncherSheetRow>(m_style);
+    }
     if (m_command) {
       return std::make_unique<LauncherCommandRow>(m_style, m_cache);
     }
@@ -1097,6 +1232,12 @@ public:
 
   void bindTile(Node& tile, std::size_t index, bool selected, bool hovered) override {
     if (m_renderer == nullptr || m_results == nullptr || index >= m_results->size()) {
+      return;
+    }
+    if (m_sheet) {
+      auto* row = static_cast<LauncherSheetRow*>(&tile);
+      row->setListStyle(m_style);
+      row->bind(*m_renderer, (*m_results)[index], tile.width(), tile.height(), selected, hovered);
       return;
     }
     if (m_command) {
@@ -1116,7 +1257,7 @@ public:
   }
 
   [[nodiscard]] std::string itemTooltip(std::size_t index) const override {
-    if (m_results == nullptr || index >= m_results->size() || (*m_results)[index].originGlyph.empty()) {
+    if (m_sheet || m_results == nullptr || index >= m_results->size() || (*m_results)[index].originGlyph.empty()) {
       return {};
     }
     return (*m_results)[index].origin;
@@ -1124,7 +1265,11 @@ public:
 
   [[nodiscard]] std::optional<TooltipAnchorInsets>
   itemTooltipAnchorInsets(std::size_t index, float cellWidth, float cellHeight) const override {
-    if (m_command || m_results == nullptr || index >= m_results->size() || (*m_results)[index].originGlyph.empty()) {
+    if (m_command
+        || m_sheet
+        || m_results == nullptr
+        || index >= m_results->size()
+        || (*m_results)[index].originGlyph.empty()) {
       return std::nullopt;
     }
     const float glyphSize = Style::fontSizeBody * m_style.scale;
@@ -1218,6 +1363,7 @@ private:
   LauncherListStyle m_style{};
   AsyncTextureCache* m_cache = nullptr;
   bool m_command = false;
+  bool m_sheet = false;
   TagCallback m_tagFor;
   Renderer* m_renderer = nullptr;
   const std::vector<LauncherResult>* m_results = nullptr;
@@ -1378,8 +1524,10 @@ private:
   bool m_dragging = false;
 };
 
-LauncherPanel::LauncherPanel(ConfigService* config, AsyncTextureCache* asyncTextures)
-    : m_iconResolver(true), m_config(config), m_asyncTextures(asyncTextures) {}
+LauncherPanel::LauncherPanel(
+    ConfigService* config, AsyncTextureCache* asyncTextures, SessionActionRunner* sessionActions
+)
+    : m_iconResolver(true), m_config(config), m_asyncTextures(asyncTextures), m_sessionActions(sessionActions) {}
 
 LauncherPanel::~LauncherPanel() = default;
 
@@ -1459,7 +1607,65 @@ bool LauncherPanel::commandStyle() const {
   return m_config == nullptr || m_config->config().shell.launcher.style == ShellConfig::LauncherStyle::Command;
 }
 
+bool LauncherPanel::sheetStyle() const {
+  if (m_container != nullptr) {
+    return m_sheetStyle;
+  }
+  return m_config != nullptr && m_config->config().shell.launcher.style == ShellConfig::LauncherStyle::Sheet;
+}
+
+std::string LauncherPanel::sectionTitle(std::string_view providerId) const {
+  if (providerId == kApplicationsProviderId) {
+    return i18n::tr("launcher.sections.apps");
+  }
+  return providerDisplayName(providerId);
+}
+
+std::unique_ptr<Flex> LauncherPanel::buildSessionFoot(float scale) {
+  if (m_sessionActions == nullptr || m_config == nullptr) {
+    return nullptr;
+  }
+  // One tile each for locking, sleeping and switching off, from the configured actions.
+  const auto& actions = m_config->config().shell.session.actions;
+  const auto find = [&](std::initializer_list<std::string_view> names) -> const SessionPanelActionConfig* {
+    for (const std::string_view name : names) {
+      for (const auto& action : actions) {
+        if (action.enabled && action.action == name) {
+          return &action;
+        }
+      }
+    }
+    return nullptr;
+  };
+  const bool canLock = m_config->isLockScreenEnabled();
+  const SessionPanelActionConfig* lock = canLock ? find({"lock"}) : nullptr;
+  const SessionPanelActionConfig* sleep = canLock ? find({"lock_and_suspend", "suspend"}) : find({"suspend"});
+  const SessionPanelActionConfig* off = find({"shutdown"});
+  std::vector<std::unique_ptr<Button>> tiles;
+  for (const SessionPanelActionConfig* action : {lock, sleep, off}) {
+    if (action != nullptr) {
+      tiles.push_back(session_tiles::makeTile(*action, scale, [this, cfg = *action]() { runSessionAction(cfg); }));
+    }
+  }
+  if (tiles.empty()) {
+    return nullptr;
+  }
+  const std::size_t columns = tiles.size();
+  return session_tiles::makeGrid(std::move(tiles), columns, scale);
+}
+
+void LauncherPanel::runSessionAction(const SessionPanelActionConfig& action) {
+  SessionActionRunner* const runner = m_sessionActions;
+  DeferredCall::callLater([runner, action]() {
+    PanelManager::instance().closePanel(/*animateClose=*/false);
+    runner->invoke(action);
+  });
+}
+
 std::string LauncherPanel::defaultPlaceholder() const {
+  if (sheetStyle()) {
+    return i18n::tr("launcher.sheet-placeholder");
+  }
   return i18n::tr(commandStyle() ? "launcher.command-placeholder" : "launcher.search-placeholder");
 }
 
@@ -1487,35 +1693,48 @@ void LauncherPanel::create() {
   m_launcherRowHeight = 0.0F;
   m_commandStyle =
       m_config == nullptr || m_config->config().shell.launcher.style == ShellConfig::LauncherStyle::Command;
+  m_sheetStyle = m_config != nullptr && m_config->config().shell.launcher.style == ShellConfig::LauncherStyle::Sheet;
   m_commandHeight = 0.0F;
   const bool command = m_commandStyle;
+  const bool sheet = m_sheetStyle;
   const float scale = contentScale();
   auto container = ui::column({
       .out = &m_container,
       .align = FlexAlign::Stretch,
-      .gap = command ? 0.0F : Style::spaceSm * scale,
+      .gap = command || sheet ? 0.0F : Style::spaceSm * scale,
   });
 
-  // Search row: magnifier glyph and a large, frameless field (a tighter one in the command bar).
+  // Search row: magnifier glyph and a large, frameless field (a tighter one in the command bar, an underlined one
+  // in the sheet).
+  const float searchFontSize = sheet ? kSheetSearchFontSize * scale
+      : command                      ? Style::fontSizeTitle * 1.07F * scale
+                                     : Style::fontSizeTitle * 1.125F * scale;
+  const float searchGlyphSize = sheet ? kSheetSearchGlyphSize * scale
+      : command                       ? Style::fontSizeTitle * 1.07F * scale
+                                      : Style::fontSizeTitle * scale;
+  const float searchHeight = sheet ? kSheetSearchHeight : command ? kCommandSearchHeight : kSpotlightSearchHeight;
   auto searchRow = ui::row(
       {
           .align = FlexAlign::Center,
-          .gap = command ? (Style::spaceSm + 2.0F) * scale : Style::spaceSm * scale,
-          .paddingH = command ? Style::spaceLg * scale : Style::spaceSm * scale,
+          .gap = sheet ? kSheetSearchGap * scale
+              : command ? (Style::spaceSm + 2.0F) * scale
+                        : Style::spaceSm * scale,
+          .paddingH = sheet ? 0.0F : command ? Style::spaceLg * scale : Style::spaceSm * scale,
       },
       ui::glyph({
           .glyph = "search",
-          .glyphSize = command ? Style::fontSizeTitle * 1.07F * scale : Style::fontSizeTitle * scale,
-          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+          .glyphSize = searchGlyphSize,
+          .color = colorSpecFromRole(sheet ? ColorRole::OnSurface : ColorRole::OnSurfaceVariant),
       }),
       ui::input({
           .out = &m_input,
           .placeholder = m_scopedPlaceholder.empty() ? defaultPlaceholder() : m_scopedPlaceholder,
-          .fontSize = command ? Style::fontSizeTitle * 1.07F * scale : Style::fontSizeTitle * 1.125F * scale,
-          .controlHeight = (command ? kCommandSearchHeight : kSpotlightSearchHeight) * scale,
-          .horizontalPadding = Style::spaceXs * scale,
-          .clearButtonEnabled = true,
+          .fontSize = searchFontSize,
+          .controlHeight = searchHeight * scale,
+          .horizontalPadding = sheet ? 0.0F : Style::spaceXs * scale,
+          .clearButtonEnabled = !sheet,
           .frameVisible = false,
+          .fontWeight = sheet ? std::optional<FontWeight>(FontWeight::Medium) : std::nullopt,
           .surfaceOpacity = panelCardOpacity(),
           .flexGrow = 1.0F,
           .onChange =
@@ -1531,6 +1750,12 @@ void LauncherPanel::create() {
               },
           .onSubmit = [this](const std::string& /*text*/) { activateSelected(); },
           .onKeyEvent = [this](std::uint32_t sym, std::uint32_t modifiers) { return handleKeyEvent(sym, modifiers); },
+          .configure =
+              [sheet, scale](Input& input) {
+                if (sheet) {
+                  input.setCaretSize(2.0F * scale, kSheetSearchGlyphSize * scale);
+                }
+              },
       })
   );
   if (command) {
@@ -1539,17 +1764,26 @@ void LauncherPanel::create() {
     m_commandHint = hint.get();
     searchRow->addChild(std::move(hint));
   }
-  container->addChild(std::move(searchRow));
-
-  container->addChild(
-      ui::separator({
-          .out = &m_searchDivider,
-          .color = colorSpecFromRole(ColorRole::Outline, command ? 0.55F : 1.0F),
-          .thickness = command ? kCommandDividerThickness : 1.0F,
-          .visible = !m_collapsed,
-          .participatesInLayout = !m_collapsed,
-      })
-  );
+  if (sheet) {
+    // The field sits on an accent rule; the results start a section's breath below it.
+    container->addChild(
+        ui::column(
+            {.align = FlexAlign::Stretch, .gap = kSheetSearchGap * scale}, std::move(searchRow),
+            ui::box({.fill = colorSpecFromRole(ColorRole::Primary), .height = kSheetUnderline * scale})
+        )
+    );
+  } else {
+    container->addChild(std::move(searchRow));
+    container->addChild(
+        ui::separator({
+            .out = &m_searchDivider,
+            .color = colorSpecFromRole(ColorRole::Outline, command ? 0.55F : 1.0F),
+            .thickness = command ? kCommandDividerThickness : 1.0F,
+            .visible = !m_collapsed,
+            .participatesInLayout = !m_collapsed,
+        })
+    );
+  }
 
   container->addChild(
       ui::segmented({
@@ -1575,7 +1809,8 @@ void LauncherPanel::create() {
       .participatesInLayout = !m_collapsed,
   });
 
-  const LauncherListStyle initialStyle = launcherListStyleFrom(m_config, scale, panelCardOpacity(), m_commandStyle);
+  const LauncherListStyle initialStyle =
+      launcherListStyleFrom(m_config, scale, panelCardOpacity(), m_commandStyle, m_sheetStyle);
   m_listAdapter = std::make_unique<LauncherResultAdapter>(initialStyle, m_asyncTextures);
   m_gridAdapter = std::make_unique<LauncherAppGridAdapter>(initialStyle, m_asyncTextures);
   m_listAdapter->setResults(&m_results);
@@ -1609,7 +1844,7 @@ void LauncherPanel::create() {
           .cellHeight = launcherRowHeightEstimate(initialStyle),
           .squareCells = false,
           .columnGap = 0.0F,
-          .rowGap = (command ? kCommandRowGap : Style::spaceXs) * scale,
+          .rowGap = sheet ? 0.0F : (command ? kCommandRowGap : Style::spaceXs) * scale,
           .overscanRows = kRowOverscan,
           .itemCursorShape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER,
           .adapter = m_listAdapter.get(),
@@ -1677,6 +1912,13 @@ void LauncherPanel::create() {
 
   container->addChild(std::move(body));
 
+  if (sheet) {
+    if (auto foot = buildSessionFoot(scale); foot != nullptr) {
+      container->addChild(ui::box({.fill = clearColorSpec(), .height = kSheetPadding * scale}));
+      container->addChild(std::move(foot));
+    }
+  }
+
   if (command) {
     container->addChild(
         ui::separator({
@@ -1734,7 +1976,8 @@ void LauncherPanel::refreshLauncherAppIconColorization() {
   if (m_listAdapter == nullptr || m_gridAdapter == nullptr || m_grid == nullptr) {
     return;
   }
-  const LauncherListStyle style = launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle);
+  const LauncherListStyle style =
+      launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle, m_sheetStyle);
   m_listAdapter->setListStyle(style);
   m_gridAdapter->setListStyle(style);
   m_grid->notifyDataChanged();
@@ -1759,7 +2002,8 @@ void LauncherPanel::syncLauncherViewLayout(Renderer* renderer) {
 
   const bool useGrid = shouldUseAppGrid();
   const float scale = contentScale();
-  const LauncherListStyle style = launcherListStyleFrom(m_config, scale, panelCardOpacity(), m_commandStyle);
+  const LauncherListStyle style =
+      launcherListStyleFrom(m_config, scale, panelCardOpacity(), m_commandStyle, m_sheetStyle);
   m_grid->setScale(scale);
   m_listAdapter->setListStyle(style);
   m_gridAdapter->setListStyle(style);
@@ -1790,7 +2034,7 @@ void LauncherPanel::syncLauncherViewLayout(Renderer* renderer) {
   } else {
     m_grid->setColumns(1);
     m_grid->setColumnGap(0.0F);
-    m_grid->setRowGap((m_commandStyle ? kCommandRowGap : Style::spaceXs) * scale);
+    m_grid->setRowGap(m_sheetStyle ? 0.0F : (m_commandStyle ? kCommandRowGap : Style::spaceXs) * scale);
     const float listCellHeight =
         renderer != nullptr ? launcherRowHeight(*renderer, style) : launcherRowHeightEstimate(style);
     m_grid->setCellHeight(listCellHeight);
@@ -1838,7 +2082,8 @@ void LauncherPanel::updateLauncherGridMetrics(Renderer& renderer) {
     return;
   }
 
-  const LauncherListStyle style = launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle);
+  const LauncherListStyle style =
+      launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle, m_sheetStyle);
   float cellHeight = launcherRowHeight(renderer, style);
   if (m_usingAppGrid) {
     float wrapWidth = 0.0F;
@@ -1961,6 +2206,7 @@ void LauncherPanel::onClose() {
   m_footerOpen = nullptr;
   m_footerActions = nullptr;
   m_commandHeight = 0.0F;
+  m_searchDivider = nullptr;
   m_categoryFilter = nullptr;
   m_body = nullptr;
   m_grid = nullptr;
@@ -2143,9 +2389,12 @@ void LauncherPanel::onInputChanged(const std::string& text) {
       // so opening the launcher with no/short input does not flood it with their entries.
       const bool allowGlobalOptIn =
           StringUtils::trimRightView(StringUtils::trimLeftView(queryText)).size() >= kGlobalOptInMinChars;
+      const bool emptyQuery = StringUtils::trimRightView(StringUtils::trimLeftView(queryText)).empty();
       for (auto& provider : m_providers) {
         const bool isDefault = provider->prefix().empty();
-        if (!isDefault && (!provider->includeInGlobalSearch() || !allowGlobalOptIn)) {
+        const bool optedIn =
+            provider->includeInGlobalSearch() && (allowGlobalOptIn || (emptyQuery && provider->listsWithoutQuery()));
+        if (!isDefault && !optedIn) {
           continue;
         }
         auto results = provider->query(queryText);
@@ -2174,7 +2423,9 @@ void LauncherPanel::onInputChanged(const std::string& text) {
   }
 
   const int iconTargetSize = static_cast<int>(
-      std::round(launcherIconSize(launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle)))
+      std::round(launcherIconSize(
+          launcherListStyleFrom(m_config, contentScale(), panelCardOpacity(), m_commandStyle, m_sheetStyle)
+      ))
   );
   for (auto& result : m_allResults) {
     if (result.iconPath.empty() && !result.iconName.empty()) {
@@ -2453,7 +2704,7 @@ void LauncherPanel::applyActiveCategory() {
 
 bool LauncherPanel::wantsSectionHeaders() const {
   // The command bar tags every row with its kind instead.
-  if (m_commandStyle || m_query.empty() || !m_scopedProviderId.empty() || m_results.empty()) {
+  if (m_commandStyle || (m_query.empty() && !m_sheetStyle) || !m_scopedProviderId.empty() || m_results.empty()) {
     return false;
   }
   if (m_results.front().providerId == kProviderOverviewProviderId) {
@@ -2484,21 +2735,28 @@ void LauncherPanel::insertSectionHeaders() {
     grouped.push_back(std::move(header));
   };
 
-  addHeader(i18n::tr("launcher.sections.top-hit"));
-  grouped.push_back(m_results.front());
+  // The sheet has no top hit: every result sits in its kind's section, and the empty sheet keeps each short.
+  const std::size_t first = m_sheetStyle ? 0 : 1;
+  const std::size_t perSection = m_sheetStyle && m_query.empty() ? kSheetIdleRows : m_results.size();
+  if (!m_sheetStyle) {
+    addHeader(i18n::tr("launcher.sections.top-hit"));
+    grouped.push_back(m_results.front());
+  }
 
   // Remaining results grouped by provider; groups keep the order of their best match.
   std::vector<std::string_view> providerOrder;
-  for (std::size_t i = 1; i < m_results.size(); ++i) {
+  for (std::size_t i = first; i < m_results.size(); ++i) {
     if (!std::ranges::contains(providerOrder, std::string_view(m_results[i].providerId))) {
       providerOrder.emplace_back(m_results[i].providerId);
     }
   }
   for (const std::string_view providerId : providerOrder) {
-    addHeader(providerDisplayName(providerId));
-    for (std::size_t i = 1; i < m_results.size(); ++i) {
+    addHeader(m_sheetStyle ? sectionTitle(providerId) : providerDisplayName(providerId));
+    std::size_t shown = 0;
+    for (std::size_t i = first; i < m_results.size() && shown < perSection; ++i) {
       if (m_results[i].providerId == providerId) {
         grouped.push_back(m_results[i]);
+        ++shown;
       }
     }
   }
@@ -2515,14 +2773,22 @@ std::string LauncherPanel::providerDisplayName(std::string_view providerId) cons
 }
 
 bool LauncherPanel::shouldCollapse() const {
-  if (panelPlacement() != PanelPlacement::Floating || !m_query.empty() || !m_scopedProviderId.empty()) {
+  if (sheetStyle()
+      || panelPlacement() != PanelPlacement::Floating
+      || !m_query.empty()
+      || !m_scopedProviderId.empty()) {
     return false;
   }
   // With the app grid enabled, the empty launcher is a Launchpad-style app overview (Spotlight style only).
   return commandStyle() || m_config == nullptr || !m_config->config().shell.launcher.appGrid;
 }
 
-float LauncherPanel::preferredWidth() const { return scaled(commandStyle() ? kCommandWidth : 540.0F); }
+float LauncherPanel::preferredWidth() const {
+  if (sheetStyle()) {
+    return scaled(kSheetWidth);
+  }
+  return scaled(commandStyle() ? kCommandWidth : 540.0F);
+}
 
 float LauncherPanel::commandBodyHeight() const {
   // The list grows with its rows up to kCommandVisibleRows, then scrolls; a lone text result gets a reading area.
@@ -2540,6 +2806,9 @@ float LauncherPanel::commandBodyHeight() const {
 }
 
 float LauncherPanel::preferredHeight() const {
+  if (sheetStyle()) {
+    return scaled(kSheetFallbackHeight); // attached as a sheet it runs the bar's length instead
+  }
   if (commandStyle()) {
     if (shouldCollapse()) {
       return scaled(kCommandSearchHeight);
@@ -2553,6 +2822,9 @@ float LauncherPanel::preferredHeight() const {
 }
 
 std::optional<float> LauncherPanel::floatingCornerRadius() const {
+  if (sheetStyle()) {
+    return std::nullopt;
+  }
   if (commandStyle()) {
     return scaled(kCommandRadius);
   }
@@ -2563,6 +2835,9 @@ std::optional<float> LauncherPanel::floatingCornerRadius() const {
 }
 
 std::optional<float> LauncherPanel::contentPadding() const {
+  if (sheetStyle()) {
+    return kSheetPadding;
+  }
   if (commandStyle()) {
     return 0.0F; // dividers run edge to edge; the rows bring their own insets
   }

@@ -20,7 +20,7 @@ namespace {
     // resulting line count is predictable.
     TextMetrics measureText(
         std::string_view text, float fontSize, FontWeight, float maxWidth, int maxLines, TextAlign, std::string_view,
-        TextEllipsize, bool
+        TextEllipsize, bool, TextSpacing
     ) override {
       constexpr float kAdvance = 10.0F;
       const float natural = static_cast<float>(text.size()) * kAdvance;

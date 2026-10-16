@@ -267,6 +267,9 @@ namespace {
     if (auto boxHeight = finiteDouble(widgetTable["box_height"])) {
       widget.boxHeight = std::max(0.0F, static_cast<float>(*boxHeight));
     }
+    if (auto scale = finiteDouble(widgetTable["scale"])) {
+      widget.scale = std::clamp(static_cast<float>(*scale), 0.25F, 8.0F);
+    }
     if (auto rotation = finiteDouble(widgetTable["rotation"])) {
       widget.rotationRad = static_cast<float>(*rotation);
     }

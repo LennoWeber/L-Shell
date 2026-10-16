@@ -1,5 +1,6 @@
 #include "shell/bar/widgets/clock_widget.h"
 
+#include "i18n/i18n.h"
 #include "render/core/renderer.h"
 #include "render/scene/input_area.h"
 #include "render/scene/node.h"
@@ -28,7 +29,8 @@ namespace {
 
 ClockWidget::ClockWidget(wl_output* /*output*/, Options options)
     : m_format(std::move(options.format)), m_verticalFormat(std::move(options.verticalFormat)),
-      m_tooltipFormat(std::move(options.tooltipFormat)), m_timezone(std::move(options.timezone)) {}
+      m_tooltipFormat(std::move(options.tooltipFormat)), m_timezone(std::move(options.timezone)),
+      m_uppercase(options.uppercase), m_letterSpacing(options.letterSpacing), m_lineHeight(options.lineHeight) {}
 
 std::string ClockWidget::formatTimeText() const {
   if (!m_isVertical) {
@@ -91,6 +93,8 @@ void ClockWidget::create() {
           .fontWeight = labelFontWeight(),
           .fontFamily = labelFontFamily(),
           .textAlign = TextAlign::Center,
+          .letterSpacing = m_letterSpacing,
+          .configure = [this](Label& label) { label.setLineHeight(m_lineHeight); },
       })
   );
 
@@ -101,6 +105,7 @@ void ClockWidget::create() {
           .fontWeight = labelFontWeight(),
           .fontFamily = labelFontFamily(),
           .textAlign = TextAlign::Center,
+          .letterSpacing = m_letterSpacing,
           .visible = false,
       })
   );
@@ -185,6 +190,9 @@ void ClockWidget::doUpdate(Renderer& renderer) {
   }
 
   auto text = formatTimeText();
+  if (m_uppercase) {
+    text = i18n::upper(text);
+  }
   if (text != m_lastText) {
     m_lastText = std::move(text);
   }

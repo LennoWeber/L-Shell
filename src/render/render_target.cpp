@@ -18,11 +18,11 @@ float ScaledRenderer::currentScale() const noexcept {
 
 TextMetrics ScaledRenderer::measureText(
     std::string_view text, float fontSize, FontWeight fontWeight, float maxWidth, int maxLines, TextAlign align,
-    std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup
+    std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup, TextSpacing spacing
 ) {
   assert(m_context != nullptr && "ScaledRenderer measure without a bound RenderContext");
   return m_context->measureTextScaled(
-      currentScale(), text, fontSize, fontWeight, maxWidth, maxLines, align, fontFamily, ellipsize, useMarkup
+      currentScale(), text, fontSize, fontWeight, maxWidth, maxLines, align, fontFamily, ellipsize, useMarkup, spacing
   );
 }
 

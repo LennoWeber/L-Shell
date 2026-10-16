@@ -58,6 +58,7 @@
 #include "shell/osd/privacy_osd.h"
 #include "shell/overview/overview_launcher_capture.h"
 #include "shell/panel/panel_manager.h"
+#include "shell/panel/panel_scrim.h"
 #include "shell/screen_corners/screen_corners.h"
 #include "shell/session/session_action_runner.h"
 #include "shell/settings/settings_window.h"
@@ -370,6 +371,7 @@ private:
   ScreenCorners m_screenCorners;
   // Layout-mode components; each stays empty unless the active [layout] mode uses it.
   Island m_island;
+  PanelScrim m_panelScrim;
   TrayMenu m_trayMenu;
   Wallpaper m_wallpaper;
   Backdrop m_backdrop;

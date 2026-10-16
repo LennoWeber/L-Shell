@@ -8,8 +8,8 @@
 
 namespace noctalia::cli {
 
-  inline constexpr std::array<std::string_view, 25> kBuiltinPaletteNames{
-      "Atelier", "Avionik", "Ayu", "Bruecke", "Catppuccin", "Dracula", "Eldritch", "Eleven", "Folio", "Glacier",
+  inline constexpr std::array<std::string_view, 26> kBuiltinPaletteNames{
+      "Atelier", "Avionik", "Ayu", "Band",    "Bruecke",  "Catppuccin", "Dracula", "Eldritch", "Eleven", "Folio", "Glacier",
       "Gruvbox", "Halo", "Hearth", "Kanagawa", "Kontor", "L-Shell", "Ma", "Meridian", "Monolith", "Noctalia", "Nord",
       "Rosé Pine", "Strata", "Tahoe", "Tokyo-Night",
   };
@@ -245,9 +245,9 @@ namespace noctalia::cli {
   inline constexpr std::array<std::string_view, 3> kMsgWindowSwitcherActionChoices{"close", "hide", "hold"};
   inline constexpr std::array<std::string_view, 2> kMsgOverviewActionChoices{"close", "toggle"};
   inline constexpr std::array<std::string_view, 2> kMsgExpoActionChoices{"close", "toggle"};
-  inline constexpr std::array<std::string_view, 15> kMsgDesignSetChoices{
-      "atelier", "avionik", "bruecke", "eleven", "folio",  "glacier", "halo",  "hearth",
-      "kontor",  "ma",      "meridian", "monolith", "slate", "strata",  "tahoe",
+  inline constexpr std::array<std::string_view, 16> kMsgDesignSetChoices{
+      "atelier", "avionik", "band",    "bruecke", "eleven", "folio",  "glacier", "halo",
+      "hearth",  "kontor",  "ma",      "meridian", "monolith", "slate", "strata", "tahoe",
   };
   inline constexpr std::array kMsgDesignSetPositionals{
       Positional{"design", {}, kMsgDesignSetChoices, true, false, false},

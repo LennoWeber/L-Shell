@@ -77,7 +77,8 @@ WorkspacesWidget::WorkspacesWidget(
       m_hideWhenEmpty(options.hideWhenEmpty), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
       m_activePillSize(std::clamp(options.activePillSize, 0.25F, 8.0F)),
       m_inactivePillSize(std::clamp(options.inactivePillSize, 0.25F, 8.0F)), m_style(options.style),
-      m_focusedOutputOnly(options.focusedOutputOnly), m_changeColorOnHover(options.changeColorOnHover),
+      m_focusedOutputOnly(options.focusedOutputOnly), m_count(std::min<std::size_t>(options.count, 20)),
+      m_twoDigitLabels(options.twoDigitLabels), m_changeColorOnHover(options.changeColorOnHover),
       m_focusedColor(options.focusedColor), m_occupiedColor(options.occupiedColor), m_emptyColor(options.emptyColor),
       m_urgentColor(options.urgentColor) {
   buildDesktopIconIndex();
@@ -94,7 +95,7 @@ bool WorkspacesWidget::shouldShowWorkspaceLabel(const Workspace& workspace, std:
   if (isFocusHint()) {
     return workspace.active && (!label.empty() || (m_showIcons && !activeWindowAppId().empty()));
   }
-  if (label.empty()) {
+  if (label.empty() || m_style == WorkspacesStyle::Squares) {
     return false;
   }
   if (m_labelsOnlyWhenOccupied && !workspace.occupied && !workspace.active) {
@@ -156,7 +157,13 @@ void WorkspacesWidget::setWorkspaceClickHandler(InputArea& area, wl_output* outp
 void WorkspacesWidget::applyItemVisualStyle(Item& item) {
   if (item.indicator != nullptr) {
     item.indicator->setFill(workspaceFillColor(item.visualWorkspace, item.output));
-    item.indicator->clearBorder();
+    const bool outlined = m_style == WorkspacesStyle::Squares
+        && !(item.visualWorkspace.active && workspaceUsesFocusedStyle(item.visualWorkspace, item.output));
+    if (outlined) {
+      item.indicator->setBorder(workspaceTextColor(item.visualWorkspace, item.output), std::max(1.0F, m_contentScale));
+    } else {
+      item.indicator->clearBorder();
+    }
   }
   if (item.text != nullptr && item.showLabel) {
     item.text->setColor(workspaceTextColor(item.visualWorkspace, item.output));
@@ -218,6 +225,7 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
     for (auto& workspace : m_platform.workspaces(m_output)) {
       current.push_back({.workspace = std::move(workspace), .output = m_output});
     }
+    appendPlaceholderWorkspaces(current);
   }
 
   if (!m_cachedState.empty() && !current.empty() && !std::ranges::any_of(current, [](const WorkspaceState& state) {
@@ -489,12 +497,12 @@ void WorkspacesWidget::rebuild(Renderer& renderer) {
     }
 
     if (isMinimal()) {
-      const float minWidth = baseSize;
+      const float minWidth = m_style == WorkspacesStyle::Squares ? squareSize() : baseSize;
       if (!entry.showLabel) {
         slot.inactiveWidth = minWidth;
         slot.activeWidth = minWidth;
       } else {
-        const float textBasedWidth = slot.textWidth + padding * 2.0F;
+        const float textBasedWidth = slot.textWidth + padding * (m_style == WorkspacesStyle::Box ? 3.0F : 2.0F);
         slot.inactiveWidth = std::max(minWidth, textBasedWidth);
         slot.activeWidth = slot.inactiveWidth;
       }
@@ -535,7 +543,13 @@ void WorkspacesWidget::rebuild(Renderer& renderer) {
   }
 
   m_gap = gap;
-  m_indicatorHeight = isMinimal() ? std::round(maxLabelHeight + padding) : pillHeight;
+  m_indicatorHeight = m_style == WorkspacesStyle::Squares ? squareSize()
+      : m_style == WorkspacesStyle::Box                    ? std::round(maxLabelHeight + padding * 2.0F)
+      : isMinimal()                                        ? std::round(maxLabelHeight + padding)
+                                                           : pillHeight;
+  if (m_style == WorkspacesStyle::Squares) {
+    m_gap = std::round(squareSize() * 2.0F / 3.0F);
+  }
 
   for (std::size_t i = 0; i < entries.size(); ++i) {
     const auto& entry = entries[i];
@@ -570,7 +584,7 @@ void WorkspacesWidget::rebuild(Renderer& renderer) {
 
     // Minimal draws labels and nothing else; an unlabeled entry keeps its layout
     // slot as empty space.
-    if (!isMinimal()) {
+    if (!isMinimal() || hasMarker()) {
       const float indicatorW = m_isVertical ? m_indicatorHeight : w;
       const float indicatorH = m_isVertical ? w : m_indicatorHeight;
       item.indicator = static_cast<Box*>(area->addChild(
@@ -688,6 +702,9 @@ void WorkspacesWidget::rebuild(Renderer& renderer) {
     item.area = static_cast<InputArea*>(m_container->addChild(std::move(area)));
     if (!entry.exiting) {
       syncItemTooltip(item, ws);
+    }
+    if (hasMarker()) {
+      applyItemVisualStyle(item);
     }
     m_items.push_back(item);
   }
@@ -871,12 +888,12 @@ void WorkspacesWidget::recalculateItemMetrics(
   }
 
   if (isMinimal()) {
-    const float minWidth = baseSize;
+    const float minWidth = m_style == WorkspacesStyle::Squares ? squareSize() : baseSize;
     if (!item.showLabel) {
       item.inactiveWidth = minWidth;
       item.activeWidth = minWidth;
     } else {
-      const float textBasedWidth = textWidth + padding * 2.0F;
+      const float textBasedWidth = textWidth + padding * (m_style == WorkspacesStyle::Box ? 3.0F : 2.0F);
       item.inactiveWidth = std::max(minWidth, textBasedWidth);
       item.activeWidth = item.inactiveWidth;
     }
@@ -1116,7 +1133,16 @@ void WorkspacesWidget::applyItemLayout(Item& it) {
 
   it.area->setPosition(m_isVertical ? 0.0F : position, m_isVertical ? position : 0.0F);
   it.area->setFrameSize(itemW, itemH);
-  if (it.indicator != nullptr) {
+  if (it.indicator != nullptr && m_style == WorkspacesStyle::Underline) {
+    const float line = std::max(1.0F, std::round(2.0F * m_contentScale));
+    it.indicator->setPosition(0.0F, m_isVertical ? 0.0F : itemH - line);
+    it.indicator->setFrameSize(m_isVertical ? line : itemW, m_isVertical ? itemH : line);
+    it.indicator->setRadius(0.0F);
+  } else if (it.indicator != nullptr && m_style == WorkspacesStyle::Squares) {
+    it.indicator->setPosition(0.0F, 0.0F);
+    it.indicator->setFrameSize(itemW, itemH);
+    it.indicator->setRadius(0.0F);
+  } else if (it.indicator != nullptr) {
     if (isFocusHint() && !it.workspace.active) {
       const float dotSize = focusedPillDotSize();
       const float dotX = (itemW - dotSize) * 0.5F;
@@ -1414,6 +1440,40 @@ void WorkspacesWidget::syncActiveWindowIcon(Renderer& renderer, Item& item) {
   }
 }
 
+float WorkspacesWidget::squareSize() const noexcept {
+  return std::round(Style::fontSizeBody * 0.92F * m_contentScale * m_pillScale);
+}
+
+// The numbered workspaces 1..count the compositor does not report (it only lists the ones in use) join the list
+// as empty ones; clicking one creates it.
+void WorkspacesWidget::appendPlaceholderWorkspaces(std::vector<WorkspaceState>& current) const {
+  if (m_count == 0) {
+    return;
+  }
+  const auto number = [](const Workspace& workspace) -> std::optional<std::size_t> {
+    if (workspace.index > 0) {
+      return workspace.index;
+    }
+    return numericWorkspaceId(workspace);
+  };
+  bool added = false;
+  for (std::size_t n = 1; n <= m_count; ++n) {
+    const bool listed = std::ranges::any_of(current, [&](const WorkspaceState& state) {
+      return number(state.workspace) == n;
+    });
+    if (!listed) {
+      current.push_back({.workspace = Workspace{.id = std::to_string(n)}, .output = m_output});
+      added = true;
+    }
+  }
+  if (added) {
+    // Numbered workspaces in order, named ones after them as the compositor listed them.
+    std::ranges::stable_sort(current, [&](const WorkspaceState& a, const WorkspaceState& b) {
+      return number(a.workspace).value_or(SIZE_MAX) < number(b.workspace).value_or(SIZE_MAX);
+    });
+  }
+}
+
 std::string WorkspacesWidget::workspaceLabel(const Workspace& workspace, std::size_t displayIndex) const {
   std::string label;
   if (m_labelSource == WorkspacesLabelSource::Id) {
@@ -1433,6 +1493,9 @@ std::string WorkspacesWidget::workspaceLabel(const Workspace& workspace, std::si
 
   // Only truncate non-numeric labels (words like "VESKTOP" → "VE").
   // Numeric labels (workspace IDs like "10", "11") stay as-is.
+  if (m_twoDigitLabels && label.size() == 1 && isNumericLabel(label)) {
+    label.insert(label.begin(), '0');
+  }
   if (!isNumericLabel(label) && m_maxLabelChars > 0) {
     label = StringUtils::truncateUtf8CodePoints(label, m_maxLabelChars);
   }
@@ -1495,6 +1558,15 @@ bool WorkspacesWidget::workspaceUsesFocusedStyle(const Workspace& workspace, wl_
 }
 
 ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_output* output) const {
+  if (hasMarker()) {
+    // Only the focused workspace is marked; Squares outline the others (applyItemVisualStyle).
+    if (workspace.active && workspaceUsesFocusedStyle(workspace, output)) {
+      return m_focusedColor;
+    }
+    ColorSpec none = m_focusedColor;
+    none.alpha = 0.0F;
+    return none;
+  }
   if (workspace.active) {
     return workspaceUsesFocusedStyle(workspace, output) ? m_focusedColor : m_occupiedColor;
   }
@@ -1515,6 +1587,20 @@ ColorSpec WorkspacesWidget::workspaceTextColor(const Workspace& workspace, wl_ou
   }
   if (!isMinimal()) {
     return readableColorForFill(workspaceFillColor(workspace, output));
+  }
+  if (workspace.active && workspaceUsesFocusedStyle(workspace, output)) {
+    if (m_style == WorkspacesStyle::Box) {
+      // A tint ("primary/0.18") keeps its color for the label; a solid fill gets the readable on-color.
+      if (m_focusedColor.alpha < 0.6F) {
+        ColorSpec text = m_focusedColor;
+        text.alpha = 1.0F;
+        return text;
+      }
+      return readableColorForFill(m_focusedColor);
+    }
+    if (m_style == WorkspacesStyle::Underline) {
+      return colorSpecFromRole(ColorRole::OnSurface);
+    }
   }
   if (workspace.active) {
     return workspaceUsesFocusedStyle(workspace, output) ? m_focusedColor : m_occupiedColor;
@@ -1537,17 +1623,22 @@ ColorRole WorkspacesWidget::onRoleForFill(ColorRole fill) {
     return ColorRole::OnTertiary;
   case ColorRole::Error:
     return ColorRole::OnError;
+  case ColorRole::OnPrimary:
+    return ColorRole::Primary;
+  case ColorRole::OnSecondary:
+    return ColorRole::Secondary;
+  case ColorRole::OnTertiary:
+    return ColorRole::Tertiary;
+  case ColorRole::OnError:
+    return ColorRole::Error;
+  case ColorRole::OnSurface:
+  case ColorRole::OnSurfaceVariant:
+    return ColorRole::Surface; // an ink-colored fill (Kontor's black box) carries paper-colored text
   case ColorRole::Surface:
   case ColorRole::SurfaceVariant:
   case ColorRole::Outline:
   case ColorRole::Shadow:
   case ColorRole::Hover:
-  case ColorRole::OnPrimary:
-  case ColorRole::OnSecondary:
-  case ColorRole::OnTertiary:
-  case ColorRole::OnError:
-  case ColorRole::OnSurface:
-  case ColorRole::OnSurfaceVariant:
   case ColorRole::OnHover:
     return ColorRole::OnSurface;
   }

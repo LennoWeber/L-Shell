@@ -96,6 +96,12 @@ public:
   void setPanelOpeningCallback(std::function<void()> callback) { m_panelOpeningCallback = std::move(callback); }
   // Runs as a close starts (the closed callback only runs once its animation is over).
   void setPanelClosingCallback(std::function<void()> callback) { m_panelClosingCallback = std::move(callback); }
+  // [shell.panel].scrim: invoked with (show, output) when one of the modal panels (launcher, control
+  // center, clipboard, session) opens or when the panel closes again. The scrim surface itself lives
+  // with the Application, which owns the Wayland connection for it.
+  void setScrimRequestCallback(std::function<void(bool, wl_output*)> callback) {
+    m_scrimRequestCallback = std::move(callback);
+  }
   void setAttachedPanelAvailabilityCallback(std::function<bool(wl_output*, std::string_view)> callback);
   void setBarConfigProvider(std::function<std::optional<BarConfig>(wl_output*, std::string_view)> provider);
   void setAttachedPanelBarSettledCallback(std::function<bool(wl_output*, std::string_view)> callback);
@@ -188,6 +194,9 @@ public:
   void registerIpc(IpcService& ipc);
 
 private:
+  // [shell.panel].scrim: forwards modal panels' open/close to the scrim surface owner.
+  void syncScrim(wl_output* output);
+
   // The open panel's floating position: a screen-edge override, a plugin panel's own, or the configured one.
   [[nodiscard]] std::string effectivePanelPosition() const;
   // The open floating panel's corner radius: its own (Spotlight's capsule) or the shell's panel radius.
@@ -236,6 +245,7 @@ private:
   std::function<void()> m_panelClosedCallback;
   std::function<void()> m_panelOpenedCallback;
   std::function<void()> m_panelOpeningCallback;
+  std::function<void(bool, wl_output*)> m_scrimRequestCallback;
   std::function<void()> m_panelClosingCallback;
   std::function<bool(wl_output*, std::string_view)> m_attachedPanelAvailabilityCallback;
   std::function<std::optional<BarConfig>(wl_output*, std::string_view)> m_barConfigProvider;
@@ -254,6 +264,8 @@ private:
   AnimationManager m_animations;
   std::unique_ptr<Node> m_sceneRoot;
   Node* m_bgNode = nullptr;
+  // A sheet's (shell.panel.attached_full_length) 1px rule along the edge facing away from its bar.
+  Box* m_sheetEdgeNode = nullptr;
   Node* m_contentNode = nullptr;
   Node* m_detachedRevealClipNode = nullptr;
   Node* m_detachedRevealContentNode = nullptr;

@@ -14,6 +14,12 @@ const noctalia::bar::WidgetDefinition<SpacerWidget::Options>& spacerWidgetDefini
                   .maxValue = 400.0,
                   .step = 1.0,
               }),
+              field<&Options::ruleLength>({
+                  .key = "rule_length",
+                  .minValue = 0.0,
+                  .maxValue = 400.0,
+                  .step = 1.0,
+              }),
           },
       // Spacers are click-through by default; the schema default has to match so a
       // configured interactive = true reads as an override rather than a default.

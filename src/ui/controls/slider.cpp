@@ -305,13 +305,13 @@ void Slider::applyVisualState() {
     thumbBorder = resolved(ColorRole::Hover);
   }
 
-  auto trackStyle = solidStyle(trackColor, m_trackHeight * 0.5F);
+  auto trackStyle = solidStyle(trackColor, Style::pillRadius(m_trackHeight));
   m_track->setStyle(trackStyle);
 
-  auto fillStyle = solidStyle(fillColor, m_trackHeight * 0.5F);
+  auto fillStyle = solidStyle(fillColor, Style::pillRadius(m_trackHeight));
   m_fill->setStyle(fillStyle);
 
-  auto thumbStyle = solidStyle(thumbColor, m_thumbSizePx * 0.5F);
+  auto thumbStyle = solidStyle(thumbColor, Style::pillRadius(m_thumbSizePx));
   thumbStyle.border = thumbBorder;
   thumbStyle.borderWidth = focused ? Style::focusRingWidth : Style::borderWidth;
   m_thumb->setStyle(thumbStyle);

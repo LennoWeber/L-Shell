@@ -19,6 +19,21 @@ const noctalia::bar::WidgetDefinition<ClockWidget::Options>& clockWidgetDefiniti
           field<&Options::timezone>({
               .key = "timezone",
           }),
+          field<&Options::uppercase>({
+              .key = "uppercase",
+          }),
+          field<&Options::letterSpacing>({
+              .key = "letter_spacing",
+              .minValue = -0.1,
+              .maxValue = 0.5,
+              .step = 0.01,
+          }),
+          field<&Options::lineHeight>({
+              .key = "line_height",
+              .minValue = 0.0,
+              .maxValue = 3.0,
+              .step = 0.05,
+          }),
       },
   };
   return definition;

@@ -44,7 +44,6 @@ namespace {
   }
 
   constexpr float kMinWidth = 48.0F;
-  constexpr float kCursorWidth = 1.25F;
   constexpr float kCursorPadV = 4.0F;
   constexpr float kCursorMinHeight = 14.0F;
   constexpr float kCursorHeightRatio = 0.50F;
@@ -607,6 +606,15 @@ void Input::setFrameRadius(float radius) {
   }
   m_frameRadius = clamped;
   applyVisualState();
+}
+
+void Input::setCaretSize(float width, float height) {
+  if (m_caretWidth == width && m_caretHeight == height) {
+    return;
+  }
+  m_caretWidth = width;
+  m_caretHeight = height;
+  markLayoutDirty();
 }
 
 void Input::setEnabled(bool enabled) {
@@ -1618,7 +1626,7 @@ void Input::applyVisualState() {
   auto cursorStyle = m_cursor->style();
   cursorStyle.fill = resolved(ColorRole::Primary);
   cursorStyle.fillMode = FillMode::Solid;
-  cursorStyle.radius = 1.0F;
+  cursorStyle.radius = Style::scaledRadius(1.0F);
   m_cursor->setStyle(cursorStyle);
 
   const bool showingPlaceholder = m_value.empty() && !m_placeholder.empty();
@@ -1706,7 +1714,7 @@ void Input::updateInteractiveGeometry() {
       stop = m_stopRect[stopIndexForByte(m_cursorPos)];
     }
     m_cursor->setPosition(stop.x, stop.y + kMultilinePadV - m_scrollOffsetY);
-    m_cursor->setFrameSize(kCursorWidth, std::max(1.0F, stop.height));
+    m_cursor->setFrameSize(m_caretWidth, std::max(1.0F, stop.height));
 
     m_selectionRect->setVisible(false);
     updateMultilineSelection();
@@ -1741,12 +1749,13 @@ void Input::updateInteractiveGeometry() {
 
   const float controlHeight = height() > 0.0F ? height() : m_controlHeight;
   const float maxCursorHeight = std::max(0.0F, controlHeight - kCursorPadV * 2.0F);
-  const float cursorHeight =
-      std::clamp(controlHeight * kCursorHeightRatio, std::min(kCursorMinHeight, maxCursorHeight), maxCursorHeight);
+  const float cursorHeight = m_caretHeight > 0.0F
+      ? std::min(m_caretHeight, controlHeight)
+      : std::clamp(controlHeight * kCursorHeightRatio, std::min(kCursorMinHeight, maxCursorHeight), maxCursorHeight);
   const float cursorY = std::round((controlHeight - cursorHeight) * 0.5F);
   const float cursorX = stopXForByte(m_cursorPos) - m_scrollOffset + m_contentLeadSlack;
   m_cursor->setPosition(cursorX, cursorY);
-  m_cursor->setFrameSize(kCursorWidth, cursorHeight);
+  m_cursor->setFrameSize(m_caretWidth, cursorHeight);
 
   if (hasSelection()) {
     const float selX0 = stopXForByte(selectionStart()) - m_scrollOffset + m_contentLeadSlack;
@@ -1776,7 +1785,7 @@ void Input::ensureCursorVisible() {
   const float slack = m_contentLeadSlack;
   const float cursorVx = cursorContentX - m_scrollOffset + slack;
   const float leftEdge = revealPad;
-  const float rightEdge = viewportWidth - revealPad - kCursorWidth;
+  const float rightEdge = viewportWidth - revealPad - m_caretWidth;
 
   if (cursorVx < leftEdge) {
     m_scrollOffset = cursorContentX + slack - leftEdge;
@@ -1793,7 +1802,7 @@ void Input::clampScrollOffset() {
     return;
   }
   const float textExtent = *std::ranges::max_element(m_stopX);
-  const float maxOffset = std::max(0.0F, textExtent - textViewportWidth() + kCursorWidth + kCursorRevealPadding);
+  const float maxOffset = std::max(0.0F, textExtent - textViewportWidth() + m_caretWidth + kCursorRevealPadding);
   m_scrollOffset = std::clamp(m_scrollOffset, 0.0F, maxOffset);
 }
 

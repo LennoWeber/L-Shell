@@ -1,9 +1,11 @@
 #include "config/design_presets.h"
 
 #include "config/config_service.h"
+#include "core/files/resource_paths.h"
 #include "core/log.h"
 
 #include <algorithm>
+#include <filesystem>
 
 namespace noctalia::config {
 
@@ -23,6 +25,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 300
+icon_fill = false
 font_family = "IBM Plex Sans"
 corner_radius_scale = 0.5
 
@@ -69,8 +74,12 @@ end = ["tray", "network", "bluetooth", "volume", "meridian_battery", "notificati
 
 [widget.meridian_workspaces]
 type = "workspaces"
-style = "minimal"
+style = "underline"
+count = 4
 font_family = "IBM Plex Mono"
+focused_color = "primary"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
 
 [widget.meridian_tasks]
 type = "taskbar"
@@ -112,6 +121,9 @@ shadow = false
 background = "0b0e13ff"
 )toml";
 
+    // Atelier: paper and ink. Linen ground, sheets a step lighter (never white), sand hairlines, warm soft shadows,
+    // ink blue for state. Fraunces for headings and numerals, DM Sans for the rest, apps as printed symbols on a
+    // floating shelf of tiles.
     constexpr std::string_view kAtelier = R"toml(
 [theme]
 source = "builtin"
@@ -120,42 +132,59 @@ mode = "light"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 400
+icon_fill = false
 font_family = "DM Sans"
+display_font_family = "Fraunces @SOFT=100"
 corner_radius_scale = 1.15
+app_icon_glyphs = true
 
 [shell.animation]
 speed = 0.9
 
 [shell.shadow]
-alpha = 0.18
+alpha = 0.16
+color = "#3c2e1a"
 
 [shell.panel]
 transparency_mode = "solid"
 shadow = true
+reveal = "lift"
 control_center_position = "top_right"
+launcher_position = "center"
+session_position = "center"
 
 [island]
 enabled = false
 
+[control_center]
+show_home_title = true
+
+# The shelf: a floating column of tiles on the left, the launcher first on an ink tile.
 [dock]
 enabled = true
 position = "left"
 auto_hide = false
 smart_auto_hide = false
 reserve_space = true
+item_style = "tile"
+launcher_separator = true
 icon_size = 40
 margin_edge = 16
-main_axis_padding = 10
-cross_axis_padding = 10
-item_spacing = 10
+main_axis_padding = 4
+cross_axis_padding = 4
+item_spacing = 0
 radius = 18
 radius_top_left = 18
 radius_top_right = 18
 radius_bottom_left = 18
 radius_bottom_right = 18
 background_opacity = 1.0
-border = "#e3dccd"
+border = "outline"
 magnification = false
+show_dots = true
+show_instance_count = false
 
 [notification]
 position = "bottom_right"
@@ -165,48 +194,80 @@ background_opacity = 1.0
 position = "bottom_right"
 background_opacity = 1.0
 
+# The header strip, laid in the desktop's own paper with a sand rule under it: the mark, the app and its document,
+# the workspaces in serif numerals; status, the controls in ink and the date with the time set bold.
 [bar.atelier]
 position = "top"
 thickness = 36
+background = "#eae3d4"
 background_opacity = 1.0
 compositor_blur = false
 padding = 18
 widget_spacing = 16
-start = ["logo", "atelier_app", "atelier_workspaces"]
-end = ["tray", "network", "bluetooth", "volume", "atelier_battery", "control-center", "atelier_clock"]
+start = ["atelier_mark", "atelier_app", "atelier_document", "atelier_workspaces"]
+end = ["tray", "network", "bluetooth", "volume", "atelier_battery", "atelier_controls", "atelier_date", "atelier_time"]
+
+[widget.atelier_mark]
+type = "session"
+custom_image = "@assets/branding/designs/atelier-mark.svg"
+custom_image_colorize = false
+scale = 1.4
 
 [widget.atelier_app]
 type = "active_window"
 display = "app_name"
-font_family = "Fraunces"
+font_family = "Fraunces @SOFT=100"
 font_weight = 600
+font_scale = 1.15
+
+[widget.atelier_document]
+type = "active_window"
+display = "text_only"
+max_length = 260
+color = "on_surface_variant"
 
 [widget.atelier_workspaces]
 type = "workspaces"
-style = "minimal"
-font_family = "Fraunces"
+style = "underline"
+count = 4
+font_family = "Fraunces @SOFT=100"
+focused_color = "primary"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant/0.55"
 
 [widget.atelier_battery]
 type = "battery"
 show_label = true
 
-[widget.atelier_clock]
+[widget.atelier_controls]
+type = "control-center"
+glyph = "adjustments-filled"
+color = "primary"
+
+[widget.atelier_date]
 type = "clock"
-format = "{:%A, %-d. %B  %H:%M}"
-font_family = "Fraunces"
+format = "{:%A, %-d. %B}"
+font_family = "Fraunces @SOFT=100"
+font_weight = 400
+
+[widget.atelier_time]
+type = "clock"
+format = "{:%H:%M}"
+font_family = "Fraunces @SOFT=100"
+font_weight = 700
 
 [design.windows]
 rounding = 14
 border_size = 1
-active_border = "2e4a7d88"
-inactive_border = "ddd6c8ff"
+active_border = "2e4a7d66"
+inactive_border = "d5cbb7ff"
 gaps_in = 6
 gaps_out = 14
 shadow = true
 shadow_range = 30
 shadow_offset = "0 10"
-shadow_color = "3c321e2e"
-background = "f3efe6ff"
+shadow_color = "3c2e1a29"
+background = "eae3d4ff"
 )toml";
 
     constexpr std::string_view kMonolith = R"toml(
@@ -217,20 +278,35 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "sharp"
+icon_weight = 300
+icon_fill = false
 font_family = "Space Grotesk"
 corner_radius_scale = 0.0
+app_icon_glyphs = true
 
 [shell.animation]
 speed = 1.4
 
+# Every panel is a sheet the rail's full height that slides out of it.
 [shell.panel]
 transparency_mode = "solid"
 shadow = false
+attached_full_length = true
 launcher_placement = "attached"
 control_center_placement = "attached"
+session_placement = "attached"
+clipboard_placement = "attached"
 
 [shell.launcher]
-style = "command"
+style = "sheet"
+recent_files = true
+
+[shell.session]
+menu = false
+grid = true
+grid_columns = 3
+hairline = true
 
 [island]
 enabled = false
@@ -239,61 +315,120 @@ enabled = false
 enabled = false
 
 [notification]
+style = "header"
 position = "top_right"
+width = 300
+offset_x = 16
+offset_y = 16
 background_opacity = 1.0
 
 [osd]
 position = "top_right"
 background_opacity = 1.0
 
+[lockscreen]
+clock_style = "corner"
+
+# The rail: one 60 px column on the left edge. Mark, workspaces and the running apps from the top; status, the
+# time and the date from the bottom. Spacers set the gaps exactly, two of them draw the rules.
 [bar.monolith]
 position = "left"
 thickness = 60
 background_opacity = 1.0
 compositor_blur = false
 padding = 14
-widget_spacing = 18
-start = ["monolith_mark", "monolith_workspaces", "monolith_tasks"]
-end = ["network", "volume", "monolith_battery", "monolith_clock"]
+widget_spacing = 22
+capsule_radius = 0
+start = ["monolith_mark", "monolith_workspaces", "monolith_rule_top", "monolith_tasks"]
+end = ["monolith_net", "monolith_gap_status", "monolith_vol", "monolith_gap_battery", "monolith_battery", "monolith_rule_bottom", "monolith_time", "monolith_gap_date", "monolith_date"]
 
 [widget.monolith_mark]
 type = "launcher"
-capsule = true
-capsule_radius = 0
-capsule_fill = "primary"
-capsule_foreground = "on_primary"
+custom_image = "@assets/branding/designs/monolith-mark.svg"
+custom_image_colorize = false
+scale = 1.875
 
 [widget.monolith_workspaces]
 type = "workspaces"
-show_labels = false
+style = "squares"
+count = 4
 focused_color = "primary"
 occupied_color = "on_surface"
-empty_color = "outline"
-capsule_radius = 0
-pill_scale = 0.6
-active_pill_size = 1.0
+empty_color = "#333333"
+
+[widget.monolith_rule_top]
+type = "spacer"
+length = 41
+rule_length = 24
 
 [widget.monolith_tasks]
 type = "taskbar"
+icon_scale = 1.375
+item_spacing = 15
+active_indicator = "edge"
 active_indicator_color = "primary"
+icon_color = "#BDBDBD"
+
+[widget.monolith_net]
+type = "network"
+scale = 1.25
+color = "#BDBDBD"
+
+[widget.monolith_gap_status]
+type = "spacer"
+length = 14
+
+[widget.monolith_vol]
+type = "volume"
+scale = 1.25
+color = "#BDBDBD"
+
+[widget.monolith_gap_battery]
+type = "spacer"
+length = 14
 
 [widget.monolith_battery]
 type = "battery"
 display_mode = "none"
 show_label = true
+color = "#BDBDBD"
+font_scale = 0.923
+font_weight = 500
 
-[widget.monolith_clock]
+[widget.monolith_rule_bottom]
+type = "spacer"
+length = 29
+rule_length = 24
+
+[widget.monolith_time]
 type = "clock"
+format = "{:%H %M}"
 vertical_format = "{:%H\n%M}"
+font_scale = 1.308
 font_weight = 700
+line_height = 1.06
+
+[widget.monolith_gap_date]
+type = "spacer"
+length = 6
+
+[widget.monolith_date]
+type = "clock"
+format = "{:%a %d}"
+vertical_format = "{:%a %d}"
+uppercase = true
+letter_spacing = 0.08
+font_scale = 0.77
+font_weight = 400
+color = "on_surface_variant"
 
 [design.windows]
 rounding = 0
 border_size = 1
-active_border = "c8ff2eff"
-inactive_border = "1f1f1fff"
-gaps_in = 4
-gaps_out = 12
+active_border = "262626ff"
+inactive_border = "1a1a1aff"
+gaps_in = 8
+gaps_out = 16
 shadow = false
 background = "000000ff"
 )toml";
@@ -306,6 +441,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 500
+icon_fill = true
 font_family = "Outfit"
 corner_radius_scale = 1.4
 
@@ -317,10 +455,7 @@ control_center_position = "top_right"
 launcher_position = "bottom_center"
 
 [island]
-enabled = true
-height = 24
-collapsed_width = 200
-click_action = "panel-toggle notification-center"
+enabled = false
 
 [dock]
 enabled = true
@@ -346,25 +481,76 @@ background_opacity = 0.82
 position = "top_center"
 background_opacity = 0.82
 
+# Three floating capsules on a see-through strip: brand, workspaces and app on the left, the time in the middle,
+# status on the right. Each capsule is a capsule group; the strip itself draws nothing.
 [bar.halo]
 position = "top"
 thickness = 34
-background_opacity = 0.72
+capsule_thickness = 1.0
+background_opacity = 0.0
 compositor_blur = true
 margin_edge = 10
 margin_ends = 12
+padding = 0
+widget_spacing = 12
+start = ["group:halo_left"]
+center = ["group:halo_center"]
+end = ["group:halo_right"]
+
+[[bar.halo.capsule_group]]
+id = "halo_left"
+members = ["halo_logo", "halo_workspaces", "halo_app"]
+fill = "#22254A"
+opacity = 0.72
+border = "#FFFFFF17"
+padding = 8
 radius = 17
-radius_top_left = 17
-radius_top_right = 17
-radius_bottom_left = 17
-radius_bottom_right = 17
-shadow = true
-padding = 12
-start = ["logo", "halo_workspaces", "app_name"]
-end = ["network", "bluetooth", "volume", "halo_battery", "control-center"]
+
+[[bar.halo.capsule_group]]
+id = "halo_center"
+members = ["halo_time", "halo_date"]
+fill = "primary"
+opacity = 0.22
+border = "primary/0.45"
+padding = 40
+radius = 17
+widget_spacing = 8
+
+[[bar.halo.capsule_group]]
+id = "halo_right"
+members = ["network", "bluetooth", "volume", "halo_battery", "control-center"]
+fill = "#22254A"
+opacity = 0.72
+border = "#FFFFFF17"
+padding = 14
+radius = 17
+
+[widget.halo_logo]
+type = "session"
+custom_image = "@assets/branding/designs/halo-mark.svg"
+custom_image_colorize = false
+scale = 1.3
+
+[widget.halo_app]
+type = "active_window"
+display = "app_name"
+max_length = 200
+min_length = 0
+
+[widget.halo_time]
+type = "clock"
+format = "{:%H:%M}"
+font_weight = 600
+
+[widget.halo_date]
+type = "clock"
+format = "{:%a %-d. %b}"
+color = "on_surface_variant"
+font_weight = 400
 
 [widget.halo_workspaces]
 type = "workspaces"
+count = 4
 show_labels = false
 pill_scale = 0.5
 active_pill_size = 3.0
@@ -398,6 +584,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 400
+icon_fill = false
 font_family = "Geist"
 corner_radius_scale = 1.0
 
@@ -439,10 +628,13 @@ end = ["tray", "network", "bluetooth", "volume", "strata_battery", "notification
 
 [widget.strata_workspaces]
 type = "workspaces"
+style = "box"
+count = 4
 font_family = "Geist Mono"
 focused_color = "primary"
-pill_scale = 0.8
-active_pill_size = 1.4
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
+capsule_radius = 5
 
 [widget.strata_tabs]
 type = "taskbar"
@@ -480,6 +672,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 400
+icon_fill = true
 font_family = "Plus Jakarta Sans"
 corner_radius_scale = 1.4
 
@@ -539,7 +734,12 @@ active_indicator_color = "primary"
 
 [widget.hearth_workspaces]
 type = "workspaces"
-focused_color = "primary"
+style = "box"
+count = 3
+focused_color = "primary/0.16"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
+capsule_radius = 8
 
 [widget.hearth_clock]
 type = "clock"
@@ -568,6 +768,9 @@ mode = "light"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 350
+icon_fill = false
 font_family = "Hanken Grotesk"
 corner_radius_scale = 1.15
 
@@ -626,9 +829,13 @@ font_weight = 700
 
 [widget.glacier_workspaces]
 type = "workspaces"
+style = "box"
+count = 3
 label_source = "name"
 max_label_chars = 8
-focused_color = "primary"
+focused_color = "primary/0.12"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
 capsule_radius = 6
 
 [widget.glacier_battery]
@@ -665,6 +872,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "sharp"
+icon_weight = 200
+icon_fill = false
 font_family = "Barlow Semi Condensed"
 corner_radius_scale = 0.15
 
@@ -715,9 +925,14 @@ font_weight = 600
 
 [widget.avionik_workspaces]
 type = "workspaces"
-style = "minimal"
+style = "box"
+count = 4
+two_digit_labels = true
 font_family = "JetBrains Mono"
 focused_color = "primary"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
+capsule_radius = 0
 
 [widget.avionik_app]
 type = "active_window"
@@ -784,6 +999,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 300
+icon_fill = false
 font_family = "Sora"
 corner_radius_scale = 1.0
 
@@ -876,6 +1094,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 200
+icon_fill = false
 font_family = "Zen Kaku Gothic New"
 corner_radius_scale = 0.5
 
@@ -896,10 +1117,6 @@ style = "command"
 enabled = false
 
 [dock]
-enabled = false
-
-# Ink on a dark ground: Ma has no wallpaper, the compositor's background colour shows.
-[wallpaper]
 enabled = false
 
 [notification]
@@ -984,6 +1201,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 400
+icon_fill = true
 font_family = "Inter Variable"
 corner_radius_scale = 1.6
 
@@ -1083,6 +1303,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 300
+icon_fill = false
 font_family = "Open Sans"
 corner_radius_scale = 0.6
 
@@ -1172,6 +1395,9 @@ mode = "dark"
 accent = "palette"
 
 [shell]
+icon_style = "rounded"
+icon_weight = 350
+icon_fill = false
 font_family = "Manrope"
 corner_radius_scale = 1.1
 
@@ -1246,7 +1472,12 @@ end = ["notifications"]
 
 [widget.bruecke_workspaces]
 type = "workspaces"
-focused_color = "primary"
+style = "box"
+count = 3
+focused_color = "primary/0.22"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
+capsule_radius = 8
 
 [widget.bruecke_start]
 type = "launcher"
@@ -1294,6 +1525,9 @@ mode = "light"
 accent = "palette"
 
 [shell]
+icon_style = "outlined"
+icon_weight = 400
+icon_fill = false
 font_family = "Atkinson Hyperlegible Next"
 corner_radius_scale = 0.33
 
@@ -1319,9 +1553,6 @@ enabled = false
 [dock]
 enabled = false
 
-[wallpaper]
-enabled = false
-
 [notification]
 position = "bottom_right"
 background_opacity = 1.0
@@ -1343,8 +1574,13 @@ end = ["kontor_net", "kontor_bat", "notifications", "kontor_clock"]
 
 [widget.kontor_workspaces]
 type = "workspaces"
-style = "minimal"
+style = "box"
+count = 3
 font_family = "Atkinson Hyperlegible Mono"
+focused_color = "on_surface"
+occupied_color = "on_surface_variant"
+empty_color = "on_surface_variant"
+capsule_radius = 0
 
 [widget.kontor_tasks]
 type = "taskbar"
@@ -1378,6 +1614,286 @@ shadow = false
 background = "e9e9e7ff"
 )toml";
 
+    // Band: the desk as an instrument. Gruvbox-toned graphite, muted accents, one floating strip that carries
+    // state (workspaces, focused app, live metrics) and morphs through the island instead of scattering OSDs.
+    // The empty workspace becomes the home dashboard (clock, calendar, media, live graphs); the session is one
+    // row of large tiles with the power actions first. IBM Plex Sans for people, IBM Plex Mono for numbers.
+    // Band: a modern desktop. Cool midnight graphite, one restrained azure accent, glass surfaces that
+    // the compositor blurs (menu bar, dock, panels, banners, OSD), fast composed motion, and modal menus
+    // that open centered over a dimmed, blurred desktop. Geist for people, Geist Mono for numbers.
+    constexpr std::string_view kBand = R"toml(
+[theme]
+source = "builtin"
+builtin = "Band"
+mode = "dark"
+accent = "palette"
+
+[shell]
+icon_style = "rounded"
+icon_weight = 400
+icon_fill = false
+font_family = "Geist"
+corner_radius_scale = 1.15
+
+# Fast and composed: everything settles about a third quicker than the default.
+[shell.animation]
+speed = 1.4
+
+[shell.panel]
+transparency_mode = "glass"
+glass_opacity = 0.86
+shadow = true
+# Modal menus: centered, large, over a dimmed and blurred desktop. A click on the veil closes them.
+scrim = true
+launcher_position = "center"
+control_center_position = "center"
+session_position = "center"
+clipboard_position = "center"
+list_item_background = true
+
+# The launcher as a modern spotlight: a capsule field, results grouped under headers.
+[shell.launcher]
+style = "spotlight"
+
+# One wide board of modules, centered like every modal surface.
+[control_center]
+width = 800
+sidebar = "none"
+
+[[control_center.shortcuts]]
+type = "wifi"
+
+[[control_center.shortcuts]]
+type = "bluetooth"
+
+[[control_center.shortcuts]]
+type = "nightlight"
+
+[[control_center.shortcuts]]
+type = "notification"
+
+[[control_center.shortcuts]]
+type = "screen_recorder"
+
+[[control_center.shortcuts]]
+type = "session"
+
+# One row of large tiles, power first: 1 shuts down, 2 restarts, 3-5 are quiet actions.
+[shell.session]
+grid = true
+hairline = true
+grid_columns = 5
+
+[[shell.session.actions]]
+action = "shutdown"
+shortcut = "1"
+
+[[shell.session.actions]]
+action = "reboot"
+shortcut = "2"
+
+[[shell.session.actions]]
+action = "lock"
+shortcut = "3"
+
+[[shell.session.actions]]
+action = "lock_and_suspend"
+shortcut = "4"
+
+[[shell.session.actions]]
+action = "logout"
+shortcut = "5"
+
+# No island: the bar is a plain glass menu bar; events come as a small centered OSD card under it.
+[island]
+enabled = false
+
+# A floating glass dock: apps as icons, gently magnified, stepping aside while windows work.
+[dock]
+enabled = true
+position = "bottom"
+icon_size = 44
+margin_edge = 12
+radius = 20
+radius_top_left = 20
+radius_top_right = 20
+radius_bottom_left = 20
+radius_bottom_right = 20
+background_opacity = 0.78
+border = "#ffffff1e"
+border_width = 1.0
+shadow = true
+smart_auto_hide = true
+magnification = true
+magnification_scale = 1.10
+
+# Modern banners: glass cards at the top right.
+[notification]
+position = "top_right"
+background_opacity = 0.86
+
+# Volume, brightness and friends: one small glass card under the bar's center, not the whole strip.
+[osd]
+position = "top_center"
+background_opacity = 0.86
+
+# The menu bar: a full-width glass strip. Left: mark, workspaces, focused app. Right: two live metrics
+# in mono, then status and the clock. Hairlines and blur come with the surface.
+[bar]
+order = ["band"]
+
+[bar.band]
+position = "top"
+thickness = 30
+background_opacity = 0.78
+compositor_blur = true
+padding = 12
+widget_spacing = 10
+start = ["band_logo", "band_workspaces", "band_app"]
+end = ["band_cpu", "band_ram", "tray", "network", "band_volume", "band_battery", "band_clock"]
+
+[widget.band_logo]
+type = "session"
+custom_image = "@assets/branding/designs/band-mark.svg"
+custom_image_colorize = false
+scale = 1.2
+
+[widget.band_workspaces]
+type = "workspaces"
+style = "box"
+focused_color = "primary"
+occupied_color = "on_surface"
+empty_color = "on_surface_variant"
+
+[widget.band_app]
+type = "active_window"
+display = "app_name"
+max_length = 160
+min_length = 0
+
+[widget.band_cpu]
+type = "sysmon"
+stat = "cpu_usage"
+visualization = "none"
+show_glyph = false
+font_family = "Geist Mono"
+
+[widget.band_ram]
+type = "sysmon"
+stat = "ram_used"
+visualization = "none"
+show_glyph = false
+font_family = "Geist Mono"
+
+[widget.band_volume]
+type = "volume"
+device = "output"
+show_label = false
+
+[widget.band_battery]
+type = "battery"
+display_mode = "none"
+show_label = true
+font_family = "Geist Mono"
+
+[widget.band_clock]
+type = "clock"
+format = "{:%H:%M}"
+font_family = "Geist Mono"
+font_weight = 500
+
+# The home dashboard: the desktop widgets only appear on an empty workspace.
+[desktop_widgets]
+enabled = true
+visibility = "home"
+widget_order = ["band_date", "band_clock", "band_cpu_graph", "band_ram_graph", "band_calendar", "band_media"]
+
+[desktop_widgets.widget.band_date]
+type = "clock"
+cx = 960.0
+cy = 320.0
+scale = 1.0
+rotation = 0.0
+
+[desktop_widgets.widget.band_date.settings]
+format = "{:%A, %d. %B}"
+shadow = false
+circle = false
+background = false
+
+[desktop_widgets.widget.band_clock]
+type = "clock"
+cx = 960.0
+cy = 430.0
+scale = 2.4
+rotation = 0.0
+
+[desktop_widgets.widget.band_clock.settings]
+format = "{:%H:%M}"
+shadow = false
+circle = false
+background = false
+
+[desktop_widgets.widget.band_cpu_graph]
+type = "sysmon"
+cx = 560.0
+cy = 640.0
+scale = 1.0
+rotation = 0.0
+
+[desktop_widgets.widget.band_cpu_graph.settings]
+stat = "cpu_usage"
+display = "graph"
+background = true
+background_opacity = 0.85
+
+[desktop_widgets.widget.band_ram_graph]
+type = "sysmon"
+cx = 960.0
+cy = 640.0
+scale = 1.0
+rotation = 0.0
+
+[desktop_widgets.widget.band_ram_graph.settings]
+stat = "ram_pct"
+display = "graph"
+background = true
+background_opacity = 0.85
+
+[desktop_widgets.widget.band_calendar]
+type = "calendar"
+cx = 1560.0
+cy = 360.0
+scale = 1.0
+rotation = 0.0
+
+[desktop_widgets.widget.band_calendar.settings]
+show_events = true
+background_opacity = 0.85
+
+[desktop_widgets.widget.band_media]
+type = "media_player"
+cx = 360.0
+cy = 360.0
+scale = 1.0
+rotation = 0.0
+
+[desktop_widgets.widget.band_media.settings]
+hide_when_no_media = true
+background_opacity = 0.85
+
+# Windows: soft rounding, a whisper of azure on the focused one, generous gaps.
+[design.windows]
+rounding = 12
+border_size = 1
+active_border = "6aa9e866"
+inactive_border = "ffffff10"
+gaps_in = 8
+gaps_out = 14
+shadow = true
+background = "0f1013ff"
+)toml";
+
     constexpr std::array kPresets{
         DesignPreset{
             .id = "slate",
@@ -1394,7 +1910,7 @@ background = "e9e9e7ff"
         DesignPreset{
             .id = "atelier",
             .name = "Atelier",
-            .swatches = {0xf3efe6, 0xfbf9f4, 0x22201c, 0x2e4a7d},
+            .swatches = {0xeae3d4, 0xf2ecdf, 0x2b2721, 0x2e4a7d},
             .toml = kAtelier,
         },
         DesignPreset{
@@ -1469,6 +1985,12 @@ background = "e9e9e7ff"
             .swatches = {0xe9e9e7, 0xffffff, 0x1f1f1f, 0x646464},
             .toml = kKontor,
         },
+        DesignPreset{
+            .id = "band",
+            .name = "Band",
+            .swatches = {0x0f1013, 0x17181c, 0xe8e9ec, 0x6aa9e8},
+            .toml = kBand,
+        },
     };
 
   } // namespace
@@ -1498,6 +2020,26 @@ background = "e9e9e7ff"
     }
   }
 
+  namespace {
+    // Preset layers name bundled files as "@assets/<path>"; resolve them against the installed asset root.
+    void resolveAssetPaths(toml::node& node) {
+      if (auto* table = node.as_table(); table != nullptr) {
+        for (auto&& [key, value] : *table) {
+          resolveAssetPaths(value);
+        }
+      } else if (auto* array = node.as_array(); array != nullptr) {
+        for (auto& value : *array) {
+          resolveAssetPaths(value);
+        }
+      } else if (auto* text = node.as_string(); text != nullptr) {
+        constexpr std::string_view kPrefix = "@assets/";
+        if (std::string_view(text->get()).starts_with(kPrefix)) {
+          *text = paths::assetPath(std::string_view(text->get()).substr(kPrefix.size())).string();
+        }
+      }
+    }
+  } // namespace
+
   void applyDesignLayer(toml::table& merged, bool userDefinesBars) {
     std::string id = "slate";
     if (const toml::table* design = merged["design"].as_table(); design != nullptr) {
@@ -1505,12 +2047,28 @@ background = "e9e9e7ff"
         id = *value;
       }
     }
-    toml::table layer = designPresetTable(id);
-    if (layer.empty()) {
+    if (findDesignPreset(id) == nullptr) {
       return;
     }
+    toml::table layer = designPresetTable(id);
     if (userDefinesBars) {
       layer.erase("bar");
+    }
+    resolveAssetPaths(layer);
+    // Every design ships the backdrop of its mockup (assets/wallpapers/designs/<id>.png); a wallpaper the user
+    // picks afterwards is an override and wins until the next design switch.
+    const auto wallpaper = paths::assetPath("wallpapers/designs/" + id + ".png");
+    if (std::error_code ec; std::filesystem::exists(wallpaper, ec)) {
+      toml::table defaultWallpaper;
+      defaultWallpaper.insert("path", wallpaper.string());
+      toml::table wallpaperTable;
+      wallpaperTable.insert("default", std::move(defaultWallpaper));
+      toml::table wallpaperLayer;
+      wallpaperLayer.insert("wallpaper", std::move(wallpaperTable));
+      ConfigService::deepMerge(layer, wallpaperLayer);
+    }
+    if (layer.empty()) {
+      return;
     }
     ConfigService::deepMerge(layer, merged);
     merged = std::move(layer);

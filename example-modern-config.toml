@@ -1,0 +1,421 @@
+# L-Shell Modern Configuration
+# Ultra-modern, professional design for Fedora + Hyprland
+# Part of the complete redesign 2026
+
+# ============================================================================
+# Global Settings
+# ============================================================================
+
+[core]
+# Enable the new modern design system
+enable_modern_design = true
+
+# Theme settings
+theme = "modern-dark"
+accent_color = "#6366F1"  # Indigo
+secondary_accent = "#8B5CF6"  # Violet
+tertiary_accent = "#EC4899"  # Pink
+
+# ============================================================================
+# Modern Bar Configuration
+# ============================================================================
+
+[bar.main]
+type = "modern"
+position = "bottom"
+size = "md"  # xs, sm, md, lg, xl
+height = 48
+
+# Visual appearance
+transparent = true
+opacity = 0.90
+blur_radius = 8
+background_color = ""
+
+# Layout
+padding_x = "md"  # xs, sm, md, lg, xl
+padding_y = "sm"
+widget_spacing = "sm"
+
+# Behavior
+auto_hide = false
+hide_on_fullscreen = true
+exclusive_zone = true
+
+# ============================================================================
+# Widget Configuration
+# ============================================================================
+
+# Left section widgets (Start)
+[[bar.main.widgets]]
+type = "launcher"
+name = "app_launcher"
+position = "start"
+icon = "view-grid-symbolic"
+
+[[bar.main.widgets]]
+type = "workspaces"
+name = "workspace_switcher"
+position = "app_launcher"
+show_numbers = true
+show_names = false
+
+# Center section widgets (Windows)
+[[bar.main.widgets]]
+type = "active_window"
+name = "active_window"
+position = "windows"
+max_width = 300
+show_icon = true
+show_class = false
+
+# Right section widgets (Widgets)
+[[bar.main.widgets]]
+type = "clock"
+name = "clock"
+position = "widgets"
+format = "%H:%M:%S"
+show_date = false
+show_seconds = true
+
+[[bar.main.widgets]]
+type = "notification"
+name = "notifications"
+position = "widgets"
+show_icon = true
+show_count = true
+
+[[bar.main.widgets]]
+type = "media"
+name = "media_player"
+position = "widgets"
+show_title = true
+show_artist = true
+
+[[bar.main.widgets]]
+type = "volume"
+name = "volume"
+position = "widgets"
+show_icon = true
+show_percentage = true
+
+[[bar.main.widgets]]
+type = "brightness"
+name = "brightness"
+position = "widgets"
+show_icon = true
+show_percentage = true
+
+[[bar.main.widgets]]
+type = "battery"
+name = "battery"
+position = "widgets"
+show_icon = true
+show_percentage = true
+show_remaining_time = true
+
+[[bar.main.widgets]]
+type = "network"
+name = "network"
+position = "widgets"
+show_icon = true
+show_ssid = true
+
+[[bar.main.widgets]]
+type = "bluetooth"
+name = "bluetooth"
+position = "widgets"
+show_icon = true
+show_powered = true
+
+# System section widgets (Far right)
+[[bar.main.widgets]]
+type = "tray"
+name = "system_tray"
+position = "system"
+icon_size = 16
+
+[[bar.main.widgets]]
+type = "controlcenter"
+name = "control_center"
+position = "system"
+show_icon = true
+
+[[bar.main.widgets]]
+type = "powerprofile"
+name = "power_profile"
+position = "system"
+show_icon = true
+
+[[bar.main.widgets]]
+type = "keyboardlayout"
+name = "keyboard_layout"
+position = "system"
+show_icon = true
+show_name = true
+
+# ============================================================================
+# New Extended Widgets
+# ============================================================================
+
+# System Monitoring Widgets
+[[bar.main.widgets]]
+type = "cpu_monitor"
+name = "cpu_monitor"
+position = "widgets"
+show_icon = true
+show_usage = true
+update_interval = 1000
+
+[[bar.main.widgets]]
+type = "ram_monitor"
+name = "ram_monitor"
+position = "widgets"
+show_icon = true
+show_usage = true
+update_interval = 1000
+
+[[bar.main.widgets]]
+type = "gpu_monitor"
+name = "gpu_monitor"
+position = "widgets"
+show_icon = true
+show_usage = true
+show_temperature = true
+update_interval = 1000
+
+# Productivity Widgets
+[[bar.main.widgets]]
+type = "pomodoro"
+name = "pomodoro"
+position = "widgets"
+show_icon = true
+show_timer = true
+
+[[bar.main.widgets]]
+type = "quick_notes"
+name = "quick_notes"
+position = "widgets"
+show_icon = true
+show_preview = false
+
+[[bar.main.widgets]]
+type = "task_list"
+name = "task_list"
+position = "widgets"
+show_icon = true
+show_count = true
+
+# Calendar & Time
+[[bar.main.widgets]]
+type = "calendar"
+name = "calendar"
+position = "widgets"
+show_icon = true
+show_date = true
+show_day = false
+
+[[bar.main.widgets]]
+type = "alarm"
+name = "alarm"
+position = "widgets"
+show_icon = true
+show_next_alarm = true
+
+# ============================================================================
+# Control Center Settings
+# ============================================================================
+
+[control_center]
+# Enable the new modern control center
+enabled = true
+
+# Window settings
+width = 800
+height = 600
+resizable = true
+deformations = true
+
+# Opacity and blur
+opacity = 0.95
+blur_radius = 12
+
+# Theme
+background = "background_primary"
+corner_radius = 16
+
+# Tabs configuration
+[control_center.tabs]
+system = true
+network = true
+audio = true
+power = true
+display = true
+
+# ============================================================================
+# Design System Settings
+# ============================================================================
+
+[design]
+# Color palette
+primary = "#FFFFFF"
+secondary = "#B0B0B0"
+tertiary = "#808080"
+
+background_primary = "#1A1A1A"
+background_secondary = "#252525"
+background_tertiary = "#303030"
+
+surface_primary = "#252525"
+surface_secondary = "#303030"
+
+accent_primary = "#6366F1"
+accent_secondary = "#8B5CF6"
+accent_tertiary = "#EC4899"
+
+# Status colors
+success = "#10B981"
+warning = "#F59E0B"
+error = "#EF4444"
+info = "#3B82F6"
+
+# ============================================================================
+# Typography Settings
+# ============================================================================
+
+[typography]
+font_family_primary = "Inter"
+font_family_secondary = "Roboto"
+font_family_mono = "JetBrains Mono"
+
+# Font sizes
+font_size_xs = 10
+font_size_sm = 12
+font_size_md = 14
+font_size_lg = 16
+font_size_xl = 18
+font_size_2xl = 20
+
+# Font weights
+font_weight_normal = 400
+font_weight_medium = 500
+font_weight_semibold = 600
+font_weight_bold = 700
+
+# ============================================================================
+# Spacing Settings
+# ============================================================================
+
+[spacing]
+space_xs = 4
+space_sm = 8
+space_md = 16
+space_lg = 24
+space_xl = 32
+space_2xl = 48
+
+# ============================================================================
+# Animation Settings
+# ============================================================================
+
+[animations]
+enabled = true
+duration_fast = 100
+duration_normal = 200
+duration_slow = 300
+
+easing_default = "ease_out_quad"
+easing_enter = "ease_out_back"
+easing_exit = "ease_in_back"
+
+# ============================================================================
+# Hyprland Integration
+# ============================================================================
+
+[hyprland]
+# Enable Hyprland-specific features
+enable_integration = true
+
+# Window rules
+border_size = 2
+border_color_active = "#6366F1"
+border_color_inactive = "#303030"
+
+# Animations
+window_animation = true
+border_animation = true
+
+# ============================================================================
+# Keybindings for Control Center
+# ============================================================================
+
+[keybinds]
+# Open Control Center
+"SUPER, period" = "control_center:toggle"
+"SUPER, comma" = "control_center:toggle"
+
+# Open specific tabs
+"SUPER, 1" = "control_center:tab_system"
+"SUPER, 2" = "control_center:tab_network"
+"SUPER, 3" = "control_center:tab_audio"
+"SUPER, 4" = "control_center:tab_display"
+"SUPER, 5" = "control_center:tab_power"
+
+# ============================================================================
+# Widget Keybindings
+# ============================================================================
+
+[widget_keybinds]
+# Volume control
+"SUPER, UP" = "volume:increase"
+"SUPER, DOWN" = "volume:decrease"
+"SUPER, M" = "volume:toggle_mute"
+
+# Brightness control
+"SUPER, PAGE_UP" = "brightness:increase"
+"SUPER, PAGE_DOWN" = "brightness:decrease"
+
+# Media control
+"SUPER, SPACE" = "media:play_pause"
+"SUPER, LEFT" = "media:previous"
+"SUPER, RIGHT" = "media:next"
+
+# ============================================================================
+# Notifications
+# ============================================================================
+
+[notifications]
+position = "top_right"
+width = 360
+max_notifications = 5
+show_urgent_only = false
+timeout_normal = 5000
+timeout_urgent = 10000
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+
+[performance]
+# Enable hardware acceleration
+hardware_acceleration = true
+
+# VSYNC
+vsync = true
+
+# FPS limit
+fps_limit = 60
+
+# ============================================================================
+# Debug Settings
+# ============================================================================
+
+[debug]
+# Enable debug logging
+debug_logging = false
+
+# Show FPS counter
+show_fps = false
+
+# Show widget borders (for debugging layout)
+show_widget_borders = false

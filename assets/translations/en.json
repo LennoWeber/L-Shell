@@ -318,7 +318,8 @@
       "do-not-disturb": "Do Not Disturb",
       "display": "Display",
       "sound": "Sound",
-      "vpn": "VPN"
+      "vpn": "VPN",
+      "heading": "Controls"
     },
     "media": {
       "active-player": "Active player",
@@ -727,6 +728,12 @@
     }
   },
   "launcher": {
+    "age": {
+      "days": "{count} d",
+      "hours": "{count} h",
+      "minutes": "{count} min",
+      "now": "now"
+    },
     "categories": {
       "all": "All",
       "applications": {
@@ -799,6 +806,9 @@
         },
         "title": "Panels"
       },
+      "recent": {
+        "title": "Recent"
+      },
       "session": {
         "action-subtitle": "Run session action",
         "command-subtitle": "Run configured command",
@@ -817,6 +827,7 @@
     },
     "search-placeholder": "Spotlight Search",
     "sections": {
+      "apps": "Apps",
       "top-hit": "Top Hit"
     },
     "footer": {
@@ -828,6 +839,10 @@
       "close": "Close"
     },
     "command-placeholder": "Search apps, settings and commands…",
+    "sheet": {
+      "enter": "Enter"
+    },
+    "sheet-placeholder": "Search",
     "tags": {
       "applications": "Application",
       "calculator": "Calculator",
@@ -946,6 +961,9 @@
       "session-bus-unavailable": "Session bus unavailable",
       "wallpaper-palette-export": "Custom Palette",
       "wallpaper-palette-export-success": "Saved \"{name}\" and switched palette source to custom."
+    },
+    "toast": {
+      "now": "Now"
     }
   },
   "osd": {
@@ -1045,7 +1063,15 @@
     "errors": {
       "lock-body": "The session lock protocol is not available.",
       "lock-title": "Lock unavailable"
-    }
+    },
+    "short-actions": {
+      "lock": "Lock",
+      "logout": "Log Out",
+      "reboot": "Restart",
+      "shutdown": "Off",
+      "sleep": "Sleep"
+    },
+    "title": "Session"
   },
   "settings": {
     "actions": {
@@ -1549,6 +1575,10 @@
         "top": "Top"
       },
       "lockscreen": {
+        "clock-style": {
+          "centered": "Centered",
+          "corner": "Corner"
+        },
         "transition": {
           "disc": "Disc",
           "fade": "Fade",
@@ -1556,6 +1586,12 @@
           "stripes": "Stripes",
           "wipe": "Wipe",
           "zoom": "Zoom"
+        }
+      },
+      "notification": {
+        "style": {
+          "banner": "Banner",
+          "header": "Header"
         }
       },
       "notification-urgency": {
@@ -1594,6 +1630,17 @@
         "top-right": "Top Right"
       },
       "shell": {
+        "icon-style": {
+          "tabler": "Tabler",
+          "outlined": "Material Outlined",
+          "rounded": "Material Rounded",
+          "sharp": "Material Sharp"
+        },
+        "launcher-style": {
+          "command": "Command Bar",
+          "sheet": "Sheet",
+          "spotlight": "Spotlight"
+        },
         "panel-placement": {
           "attached": "Attached",
           "floating": "Floating"
@@ -1624,9 +1671,9 @@
           "compact": "Compact",
           "grid": "Grid (Mission Control)"
         },
-        "launcher-style": {
-          "command": "Command Bar",
-          "spotlight": "Spotlight"
+        "panel-reveal": {
+          "grow": "Grow",
+          "lift": "Lift"
         }
       },
       "theme": {
@@ -1693,6 +1740,10 @@
           "slate": "Slate",
           "ink": "Ink"
         }
+      },
+      "dock-item-style": {
+        "icon": "Icons",
+        "tile": "Tiles"
       }
     },
     "plugins": {
@@ -1830,6 +1881,10 @@
           "description": "Recolor application icons across the shell to match the active palette",
           "label": "Colorize App Icons"
         },
+        "app-icon-glyphs": {
+          "description": "Draw apps in the launcher and the taskbar as monochrome symbols of their category instead of their own icons",
+          "label": "Apps as Symbols"
+        },
         "builtin-palette": {
           "description": "Choose a palette from the bundled catalog",
           "label": "Built-In Palette"
@@ -1922,6 +1977,10 @@
         "design": {
           "label": "Design",
           "description": "The whole desktop: layout, colours, typeface and window look. Also under Super+Alt+D."
+        },
+        "display-font-family": {
+          "label": "Display Font",
+          "description": "Typeface for headings, notification titles, the lock screen clock and the launcher search; empty uses the interface font"
         }
       },
       "backdrop": {
@@ -2296,6 +2355,14 @@
         "show-running": {
           "description": "Show running applications that are not pinned",
           "label": "Show Running"
+        },
+        "item-style": {
+          "label": "Item Style",
+          "description": "Show the app icons themselves, or each app on a rounded tile with the launcher on an accent tile"
+        },
+        "launcher-separator": {
+          "label": "Launcher Separator",
+          "description": "Draw a thin line between the launcher button and the apps"
         }
       },
       "hooks": {
@@ -2444,6 +2511,10 @@
           "description": "Use a snapshot of the desktop as the lock screen background",
           "label": "Desktop Capture"
         },
+        "clock-style": {
+          "description": "Centered: the date over a large time at the top. Corner: a huge time in the bottom-left corner under the date",
+          "label": "Clock"
+        },
         "edge-smoothness": {
           "description": "Feathering of the lock screen transition edges",
           "label": "Transition Edge Smoothness"
@@ -2579,6 +2650,10 @@
           "description": "Show the sending application's name in notification toasts",
           "label": "Show App Name"
         },
+        "style": {
+          "description": "Banner: the app's icon beside the text. Header: a line naming the app above the text, the actions as cells divided by thin lines",
+          "label": "Style"
+        },
         "toast-opacity": {
           "description": "Background opacity of notification toasts",
           "label": "Background Opacity"
@@ -2589,6 +2664,10 @@
         }
       },
       "panels": {
+        "attached-full-length": {
+          "description": "Attached panels run the whole length of their bar, as sheets that slide out of it, instead of fitting their content",
+          "label": "Full-Length Attached Panels"
+        },
         "borders": {
           "description": "Draw an outline on floating panels",
           "label": "Borders"
@@ -2733,6 +2812,10 @@
           "description": "Trigger prefix for window search",
           "label": "Windows Prefix"
         },
+        "launcher-recent-files": {
+          "description": "Find recently used files in the launcher, and list them in the empty sheet",
+          "label": "Recent Files"
+        },
         "launcher-reset-usage": {
           "button": "Reset",
           "description": "Clear launch counts and recently used history used for launcher sorting",
@@ -2840,12 +2923,20 @@
         "launcher-style": {
           "label": "Style",
           "description": "Command Bar is compact and square-cut with one-line results; Spotlight is the macOS original"
+        },
+        "reveal": {
+          "label": "Opening Animation",
+          "description": "Floating panels grow slightly from where they came from, or lift a few pixels into place as they fade in"
         }
       },
       "power": {
         "session-actions": {
           "description": "Session panel entries, order, custom commands, and icons",
           "label": "Entries"
+        },
+        "session-hairline": {
+          "description": "Draw the grid as tiles divided by thin lines, each with its symbol over a short name, at the foot of the panel",
+          "label": "Hairline Tiles"
         },
         "session-menu": {
           "description": "A compact list like the Apple menu instead of large buttons",
@@ -4221,12 +4312,15 @@
         "value": "Value"
       },
       "options": {
+        "active-indicator-dot": "Dot under the app",
+        "active-indicator-edge": "Bar at the screen edge",
         "after": "After",
         "always": "Always",
         "app-name": "App Name",
         "auto": "Auto",
         "before": "Before",
         "both": "Both",
+        "box": "Box",
         "compact": "Compact",
         "count": "Count",
         "cpu-freq": "CPU Freq",
@@ -4273,10 +4367,12 @@
         "scroll-steps": "Every Step",
         "shared": "Shared",
         "short": "Short",
+        "squares": "Squares",
         "swap-percent": "Swap %",
         "text": "Text",
         "text-only": "Text Only",
         "time": "Time",
+        "underline": "Underline",
         "workspace-label-centered": "Centered",
         "workspace-label-corner": "Corner",
         "workspace-label-inside": "Inside Pill"
@@ -4289,6 +4385,10 @@
         "active-color": {
           "description": "Color used for active privacy indicators; fixed hex colors are also supported",
           "label": "Active Color"
+        },
+        "active-indicator": {
+          "description": "How the focused app is marked",
+          "label": "Active Indicator"
         },
         "active-indicator-color": {
           "description": "Color of the indicator below the active window icon",
@@ -4634,6 +4734,14 @@
           "description": "Spacer length in pixels",
           "label": "Length"
         },
+        "letter-spacing": {
+          "description": "Extra space between letters, as a fraction of the font size",
+          "label": "Letter Spacing"
+        },
+        "line-height": {
+          "description": "Distance between stacked lines as a multiple of the font size (0 = the font's own)",
+          "label": "Line Height"
+        },
         "match-adjacent-spacing": {
           "description": "Widen gaps between inline tray icons to match the visual spacing of neighboring bar widgets (includes capsule padding)",
           "label": "Match Adjacent Widget Spacing"
@@ -4714,6 +4822,10 @@
         "rotate-album-art": {
           "description": "Rotate the circular album artwork while media is playing",
           "label": "Rotate Album Art"
+        },
+        "rule-length": {
+          "description": "Draw a thin line across the bar in the middle of the gap, this many pixels long (0 = no line)",
+          "label": "Rule Length"
         },
         "scale": {
           "description": "Scale this widget relative to the bar content scale",
@@ -4856,6 +4968,10 @@
           "description": "Built-in widget type for this named widget",
           "label": "Type"
         },
+        "uppercase": {
+          "description": "Set the text in capital letters",
+          "label": "Capitals"
+        },
         "urgent-color": {
           "description": "Color role used for urgent workspaces; fixed hex colors are also supported",
           "label": "Urgent Color"
@@ -4895,6 +5011,17 @@
         "workspace-label-placement": {
           "description": "Corner, centered on the edge, or inside the pill",
           "label": "Workspace Label Placement"
+        },
+        "count": {
+          "label": "Always Show",
+          "workspaces-description": "List workspaces 1 to this number even when they are empty (0 = only workspaces in use)"
+        },
+        "two-digit-labels": {
+          "label": "Two-Digit Numbers"
+        },
+        "dock-pins": {
+          "label": "Dock Pins",
+          "taskbar-description": "Show the apps pinned to the dock, and pin to it, when this taskbar has no pinned list of its own"
         }
       },
       "types": {

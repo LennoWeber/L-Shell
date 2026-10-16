@@ -153,6 +153,10 @@ namespace shell::dock {
       if (a.items[i].startupWmClassLower != b.items[i].startupWmClassLower) {
         return false;
       }
+      // A pinned app resolved after startup replaces its placeholder entry under the same id: redraw its icon.
+      if (a.items[i].entry.icon != b.items[i].entry.icon || a.items[i].entry.categories != b.items[i].entry.categories) {
+        return false;
+      }
     }
     return true;
   }

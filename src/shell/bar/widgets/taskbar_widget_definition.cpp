@@ -50,6 +50,23 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                       .key = "show_active_indicator",
                       .presentation = presentation("taskbar.windows"),
                   }),
+                  field<&Options::activeIndicator>({
+                      .key = "active_indicator",
+                      .choices =
+                          {
+                              {
+                                  .value = TaskbarActiveIndicator::Dot,
+                                  .configValue = "dot",
+                                  .labelKey = "settings.widgets.options.active-indicator-dot",
+                              },
+                              {
+                                  .value = TaskbarActiveIndicator::Edge,
+                                  .configValue = "edge",
+                                  .labelKey = "settings.widgets.options.active-indicator-edge",
+                              },
+                          },
+                      .presentation = presentation("taskbar.windows", matches("show_active_indicator", {"true"})),
+                  }),
                   field<&Options::activeIndicatorColor>({
                       .key = "active_indicator_color",
                       .presentation = presentation("taskbar.windows", matches("show_active_indicator", {"true"})),
@@ -88,6 +105,13 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                           "taskbar.windows", matches("group_by_workspace", {"false"}), false,
                           "settings.widgets.settings.pinned.taskbar-description",
                           "settings.widgets.settings.pinned.taskbar-label"
+                      ),
+                  }),
+                  field<&Options::dockPins>({
+                      .key = "dock_pins",
+                      .presentation = presentation(
+                          "taskbar.windows", matches("group_by_workspace", {"false"}), false,
+                          "settings.widgets.settings.dock-pins.taskbar-description"
                       ),
                   }),
                   field<&Options::pinnedOpacity>({

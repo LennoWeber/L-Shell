@@ -29,6 +29,14 @@ enum class FontWeight : int {
   UltraHeavy = 1000,
 };
 
+// Spacing of a run of text, like CSS letter-spacing and line-height; both follow the font size.
+struct TextSpacing {
+  float letter = 0.0F; // extra advance after each character, in em
+  float line = 0.0F;   // baseline-to-baseline distance as a multiple of the font size; 0 keeps the font's own
+
+  bool operator==(const TextSpacing&) const = default;
+};
+
 // Caret geometry for one byte offset in a laid-out text: caret x, top and
 // height in logical px from the layout origin. The wrapped variant of the
 // cursor-stops query fills these so editors can place carets and selections
@@ -66,7 +74,7 @@ public:
   [[nodiscard]] virtual TextMetrics measureText(
       std::string_view text, float fontSize, FontWeight fontWeight = FontWeight::Normal, float maxWidth = 0.0F,
       int maxLines = 0, TextAlign align = TextAlign::Start, std::string_view fontFamily = {},
-      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false
+      TextEllipsize ellipsize = TextEllipsize::End, bool useMarkup = false, TextSpacing spacing = {}
   ) = 0;
   // Metrics of `fontFamily` (empty = renderer-global family) at the given size/weight.
   [[nodiscard]] virtual TextMetrics

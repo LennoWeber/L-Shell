@@ -682,6 +682,23 @@ namespace settings {
           tr("settings.schema.appearance.font-family.description"), {"shell", "font_family"},
           std::move(fontFamilyControl), "typeface"
       ));
+      SettingControl displayFontControl = TextSetting{
+          .value = cfg.shell.displayFontFamily, .placeholder = cfg.shell.fontFamily, .browseFileExtensions = {}
+      };
+      if (!env.fontFamilies.empty()) {
+        displayFontControl = SearchPickerSetting{
+            .options = env.fontFamilies,
+            .selectedValue = cfg.shell.displayFontFamily,
+            .placeholder = cfg.shell.fontFamily,
+            .emptyText = tr("ui.controls.search-picker.empty"),
+            .preferredHeight = 280.0F,
+        };
+      }
+      entries.push_back(makeEntry(
+          SettingsSection::Appearance, "interface", tr("settings.schema.appearance.display-font-family.label"),
+          tr("settings.schema.appearance.display-font-family.description"), {"shell", "display_font_family"},
+          std::move(displayFontControl), "typeface heading serif title clock"
+      ));
     }
     entries.push_back(makeEntry(
         SettingsSection::Appearance, "interface", tr("settings.schema.appearance.language.label"),
@@ -713,6 +730,11 @@ namespace settings {
       e.visibleWhen = colorizeOn;
       entries.push_back(std::move(e));
     }
+    entries.push_back(makeEntry(
+        SettingsSection::Appearance, "interface", tr("settings.schema.appearance.app-icon-glyphs.label"),
+        tr("settings.schema.appearance.app-icon-glyphs.description"), {"shell", "app_icon_glyphs"},
+        ToggleSetting{cfg.shell.appIconGlyphs}, "symbol glyph monochrome application icons launcher taskbar category"
+    ));
     entries.push_back(makeEntry(
         SettingsSection::Appearance, "interface", tr("settings.schema.appearance.show-close-buttons.label"),
         tr("settings.schema.appearance.show-close-buttons.description"), {"shell", "show_close_buttons"},
@@ -1091,6 +1113,11 @@ namespace settings {
           ToggleSetting{dock.showInstanceCount}, "badge windows"
       ));
       entries.push_back(makeEntry(
+          SettingsSection::Dock, "layout", tr("settings.schema.dock.item-style.label"),
+          tr("settings.schema.dock.item-style.description"), path("item_style"),
+          asSegmented(enumSelect(kDockItemStyles, dock.itemStyle)), "tiles shelf icons wells"
+      ));
+      entries.push_back(makeEntry(
           SettingsSection::Dock, "layout", tr("settings.schema.dock.launcher-position.label"),
           tr("settings.schema.dock.launcher-position.description"), path("launcher_position"),
           asSegmented(enumSelect(kDockLauncherPositions, dock.launcherPosition)), "launcher apps grid"
@@ -1100,6 +1127,15 @@ namespace settings {
         return effective.launcherPosition == DockLauncherPosition::Start
             || effective.launcherPosition == DockLauncherPosition::End;
       };
+      {
+        auto entry = makeEntry(
+            SettingsSection::Dock, "layout", tr("settings.schema.dock.launcher-separator.label"),
+            tr("settings.schema.dock.launcher-separator.description"), path("launcher_separator"),
+            ToggleSetting{dock.launcherSeparator}, "launcher divider line"
+        );
+        entry.visibleWhen = dockLauncherEnabled;
+        entries.push_back(std::move(entry));
+      }
       {
         auto entry = makeEntry(
             SettingsSection::Dock, "layout", tr("settings.schema.dock.launcher-icon.label"),
@@ -1299,6 +1335,11 @@ namespace settings {
         "glass opacity alpha translucent cards blur"
     ));
     entries.push_back(makeEntry(
+        SettingsSection::Panels, "effects", tr("settings.schema.panels.reveal.label"),
+        tr("settings.schema.panels.reveal.description"), {"shell", "panel", "reveal"},
+        asSegmented(enumSelect(kPanelReveals, cfg.shell.panel.reveal)), "animation open appear lift grow"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Panels, "effects", tr("settings.schema.panels.borders.label"),
         tr("settings.schema.panels.borders.description"), {"shell", "panel", "borders"},
         ToggleSetting{cfg.shell.panel.borders}, "outline border shell edge"
@@ -1335,6 +1376,11 @@ namespace settings {
             .valueSuffix = "px",
         },
         "floating detached panel gap offset distance bar"
+    ));
+    entries.push_back(makeEntry(
+        SettingsSection::Panels, "effects", tr("settings.schema.panels.attached-full-length.label"),
+        tr("settings.schema.panels.attached-full-length.description"), {"shell", "panel", "attached_full_length"},
+        ToggleSetting{cfg.shell.panel.attachedFullLength}, "attached sheet full length height bar edge slide"
     ));
     // Floating-position select for a panel, shown only when its placement is Floating.
     const auto panelPositionEntry = [&](SettingsSection section, std::string group, std::string_view panelKey,
@@ -1453,6 +1499,11 @@ namespace settings {
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-sort-by-usage.label"),
         tr("settings.schema.panels.launcher-sort-by-usage.description"), {"shell", "launcher", "sort_by_usage"},
         ToggleSetting{cfg.shell.launcher.sortByUsage}, "launcher sort usage recently used frequency"
+    ));
+    entries.push_back(makeEntry(
+        SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-recent-files.label"),
+        tr("settings.schema.panels.launcher-recent-files.description"), {"shell", "launcher", "recent_files"},
+        ToggleSetting{cfg.shell.launcher.recentFiles}, "launcher recent files documents recently used"
     ));
     entries.push_back(makeEntry(
         SettingsSection::Launcher, "launcher", tr("settings.schema.panels.launcher-pinned-apps.label"),
@@ -1901,6 +1952,15 @@ namespace settings {
           SettingsSection::Security, "lock-screen", tr("settings.schema.lockscreen.tint-intensity.label"),
           tr("settings.schema.lockscreen.tint-intensity.description"), {"lockscreen", "tint_intensity"},
           sliderFor(cfg.lockscreen.tintIntensity, noctalia::config::schema::kUnitRange, false), "lock screen tint"
+      );
+      e.visibleWhen = lockscreenOn;
+      entries.push_back(std::move(e));
+    }
+    {
+      auto e = makeEntry(
+          SettingsSection::Security, "lock-screen", tr("settings.schema.lockscreen.clock-style.label"),
+          tr("settings.schema.lockscreen.clock-style.description"), {"lockscreen", "clock_style"},
+          asSegmented(enumSelect(kLockscreenClockStyles, cfg.lockscreen.clockStyle)), "lock screen clock corner time"
       );
       e.visibleWhen = lockscreenOn;
       entries.push_back(std::move(e));
@@ -3196,6 +3256,15 @@ namespace settings {
       e.visibleWhen = [](const Config& c) { return c.shell.session.grid; };
       entries.push_back(std::move(e));
     }
+    {
+      auto e = makeEntry(
+          SettingsSection::Power, "session-panel", tr("settings.schema.power.session-hairline.label"),
+          tr("settings.schema.power.session-hairline.description"), {"shell", "session", "hairline"},
+          ToggleSetting{.checked = cfg.shell.session.hairline}, "session panel grid tiles hairline rules monolith"
+      );
+      e.visibleWhen = [](const Config& c) { return c.shell.session.grid; };
+      entries.push_back(std::move(e));
+    }
     entries.push_back(makeEntry(
         SettingsSection::Power, "session-panel", tr("settings.schema.power.session-show-shortcuts.label"),
         tr("settings.schema.power.session-show-shortcuts.description"), {"shell", "session", "show_shortcuts"},
@@ -3313,6 +3382,11 @@ namespace settings {
         SettingsSection::Notifications, "general", tr("settings.schema.notifications.daemon.label"),
         tr("settings.schema.notifications.daemon.description"), {"notification", "enable_daemon"},
         ToggleSetting{cfg.notification.enableDaemon}, "dbus"
+    ));
+    entries.push_back(makeEntry(
+        SettingsSection::Notifications, "general", tr("settings.schema.notifications.style.label"),
+        tr("settings.schema.notifications.style.description"), {"notification", "style"},
+        asSegmented(enumSelect(kNotificationToastStyles, cfg.notification.style)), "toast banner header look style"
     ));
     entries.push_back(makeEntry(
         SettingsSection::Notifications, "general", tr("settings.schema.notifications.show-app-name.label"),

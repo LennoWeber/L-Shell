@@ -217,7 +217,7 @@ void PowerTab::buildStatusCard(Flex& root, float scale) {
           .out = &m_levelBar,
           .fill = colorSpecFromRole(ColorRole::Primary),
           .track = colorSpecFromRole(ColorRole::Surface),
-          .radius = Style::sliderTrackHeight * scale * 0.5F,
+          .radius = Style::pillRadius(Style::sliderTrackHeight * scale),
           .progress = 0.0F,
           .height = Style::sliderTrackHeight * scale,
       })
@@ -365,7 +365,7 @@ void PowerTab::buildHealthCard(Flex& root, float scale) {
           .out = &m_healthBar,
           .fill = colorSpecFromRole(ColorRole::Primary),
           .track = colorSpecFromRole(ColorRole::Surface),
-          .radius = Style::sliderTrackHeight * scale * 0.5F,
+          .radius = Style::pillRadius(Style::sliderTrackHeight * scale),
           .progress = 0.0F,
           .height = Style::sliderTrackHeight * scale,
       })

@@ -3,6 +3,9 @@
 #include "render/animation/animation.h"
 #include "ui/signal.h"
 
+#include <optional>
+#include <string>
+
 namespace Style {
 
   inline constexpr int barThicknessDefault = 34;
@@ -111,6 +114,16 @@ namespace Style {
   inline constexpr float sliderThumbSize = 20.0F;
   inline constexpr float sliderHorizontalPadding = 2.0F;
 
+  // Typeface of headings and display numerals ([shell].display_font_family); empty = the shell font. Labels that
+  // are headings pass it as their font family.
+  [[nodiscard]] const std::string& displayFontFamily() noexcept;
+  void setDisplayFontFamily(std::string family);
+  // The display typeface as a label font family: unset (the label keeps the shell font) when there is none.
+  [[nodiscard]] inline std::optional<std::string> displayFont() {
+    const std::string& family = displayFontFamily();
+    return family.empty() ? std::nullopt : std::optional<std::string>{family};
+  }
+
   [[nodiscard]] float cornerRadiusScale() noexcept;
   void setCornerRadiusScale(float scale) noexcept;
 
@@ -142,5 +155,8 @@ namespace Style {
   [[nodiscard]] float scaledRadiusMd(float localScale = 1.0F) noexcept;
   [[nodiscard]] float scaledRadiusLg(float localScale = 1.0F) noexcept;
   [[nodiscard]] float scaledRadiusXl(float localScale = 1.0F) noexcept;
+  // Radius of a pill or disc `extent` across: half of it, eased toward square as corner roundness drops below 1
+  // (0 draws a square, so a design without rounding has none anywhere).
+  [[nodiscard]] float pillRadius(float extent) noexcept;
 
 } // namespace Style

@@ -229,6 +229,7 @@ namespace ui {
     std::optional<TextAlign> textAlign = std::nullopt;
     std::optional<TextEllipsize> ellipsize = std::nullopt;
     std::optional<LabelBaselineMode> baselineMode = std::nullopt;
+    std::optional<float> letterSpacing = std::nullopt; // em
     std::optional<bool> autoScroll = std::nullopt;
     std::optional<float> autoScrollSpeed = std::nullopt;
     std::optional<bool> autoScrollOnlyWhenHovered = std::nullopt;

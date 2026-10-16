@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <format>
 #include <stdexcept>
 #include <vector>
 
@@ -138,6 +139,8 @@ void CairoGlyphRenderer::cleanup() {
   m_lru.clear();
   m_cacheBytes = 0;
 
+  releaseMaterialFace();
+  m_materialPath.clear();
   if (m_fontOptions != nullptr) {
     cairo_font_options_destroy(m_fontOptions);
     m_fontOptions = nullptr;
@@ -156,6 +159,74 @@ void CairoGlyphRenderer::cleanup() {
   }
   m_backend = nullptr;
   m_textureManager = nullptr;
+}
+
+void CairoGlyphRenderer::releaseMaterialFace() {
+  if (m_materialCairoFace != nullptr) {
+    cairo_font_face_destroy(m_materialCairoFace);
+    m_materialCairoFace = nullptr;
+  }
+  if (m_materialFace != nullptr) {
+    FT_Done_Face(m_materialFace);
+    m_materialFace = nullptr;
+  }
+}
+
+void CairoGlyphRenderer::setMaterialStyle(const std::string& fontPath, int weight, bool fill) {
+  if (fontPath == m_materialPath && weight == m_materialWeight && fill == m_materialFill) {
+    return;
+  }
+  invalidateGlyphTextures();
+  m_materialWeight = weight;
+  m_materialFill = fill;
+  if (fontPath == m_materialPath) {
+    return;
+  }
+  releaseMaterialFace();
+  m_materialPath = fontPath;
+  if (fontPath.empty() || m_ftLibrary == nullptr) {
+    return;
+  }
+  if (FT_New_Face(m_ftLibrary, fontPath.c_str(), 0, &m_materialFace) != 0) {
+    m_materialFace = nullptr;
+    return;
+  }
+  m_materialCairoFace = cairo_ft_font_face_create_for_ft_face(m_materialFace, 0);
+  if (cairo_font_face_status(m_materialCairoFace) != CAIRO_STATUS_SUCCESS) {
+    releaseMaterialFace();
+  }
+}
+
+CairoGlyphRenderer::ResolvedGlyph CairoGlyphRenderer::resolve(char32_t codepoint) const {
+  if (m_materialCairoFace != nullptr) {
+    const auto& substitutes = GlyphRegistry::materialSubstitutes();
+    if (const auto it = substitutes.find(codepoint); it != substitutes.end()) {
+      return ResolvedGlyph{
+          .face = m_materialFace,
+          .cairoFace = m_materialCairoFace,
+          .codepoint = it->second.codepoint,
+          .material = true,
+          .fill = it->second.fill || m_materialFill,
+      };
+    }
+  }
+  return ResolvedGlyph{.face = m_face, .cairoFace = m_cairoFace, .codepoint = codepoint};
+}
+
+cairo_scaled_font_t*
+CairoGlyphRenderer::scaledFontFor(const ResolvedGlyph& glyph, float rasterSize, float fontSize) const {
+  if (!glyph.material) {
+    return create_scaled_font(glyph.cairoFace, m_fontOptions, rasterSize);
+  }
+  // Material Symbols is drawn at its optical size: opsz follows the logical icon size (20-48).
+  cairo_font_options_t* options = cairo_font_options_copy(m_fontOptions);
+  const auto opticalSize = std::clamp(static_cast<int>(std::lround(fontSize)), 20, 48);
+  const std::string variations =
+      std::format("FILL={},GRAD=0,opsz={},wght={}", glyph.fill ? 1 : 0, opticalSize, m_materialWeight);
+  cairo_font_options_set_variations(options, variations.c_str());
+  cairo_scaled_font_t* font = create_scaled_font(glyph.cairoFace, options, rasterSize);
+  cairo_font_options_destroy(options);
+  return font;
 }
 
 void CairoGlyphRenderer::touch(CacheMap::iterator it) { m_lru.splice(m_lru.begin(), m_lru, it->second.lruIt); }
@@ -190,12 +261,13 @@ CairoGlyphRenderer::measureGlyph(float contentScale, char32_t codepoint, float f
   const float rasterSize = std::max(1.0F, fontSize * contentScale);
   const float invScale = 1.0F / contentScale;
 
-  const FT_UInt glyphIndex = FT_Get_Char_Index(m_face, codepoint);
+  const ResolvedGlyph resolved = resolve(codepoint);
+  const FT_UInt glyphIndex = FT_Get_Char_Index(resolved.face, resolved.codepoint);
   if (glyphIndex == 0) {
     return {};
   }
 
-  cairo_scaled_font_t* scaledFont = create_scaled_font(m_cairoFace, m_fontOptions, rasterSize);
+  cairo_scaled_font_t* scaledFont = scaledFontFor(resolved, rasterSize, fontSize);
   if (scaledFont == nullptr || cairo_scaled_font_status(scaledFont) != CAIRO_STATUS_SUCCESS) {
     if (scaledFont != nullptr) {
       cairo_scaled_font_destroy(scaledFont);
@@ -229,14 +301,15 @@ CairoGlyphRenderer::lookupOrRasterize(float contentScale, char32_t codepoint, fl
   }
 
   const float rasterSize = std::max(1.0F, fontSize * contentScale);
-  FT_Set_Pixel_Sizes(m_face, 0, static_cast<FT_UInt>(std::round(rasterSize)));
+  const ResolvedGlyph resolved = resolve(codepoint);
+  FT_Set_Pixel_Sizes(resolved.face, 0, static_cast<FT_UInt>(std::round(rasterSize)));
 
-  const FT_UInt glyphIndex = FT_Get_Char_Index(m_face, codepoint);
+  const FT_UInt glyphIndex = FT_Get_Char_Index(resolved.face, resolved.codepoint);
   if (glyphIndex == 0) {
     return nullptr;
   }
 
-  cairo_scaled_font_t* scaledFont = create_scaled_font(m_cairoFace, m_fontOptions, rasterSize);
+  cairo_scaled_font_t* scaledFont = scaledFontFor(resolved, rasterSize, fontSize);
   if (scaledFont == nullptr || cairo_scaled_font_status(scaledFont) != CAIRO_STATUS_SUCCESS) {
     if (scaledFont != nullptr) {
       cairo_scaled_font_destroy(scaledFont);

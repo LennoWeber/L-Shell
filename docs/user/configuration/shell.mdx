@@ -32,6 +32,7 @@ card_borders          = true            # draw outlines around section cards ins
 show_close_buttons    = false           # show close buttons on shell surfaces (panels, toasts, popups, dialogs, Settings)
 popup_shadows         = true            # draw drop shadows behind popups and dropdowns
 font_family           = "sans-serif"    # Pango family string; Fontconfig handles fallback
+display_font_family   = ""              # headings, notification titles, lock clock; empty = font_family
 lang                  = ""              # empty = auto-detect; otherwise BCP-47 or POSIX locale
 time_format           = "{:%H:%M}"      # default time format for shell UI without its own setting
 date_format           = "%A, %x"        # default date format for shell UI without its own setting
@@ -75,6 +76,7 @@ speed   = 1.0   # 1.0 = normal, 0.5 = 2× slower, 2.0 = 2× faster
 [shell.shadow]
 direction = "down"  # center, up, down, left, right, up_left, up_right, down_left, down_right
 alpha     = 0.55    # multiplied by each component's background opacity
+color     = "#000000"  # hue of the shadow (a warm brown suits light paper designs)
 
 [shell.panel]
 transparency_mode     = "solid"  # solid | soft | glass; controls floating panel opacity and card translucency
@@ -82,6 +84,7 @@ borders               = true   # outline on floating panel surfaces
 border_color          = "outline"   # floating panel outline color: theme role token or #RRGGBB
 border_width          = 1.0         # floating panel outline width in px, 0 hides the stroke
 shadow                = true   # cast the global [shell.shadow] from panel surfaces
+reveal                = "grow" # grow | lift: floating panels grow from their origin, or rise 4 px while fading in
 list_item_background  = false  # filled rounded background behind launcher and clipboard list items
 wallpaper_show_names  = true   # caption wallpaper picker thumbnails with their file name
 floating_layer         = "overlay" # overlay | top; applies to floating interactive panels
@@ -209,6 +212,7 @@ pipe_command         = ""                          # annotator/uploader, e.g. "s
 Notes:
 - `avatar_path` controls the avatar Noctalia shows in shell UI such as the Control Center Home tab. When AccountsService is reachable, Noctalia also updates your user's `IconFile` there so other consumers such as Noctalia Greeter can reuse the same avatar. If **accountsservice** is missing or disabled, the shell still uses `avatar_path`, but login greeters that depend on AccountsService will not see that image.
 - `font_family` sets the primary Pango family for all shell text. Can be a concrete family like `Inter` or a generic like `sans-serif`.
+- `display_font_family` sets the typeface of headings and display numerals (panel titles, notification titles, the lock screen clock, the launcher's search field). Empty uses `font_family`. Any family string may end in variable-font axes after ` @`, as in Pango: `"Fraunces @SOFT=100"`.
 - `time_format` and `date_format` are fallbacks for shell-owned displays such as the home tab, calendar tab, and lock screen. Widget-specific clock formats still use their own widget settings. See [Date format tokens](/noctalia/configuration/date-format-tokens/).
 - `shell.keyboard_layout.custom_labels` maps exact compositor layout names to aliases used consistently by keyboard-layout widgets, the keyboard-layout OSD, the lock screen, and the Control Center shortcut. Unmatched or empty aliases use each surface's normal compact or full label. Configure under **Settings → Shell → Keyboard Layout**.
 - `offline_mode` prevents the shell from making any outgoing HTTP requests (weather, community palettes, community templates, album art, remote notification icons, currency exchange rates, plugin recommendation metrics and changes). Distro packagers can default to `true` to comply with policies requiring explicit user consent for network access.

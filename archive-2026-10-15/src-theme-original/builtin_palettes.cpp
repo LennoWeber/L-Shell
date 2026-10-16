@@ -1,0 +1,2891 @@
+#include "theme/builtin_palettes.h"
+
+#include "theme/fixed_palette.h"
+
+#include <array>
+#include <string_view>
+
+namespace noctalia::theme {
+
+  namespace {
+
+    constexpr std::array<BuiltinPalette, 26> kPalettes =
+        {
+            {
+                {
+                    // L-Shell design "Atelier" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Atelier",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#2e4a7d"),
+                                    .onPrimary = hex("#f2ecdf"),
+                                    .secondary = hex("#5b6f93"),
+                                    .onSecondary = hex("#f2ecdf"),
+                                    .tertiary = hex("#4f7a55"),
+                                    .onTertiary = hex("#f2ecdf"),
+                                    .error = hex("#b4432e"),
+                                    .onError = hex("#f2ecdf"),
+                                    .surface = hex("#f2ecdf"),
+                                    .onSurface = hex("#2b2721"),
+                                    .surfaceVariant = hex("#e6dece"),
+                                    .onSurfaceVariant = hex("#6a6254"),
+                                    .outline = hex("#d5cbb7"),
+                                    .shadow = hex("#3c2e1a"),
+                                    .hover = hex("#ddd4c2"),
+                                    .onHover = hex("#2b2721"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2b2721"),
+                                            .red = hex("#a8402c"),
+                                            .green = hex("#4a7348"),
+                                            .yellow = hex("#94650f"),
+                                            .blue = hex("#2e4a7d"),
+                                            .magenta = hex("#80466e"),
+                                            .cyan = hex("#2f6f6a"),
+                                            .white = hex("#6a6254"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#a39985"),
+                                            .red = hex("#c25a3f"),
+                                            .green = hex("#5f8b5a"),
+                                            .yellow = hex("#b07d22"),
+                                            .blue = hex("#4a6aa5"),
+                                            .magenta = hex("#9a5c86"),
+                                            .cyan = hex("#448a83"),
+                                            .white = hex("#2b2721"),
+                                        },
+                                    .foreground = hex("#2b2721"),
+                                    .background = hex("#f2ecdf"),
+                                    .selectionFg = hex("#2b2721"),
+                                    .selectionBg = hex("#d6cbb4"),
+                                    .cursorText = hex("#f2ecdf"),
+                                    .cursor = hex("#2e4a7d"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#2e4a7d"),
+                                    .onPrimary = hex("#f2ecdf"),
+                                    .secondary = hex("#5b6f93"),
+                                    .onSecondary = hex("#f2ecdf"),
+                                    .tertiary = hex("#4f7a55"),
+                                    .onTertiary = hex("#f2ecdf"),
+                                    .error = hex("#b4432e"),
+                                    .onError = hex("#f2ecdf"),
+                                    .surface = hex("#f2ecdf"),
+                                    .onSurface = hex("#2b2721"),
+                                    .surfaceVariant = hex("#e6dece"),
+                                    .onSurfaceVariant = hex("#6a6254"),
+                                    .outline = hex("#d5cbb7"),
+                                    .shadow = hex("#3c2e1a"),
+                                    .hover = hex("#ddd4c2"),
+                                    .onHover = hex("#2b2721"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2b2721"),
+                                            .red = hex("#a8402c"),
+                                            .green = hex("#4a7348"),
+                                            .yellow = hex("#94650f"),
+                                            .blue = hex("#2e4a7d"),
+                                            .magenta = hex("#80466e"),
+                                            .cyan = hex("#2f6f6a"),
+                                            .white = hex("#6a6254"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#a39985"),
+                                            .red = hex("#c25a3f"),
+                                            .green = hex("#5f8b5a"),
+                                            .yellow = hex("#b07d22"),
+                                            .blue = hex("#4a6aa5"),
+                                            .magenta = hex("#9a5c86"),
+                                            .cyan = hex("#448a83"),
+                                            .white = hex("#2b2721"),
+                                        },
+                                    .foreground = hex("#2b2721"),
+                                    .background = hex("#f2ecdf"),
+                                    .selectionFg = hex("#2b2721"),
+                                    .selectionBg = hex("#d6cbb4"),
+                                    .cursorText = hex("#f2ecdf"),
+                                    .cursor = hex("#2e4a7d"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Avionik" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Avionik",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#ffb547"),
+                                    .onPrimary = hex("#0a0d12"),
+                                    .secondary = hex("#ffd08a"),
+                                    .onSecondary = hex("#0a0d12"),
+                                    .tertiary = hex("#5ce1e6"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff5d5d"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#0f141b"),
+                                    .onSurface = hex("#dce6f2"),
+                                    .surfaceVariant = hex("#131a23"),
+                                    .onSurfaceVariant = hex("#6b7c93"),
+                                    .outline = hex("#233041"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#1a2430"),
+                                    .onHover = hex("#dce6f2"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#131a23"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#6b7c93"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#444f5e"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#dce6f2"),
+                                        },
+                                    .foreground = hex("#dce6f2"),
+                                    .background = hex("#0a0d12"),
+                                    .selectionFg = hex("#dce6f2"),
+                                    .selectionBg = hex("#604825"),
+                                    .cursorText = hex("#0a0d12"),
+                                    .cursor = hex("#ffb547"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#ffb547"),
+                                    .onPrimary = hex("#0a0d12"),
+                                    .secondary = hex("#ffd08a"),
+                                    .onSecondary = hex("#0a0d12"),
+                                    .tertiary = hex("#5ce1e6"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff5d5d"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#0f141b"),
+                                    .onSurface = hex("#dce6f2"),
+                                    .surfaceVariant = hex("#131a23"),
+                                    .onSurfaceVariant = hex("#6b7c93"),
+                                    .outline = hex("#233041"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#1a2430"),
+                                    .onHover = hex("#dce6f2"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#131a23"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#6b7c93"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#444f5e"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#dce6f2"),
+                                        },
+                                    .foreground = hex("#dce6f2"),
+                                    .background = hex("#0a0d12"),
+                                    .selectionFg = hex("#dce6f2"),
+                                    .selectionBg = hex("#604825"),
+                                    .cursorText = hex("#0a0d12"),
+                                    .cursor = hex("#ffb547"),
+                                },
+                        },
+                },
+                {
+                    .name = "Ayu",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#E6B450"),
+                                    .onPrimary = hex("#0B0E14"),
+                                    .secondary = hex("#AAD94C"),
+                                    .onSecondary = hex("#0B0E14"),
+                                    .tertiary = hex("#39BAE6"),
+                                    .onTertiary = hex("#0B0E14"),
+                                    .error = hex("#D95757"),
+                                    .onError = hex("#0B0E14"),
+                                    .surface = hex("#0B0E14"),
+                                    .onSurface = hex("#D1D1C7"),
+                                    .surfaceVariant = hex("#1e222a"),
+                                    .onSurfaceVariant = hex("#8E959E"),
+                                    .outline = hex("#565B66"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#39BAE6"),
+                                    .onHover = hex("#0B0E14"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#11151c"),
+                                            .red = hex("#ea6c73"),
+                                            .green = hex("#7fd962"),
+                                            .yellow = hex("#f9af4f"),
+                                            .blue = hex("#53bdfa"),
+                                            .magenta = hex("#cda1fa"),
+                                            .cyan = hex("#90e1c6"),
+                                            .white = hex("#c7c7c7"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#686868"),
+                                            .red = hex("#f07178"),
+                                            .green = hex("#aad94c"),
+                                            .yellow = hex("#ffb454"),
+                                            .blue = hex("#59c2ff"),
+                                            .magenta = hex("#d2a6ff"),
+                                            .cyan = hex("#95e6cb"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#bfbdb6"),
+                                    .background = hex("#0b0e14"),
+                                    .selectionFg = hex("#0b0e14"),
+                                    .selectionBg = hex("#409fff"),
+                                    .cursorText = hex("#0b0e14"),
+                                    .cursor = hex("#e6b450"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#FF8F40"),
+                                    .onPrimary = hex("#F8F9FA"),
+                                    .secondary = hex("#86B300"),
+                                    .onSecondary = hex("#F8F9FA"),
+                                    .tertiary = hex("#55B4D4"),
+                                    .onTertiary = hex("#F8F9FA"),
+                                    .error = hex("#E65050"),
+                                    .onError = hex("#F8F9FA"),
+                                    .surface = hex("#F8F9FA"),
+                                    .onSurface = hex("#42474C"),
+                                    .surfaceVariant = hex("#E4E6E9"),
+                                    .onSurfaceVariant = hex("#6E757C"),
+                                    .outline = hex("#8A9199"),
+                                    .shadow = hex("#F8F9FA"),
+                                    .hover = hex("#55B4D4"),
+                                    .onHover = hex("#F8F9FA"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#000000"),
+                                            .red = hex("#ea6c6d"),
+                                            .green = hex("#6cbf43"),
+                                            .yellow = hex("#eca944"),
+                                            .blue = hex("#3199e1"),
+                                            .magenta = hex("#9e75c7"),
+                                            .cyan = hex("#46ba94"),
+                                            .white = hex("#bababa"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#686868"),
+                                            .red = hex("#f07171"),
+                                            .green = hex("#86b300"),
+                                            .yellow = hex("#f2ae49"),
+                                            .blue = hex("#399ee6"),
+                                            .magenta = hex("#a37acc"),
+                                            .cyan = hex("#4cbf99"),
+                                            .white = hex("#d1d1d1"),
+                                        },
+                                    .foreground = hex("#42474C"),
+                                    .background = hex("#f8f9fa"),
+                                    .selectionFg = hex("#f8f9fa"),
+                                    .selectionBg = hex("#035bd6"),
+                                    .cursorText = hex("#f8f9fa"),
+                                    .cursor = hex("#ffaa33"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Band" (config/design_presets.cpp): cool midnight graphite, near-neutral
+                    // surfaces with a restrained azure accent — the calm default of a modern desktop. The
+                    // terminal follows the same cool grays.
+                    .name = "Band",
+                .dark =
+                    FixedPaletteMode{
+                        .palette =
+                            Palette{
+                                .primary = hex("#6aa9e8"),
+                                .onPrimary = hex("#0d1116"),
+                                .secondary = hex("#8b8e96"),
+                                .onSecondary = hex("#0d1116"),
+                                .tertiary = hex("#9ad0b4"),
+                                .onTertiary = hex("#0d1116"),
+                                .error = hex("#e0606a"),
+                                .onError = hex("#0d1116"),
+                                .surface = hex("#0f1013"),
+                                .onSurface = hex("#e8e9ec"),
+                                .surfaceVariant = hex("#17181c"),
+                                .onSurfaceVariant = hex("#8b8e96"),
+                                .outline = hex("#26282e"),
+                                .shadow = hex("#000000"),
+                                .hover = hex("#17181c"),
+                                .onHover = hex("#e8e9ec"),
+                            },
+                        .terminal =
+                            TerminalPalette{
+                                .normal =
+                                    TerminalAnsiColors{
+                                        .black = hex("#17181c"),
+                                        .red = hex("#e06c75"),
+                                        .green = hex("#98c379"),
+                                        .yellow = hex("#e5c07b"),
+                                        .blue = hex("#61afef"),
+                                        .magenta = hex("#c678dd"),
+                                        .cyan = hex("#56b6c2"),
+                                        .white = hex("#8b8e96"),
+                                    },
+                                .bright =
+                                    TerminalAnsiColors{
+                                        .black = hex("#3a3d44"),
+                                        .red = hex("#e88a92"),
+                                        .green = hex("#b3d68a"),
+                                        .yellow = hex("#eed49f"),
+                                        .blue = hex("#85c1f5"),
+                                        .magenta = hex("#d99af5"),
+                                        .cyan = hex("#84ced9"),
+                                        .white = hex("#e8e9ec"),
+                                    },
+                                .foreground = hex("#e8e9ec"),
+                                .background = hex("#0f1013"),
+                                .selectionFg = hex("#e8e9ec"),
+                                .selectionBg = hex("#2b3a4d"),
+                                .cursorText = hex("#0f1013"),
+                                .cursor = hex("#6aa9e8"),
+                            },
+                    },
+                .light =
+                    FixedPaletteMode{
+                        .palette =
+                            Palette{
+                                .primary = hex("#2e6f9e"),
+                                .onPrimary = hex("#ffffff"),
+                                .secondary = hex("#5a5e66"),
+                                .onSecondary = hex("#ffffff"),
+                                .tertiary = hex("#3e7d5e"),
+                                .onTertiary = hex("#ffffff"),
+                                .error = hex("#c23a44"),
+                                .onError = hex("#ffffff"),
+                                .surface = hex("#f7f8fa"),
+                                .onSurface = hex("#17181c"),
+                                .surfaceVariant = hex("#eceef1"),
+                                .onSurfaceVariant = hex("#5a5e66"),
+                                .outline = hex("#d8dbe0"),
+                                .shadow = hex("#26282e"),
+                                .hover = hex("#eceef1"),
+                                .onHover = hex("#17181c"),
+                            },
+                        .terminal =
+                            TerminalPalette{
+                                .normal =
+                                    TerminalAnsiColors{
+                                        .black = hex("#eceef1"),
+                                        .red = hex("#c04850"),
+                                        .green = hex("#4d8540"),
+                                        .yellow = hex("#a3781c"),
+                                        .blue = hex("#3b72a8"),
+                                        .magenta = hex("#9256a8"),
+                                        .cyan = hex("#3b8a7d"),
+                                        .white = hex("#5a5e66"),
+                                    },
+                                .bright =
+                                    TerminalAnsiColors{
+                                        .black = hex("#8b8e96"),
+                                        .red = hex("#d56068"),
+                                        .green = hex("#6aa53f"),
+                                        .yellow = hex("#c9973a"),
+                                        .blue = hex("#5a90c0"),
+                                        .magenta = hex("#ab77c0"),
+                                        .cyan = hex("#5aa89a"),
+                                        .white = hex("#17181c"),
+                                    },
+                                .foreground = hex("#17181c"),
+                                .background = hex("#f7f8fa"),
+                                .selectionFg = hex("#17181c"),
+                                .selectionBg = hex("#d3e2ee"),
+                                .cursorText = hex("#f7f8fa"),
+                                .cursor = hex("#2e6f9e"),
+                            },
+                    },
+                },
+                {
+// L-Shell design "Bruecke" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Bruecke",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#4f7cff"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#8aa8ff"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#34d399"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff6b6b"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#24262d"),
+                                    .onSurface = hex("#f2f3f6"),
+                                    .surfaceVariant = hex("#2e323c"),
+                                    .onSurfaceVariant = hex("#a3a8b4"),
+                                    .outline = hex("#2e323c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#30343e"),
+                                    .onHover = hex("#f2f3f6"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2e323c"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a3a8b4"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4d5159"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f2f3f6"),
+                                        },
+                                    .foreground = hex("#f2f3f6"),
+                                    .background = hex("#15171c"),
+                                    .selectionFg = hex("#f2f3f6"),
+                                    .selectionBg = hex("#293a6b"),
+                                    .cursorText = hex("#15171c"),
+                                    .cursor = hex("#4f7cff"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#4f7cff"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#8aa8ff"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#34d399"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff6b6b"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#24262d"),
+                                    .onSurface = hex("#f2f3f6"),
+                                    .surfaceVariant = hex("#2e323c"),
+                                    .onSurfaceVariant = hex("#a3a8b4"),
+                                    .outline = hex("#2e323c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#30343e"),
+                                    .onHover = hex("#f2f3f6"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2e323c"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a3a8b4"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4d5159"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f2f3f6"),
+                                        },
+                                    .foreground = hex("#f2f3f6"),
+                                    .background = hex("#15171c"),
+                                    .selectionFg = hex("#f2f3f6"),
+                                    .selectionBg = hex("#293a6b"),
+                                    .cursorText = hex("#15171c"),
+                                    .cursor = hex("#4f7cff"),
+                                },
+                        },
+                },
+                {
+                    .name = "Catppuccin",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#cba6f7"),
+                                    .onPrimary = hex("#11111b"),
+                                    .secondary = hex("#fab387"),
+                                    .onSecondary = hex("#11111b"),
+                                    .tertiary = hex("#94e2d5"),
+                                    .onTertiary = hex("#11111b"),
+                                    .error = hex("#f38ba8"),
+                                    .onError = hex("#11111b"),
+                                    .surface = hex("#1e1e2e"),
+                                    .onSurface = hex("#cdd6f4"),
+                                    .surfaceVariant = hex("#313244"),
+                                    .onSurfaceVariant = hex("#a3b4eb"),
+                                    .outline = hex("#4c4f69"),
+                                    .shadow = hex("#11111b"),
+                                    .hover = hex("#94e2d5"),
+                                    .onHover = hex("#11111b"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#45475a"),
+                                            .red = hex("#f38ba8"),
+                                            .green = hex("#a6e3a1"),
+                                            .yellow = hex("#f9e2af"),
+                                            .blue = hex("#89b4fa"),
+                                            .magenta = hex("#f5c2e7"),
+                                            .cyan = hex("#94e2d5"),
+                                            .white = hex("#a6adc8"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585b70"),
+                                            .red = hex("#f37799"),
+                                            .green = hex("#89d88b"),
+                                            .yellow = hex("#ebd391"),
+                                            .blue = hex("#74a8fc"),
+                                            .magenta = hex("#f2aede"),
+                                            .cyan = hex("#6bd7ca"),
+                                            .white = hex("#bac2de"),
+                                        },
+                                    .foreground = hex("#cdd6f4"),
+                                    .background = hex("#1e1e2e"),
+                                    .selectionFg = hex("#cdd6f4"),
+                                    .selectionBg = hex("#585b70"),
+                                    .cursorText = hex("#1e1e2e"),
+                                    .cursor = hex("#f5e0dc"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#8839ef"),
+                                    .onPrimary = hex("#eff1f5"),
+                                    .secondary = hex("#fe640b"),
+                                    .onSecondary = hex("#eff1f5"),
+                                    .tertiary = hex("#40a02b"),
+                                    .onTertiary = hex("#eff1f5"),
+                                    .error = hex("#d20f39"),
+                                    .onError = hex("#dce0e8"),
+                                    .surface = hex("#eff1f5"),
+                                    .onSurface = hex("#4c4f69"),
+                                    .surfaceVariant = hex("#ccd0da"),
+                                    .onSurfaceVariant = hex("#6c6f85"),
+                                    .outline = hex("#a5adcb"),
+                                    .shadow = hex("#dce0e8"),
+                                    .hover = hex("#40a02b"),
+                                    .onHover = hex("#eff1f5"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#bcc0cc"),
+                                            .red = hex("#d20f39"),
+                                            .green = hex("#40a02b"),
+                                            .yellow = hex("#df8e1d"),
+                                            .blue = hex("#1e66f5"),
+                                            .magenta = hex("#ea76cb"),
+                                            .cyan = hex("#179299"),
+                                            .white = hex("#5c5f77"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#acb0be"),
+                                            .red = hex("#d20f39"),
+                                            .green = hex("#40a02b"),
+                                            .yellow = hex("#df8e1d"),
+                                            .blue = hex("#1e66f5"),
+                                            .magenta = hex("#ea76cb"),
+                                            .cyan = hex("#179299"),
+                                            .white = hex("#6c6f85"),
+                                        },
+                                    .foreground = hex("#4c4f69"),
+                                    .background = hex("#eff1f5"),
+                                    .selectionFg = hex("#eff1f5"),
+                                    .selectionBg = hex("#dc8a78"),
+                                    .cursorText = hex("#eff1f5"),
+                                    .cursor = hex("#dc8a78"),
+                                },
+                        },
+                },
+                {
+                    .name = "Dracula",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#bd93f9"),
+                                    .onPrimary = hex("#282A36"),
+                                    .secondary = hex("#ff79c6"),
+                                    .onSecondary = hex("#4e1d32"),
+                                    .tertiary = hex("#8be9fd"),
+                                    .onTertiary = hex("#003543"),
+                                    .error = hex("#FF5555"),
+                                    .onError = hex("#282A36"),
+                                    .surface = hex("#282A36"),
+                                    .onSurface = hex("#F8F8F2"),
+                                    .surfaceVariant = hex("#44475A"),
+                                    .onSurfaceVariant = hex("#d6d8e0"),
+                                    .outline = hex("#5a5e77"),
+                                    .shadow = hex("#282A36"),
+                                    .hover = hex("#8be9fd"),
+                                    .onHover = hex("#003543"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#21222c"),
+                                            .red = hex("#ff5555"),
+                                            .green = hex("#50fa7b"),
+                                            .yellow = hex("#f1fa8c"),
+                                            .blue = hex("#bd93f9"),
+                                            .magenta = hex("#ff79c6"),
+                                            .cyan = hex("#8be9fd"),
+                                            .white = hex("#f8f8f2"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#6272a4"),
+                                            .red = hex("#ff6e6e"),
+                                            .green = hex("#69ff94"),
+                                            .yellow = hex("#ffffa5"),
+                                            .blue = hex("#d6acff"),
+                                            .magenta = hex("#ff92df"),
+                                            .cyan = hex("#a4ffff"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#f8f8f2"),
+                                    .background = hex("#282a36"),
+                                    .selectionFg = hex("#ffffff"),
+                                    .selectionBg = hex("#44475a"),
+                                    .cursorText = hex("#282a36"),
+                                    .cursor = hex("#f8f8f2"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#8332f4"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#ff1399"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#0398b9"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#FF5555"),
+                                    .onError = hex("#282A36"),
+                                    .surface = hex("#f8f8f2"),
+                                    .onSurface = hex("#282a36"),
+                                    .surfaceVariant = hex("#e6e6ea"),
+                                    .onSurfaceVariant = hex("#44475a"),
+                                    .outline = hex("#cacad3"),
+                                    .shadow = hex("#d6d8e0"),
+                                    .hover = hex("#0398b9"),
+                                    .onHover = hex("#ffffff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#f8f8f2"),
+                                            .red = hex("#ff5555"),
+                                            .green = hex("#50fa7b"),
+                                            .yellow = hex("#f1fa8c"),
+                                            .blue = hex("#bd93f9"),
+                                            .magenta = hex("#ff79c6"),
+                                            .cyan = hex("#8be9fd"),
+                                            .white = hex("#282a36"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#6272a4"),
+                                            .red = hex("#ff6e6e"),
+                                            .green = hex("#69ff94"),
+                                            .yellow = hex("#ffffa5"),
+                                            .blue = hex("#d6acff"),
+                                            .magenta = hex("#ff92df"),
+                                            .cyan = hex("#a4ffff"),
+                                            .white = hex("#000000"),
+                                        },
+                                    .foreground = hex("#282a36"),
+                                    .background = hex("#ffffff"),
+                                    .selectionFg = hex("#ffffff"),
+                                    .selectionBg = hex("#6272a4"),
+                                    .cursorText = hex("#ffffff"),
+                                    .cursor = hex("#282a36"),
+                                },
+                        },
+                },
+                {
+                    .name = "Eldritch",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#37f499"),
+                                    .onPrimary = hex("#171928"),
+                                    .secondary = hex("#04d1f9"),
+                                    .onSecondary = hex("#171928"),
+                                    .tertiary = hex("#a48cf2"),
+                                    .onTertiary = hex("#171928"),
+                                    .error = hex("#f16c75"),
+                                    .onError = hex("#171928"),
+                                    .surface = hex("#212337"),
+                                    .onSurface = hex("#ebfafa"),
+                                    .surfaceVariant = hex("#292e42"),
+                                    .onSurfaceVariant = hex("#ABB4DA"),
+                                    .outline = hex("#3b4261"),
+                                    .shadow = hex("#414868"),
+                                    .hover = hex("#a48cf2"),
+                                    .onHover = hex("#171928"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#21222c"),
+                                            .red = hex("#f9515d"),
+                                            .green = hex("#37f499"),
+                                            .yellow = hex("#e9f941"),
+                                            .blue = hex("#9071f4"),
+                                            .magenta = hex("#f265b5"),
+                                            .cyan = hex("#04d1f9"),
+                                            .white = hex("#ebfafa"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#7081d0"),
+                                            .red = hex("#f16c75"),
+                                            .green = hex("#69F8B3"),
+                                            .yellow = hex("#f1fc79"),
+                                            .blue = hex("#a48cf2"),
+                                            .magenta = hex("#FD92CE"),
+                                            .cyan = hex("#66e4fd"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#ebfafa"),
+                                    .background = hex("#212337"),
+                                    .selectionFg = hex("#ebfafa"),
+                                    .selectionBg = hex("#bf4f8e"),
+                                    .cursorText = hex("#37f499"),
+                                    .cursor = hex("#f8f8f2"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#fb5bb6"),
+                                    .onPrimary = hex("#1e2029"),
+                                    .secondary = hex("#0ad6ff"),
+                                    .onSecondary = hex("#1e2029"),
+                                    .tertiary = hex("#8a69f7"),
+                                    .onTertiary = hex("#1e2029"),
+                                    .error = hex("#fb5b66"),
+                                    .onError = hex("#1e2029"),
+                                    .surface = hex("#f0f3f4"),
+                                    .onSurface = hex("#1e2029"),
+                                    .surfaceVariant = hex("#d5d9db"),
+                                    .onSurfaceVariant = hex("#1e2029"),
+                                    .outline = hex("#c9cbcd"),
+                                    .shadow = hex("#e2e6e8"),
+                                    .hover = hex("#8a69f7"),
+                                    .onHover = hex("#1e2029"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#d5d9db"),
+                                            .red = hex("#a03040"),
+                                            .green = hex("#1a9960"),
+                                            .yellow = hex("#b3a010"),
+                                            .blue = hex("#2a3590"),
+                                            .magenta = hex("#8a2070"),
+                                            .cyan = hex("#007a99"),
+                                            .white = hex("#1e2029"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#c9cbcd"),
+                                            .red = hex("#fb5b66"),
+                                            .green = hex("#38ff9F"),
+                                            .yellow = hex("#fff952"),
+                                            .blue = hex("#5b73dc"),
+                                            .magenta = hex("#fb5bb6"),
+                                            .cyan = hex("#0ad6ff"),
+                                            .white = hex("#1e2029"),
+                                        },
+                                    .foreground = hex("#1e2029"),
+                                    .background = hex("#f0f3f4"),
+                                    .selectionFg = hex("#1e2029"),
+                                    .selectionBg = hex("#8a69f7"),
+                                    .cursorText = hex("#1e2029"),
+                                    .cursor = hex("#38ff9F"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Eleven" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Eleven",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#4cc2ff"),
+                                    .onPrimary = hex("#002a3d"),
+                                    .secondary = hex("#99ebff"),
+                                    .onSecondary = hex("#002a3d"),
+                                    .tertiary = hex("#6ccb5f"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff99a4"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#202020"),
+                                    .onSurface = hex("#ffffff"),
+                                    .surfaceVariant = hex("#2c2c2c"),
+                                    .onSurfaceVariant = hex("#9d9d9d"),
+                                    .outline = hex("#3a3a3a"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2d2d2d"),
+                                    .onHover = hex("#ffffff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2c2c"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9d9d9d"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585858"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#ffffff"),
+                                    .background = hex("#0b1b3a"),
+                                    .selectionFg = hex("#ffffff"),
+                                    .selectionBg = hex("#22557f"),
+                                    .cursorText = hex("#0b1b3a"),
+                                    .cursor = hex("#4cc2ff"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#4cc2ff"),
+                                    .onPrimary = hex("#002a3d"),
+                                    .secondary = hex("#99ebff"),
+                                    .onSecondary = hex("#002a3d"),
+                                    .tertiary = hex("#6ccb5f"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff99a4"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#202020"),
+                                    .onSurface = hex("#ffffff"),
+                                    .surfaceVariant = hex("#2c2c2c"),
+                                    .onSurfaceVariant = hex("#9d9d9d"),
+                                    .outline = hex("#3a3a3a"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2d2d2d"),
+                                    .onHover = hex("#ffffff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2c2c"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9d9d9d"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585858"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#ffffff"),
+                                    .background = hex("#0b1b3a"),
+                                    .selectionFg = hex("#ffffff"),
+                                    .selectionBg = hex("#22557f"),
+                                    .cursorText = hex("#0b1b3a"),
+                                    .cursor = hex("#4cc2ff"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Folio" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Folio",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#f472b6"),
+                                    .onPrimary = hex("#1a0e15"),
+                                    .secondary = hex("#f9a8d4"),
+                                    .onSecondary = hex("#1a0e15"),
+                                    .tertiary = hex("#7dd3c0"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#fb7185"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1c1a21"),
+                                    .onSurface = hex("#f1eef6"),
+                                    .surfaceVariant = hex("#2c2933"),
+                                    .onSurfaceVariant = hex("#9c95aa"),
+                                    .outline = hex("#2c2933"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2730"),
+                                    .onHover = hex("#f1eef6"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2933"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9c95aa"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4c4952"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f1eef6"),
+                                        },
+                                    .foreground = hex("#f1eef6"),
+                                    .background = hex("#141317"),
+                                    .selectionFg = hex("#f1eef6"),
+                                    .selectionBg = hex("#62344f"),
+                                    .cursorText = hex("#141317"),
+                                    .cursor = hex("#f472b6"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#f472b6"),
+                                    .onPrimary = hex("#1a0e15"),
+                                    .secondary = hex("#f9a8d4"),
+                                    .onSecondary = hex("#1a0e15"),
+                                    .tertiary = hex("#7dd3c0"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#fb7185"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1c1a21"),
+                                    .onSurface = hex("#f1eef6"),
+                                    .surfaceVariant = hex("#2c2933"),
+                                    .onSurfaceVariant = hex("#9c95aa"),
+                                    .outline = hex("#2c2933"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2730"),
+                                    .onHover = hex("#f1eef6"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2933"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9c95aa"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4c4952"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f1eef6"),
+                                        },
+                                    .foreground = hex("#f1eef6"),
+                                    .background = hex("#141317"),
+                                    .selectionFg = hex("#f1eef6"),
+                                    .selectionBg = hex("#62344f"),
+                                    .cursorText = hex("#141317"),
+                                    .cursor = hex("#f472b6"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Glacier" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Glacier",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#2563eb"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#3b82f6"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#0f9f6e"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#dc2626"),
+                                    .onError = hex("#ffffff"),
+                                    .surface = hex("#f6f8fb"),
+                                    .onSurface = hex("#0f172a"),
+                                    .surfaceVariant = hex("#ffffff"),
+                                    .onSurfaceVariant = hex("#5b6577"),
+                                    .outline = hex("#d6e1ee"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#e8eef6"),
+                                    .onHover = hex("#0f172a"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#0f172a"),
+                                            .red = hex("#b3261e"),
+                                            .green = hex("#2f7d3a"),
+                                            .yellow = hex("#9a6b00"),
+                                            .blue = hex("#2c5fcf"),
+                                            .magenta = hex("#8a45b8"),
+                                            .cyan = hex("#137a78"),
+                                            .white = hex("#5b6577"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#8c93a0"),
+                                            .red = hex("#d33a3a"),
+                                            .green = hex("#3c9a4a"),
+                                            .yellow = hex("#b88400"),
+                                            .blue = hex("#3f74e6"),
+                                            .magenta = hex("#a35ed1"),
+                                            .cyan = hex("#1f9a97"),
+                                            .white = hex("#0f172a"),
+                                        },
+                                    .foreground = hex("#0f172a"),
+                                    .background = hex("#f6f8fb"),
+                                    .selectionFg = hex("#0f172a"),
+                                    .selectionBg = hex("#adc4f5"),
+                                    .cursorText = hex("#f6f8fb"),
+                                    .cursor = hex("#2563eb"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#2563eb"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#3b82f6"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#0f9f6e"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#dc2626"),
+                                    .onError = hex("#ffffff"),
+                                    .surface = hex("#f6f8fb"),
+                                    .onSurface = hex("#0f172a"),
+                                    .surfaceVariant = hex("#ffffff"),
+                                    .onSurfaceVariant = hex("#5b6577"),
+                                    .outline = hex("#d6e1ee"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#e8eef6"),
+                                    .onHover = hex("#0f172a"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#0f172a"),
+                                            .red = hex("#b3261e"),
+                                            .green = hex("#2f7d3a"),
+                                            .yellow = hex("#9a6b00"),
+                                            .blue = hex("#2c5fcf"),
+                                            .magenta = hex("#8a45b8"),
+                                            .cyan = hex("#137a78"),
+                                            .white = hex("#5b6577"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#8c93a0"),
+                                            .red = hex("#d33a3a"),
+                                            .green = hex("#3c9a4a"),
+                                            .yellow = hex("#b88400"),
+                                            .blue = hex("#3f74e6"),
+                                            .magenta = hex("#a35ed1"),
+                                            .cyan = hex("#1f9a97"),
+                                            .white = hex("#0f172a"),
+                                        },
+                                    .foreground = hex("#0f172a"),
+                                    .background = hex("#f6f8fb"),
+                                    .selectionFg = hex("#0f172a"),
+                                    .selectionBg = hex("#adc4f5"),
+                                    .cursorText = hex("#f6f8fb"),
+                                    .cursor = hex("#2563eb"),
+                                },
+                        },
+                },
+                {
+                    .name = "Gruvbox",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#b8bb26"),
+                                    .onPrimary = hex("#282828"),
+                                    .secondary = hex("#fabd2F"),
+                                    .onSecondary = hex("#282828"),
+                                    .tertiary = hex("#83a598"),
+                                    .onTertiary = hex("#282828"),
+                                    .error = hex("#fb4934"),
+                                    .onError = hex("#282828"),
+                                    .surface = hex("#282828"),
+                                    .onSurface = hex("#fbf1c7"),
+                                    .surfaceVariant = hex("#3c3836"),
+                                    .onSurfaceVariant = hex("#ebdbb2"),
+                                    .outline = hex("#57514e"),
+                                    .shadow = hex("#282828"),
+                                    .hover = hex("#83a598"),
+                                    .onHover = hex("#282828"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#282828"),
+                                            .red = hex("#cc241d"),
+                                            .green = hex("#98971a"),
+                                            .yellow = hex("#d79921"),
+                                            .blue = hex("#458588"),
+                                            .magenta = hex("#b16286"),
+                                            .cyan = hex("#689d6a"),
+                                            .white = hex("#a89984"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#928374"),
+                                            .red = hex("#fb4934"),
+                                            .green = hex("#b8bb26"),
+                                            .yellow = hex("#fabd2F"),
+                                            .blue = hex("#83a598"),
+                                            .magenta = hex("#d3869b"),
+                                            .cyan = hex("#8ec07c"),
+                                            .white = hex("#ebdbb2"),
+                                        },
+                                    .foreground = hex("#ebdbb2"),
+                                    .background = hex("#282828"),
+                                    .selectionFg = hex("#ebdbb2"),
+                                    .selectionBg = hex("#665c54"),
+                                    .cursorText = hex("#282828"),
+                                    .cursor = hex("#ebdbb2"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#98971a"),
+                                    .onPrimary = hex("#fbf1c7"),
+                                    .secondary = hex("#d79921"),
+                                    .onSecondary = hex("#fbf1c7"),
+                                    .tertiary = hex("#458588"),
+                                    .onTertiary = hex("#fbf1c7"),
+                                    .error = hex("#cc241d"),
+                                    .onError = hex("#fbf1c7"),
+                                    .surface = hex("#fbf1c7"),
+                                    .onSurface = hex("#3c3836"),
+                                    .surfaceVariant = hex("#ebdbb2"),
+                                    .onSurfaceVariant = hex("#7c6f64"),
+                                    .outline = hex("#bdae93"),
+                                    .shadow = hex("#d5c4a1"),
+                                    .hover = hex("#458588"),
+                                    .onHover = hex("#fbf1c7"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#fbf1c7"),
+                                            .red = hex("#cc241d"),
+                                            .green = hex("#98971a"),
+                                            .yellow = hex("#d79921"),
+                                            .blue = hex("#458588"),
+                                            .magenta = hex("#b16286"),
+                                            .cyan = hex("#689d6a"),
+                                            .white = hex("#7c6f64"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#928374"),
+                                            .red = hex("#9d0006"),
+                                            .green = hex("#79740e"),
+                                            .yellow = hex("#b57614"),
+                                            .blue = hex("#076678"),
+                                            .magenta = hex("#8f3f71"),
+                                            .cyan = hex("#427b58"),
+                                            .white = hex("#3c3836"),
+                                        },
+                                    .foreground = hex("#3c3836"),
+                                    .background = hex("#fbf1c7"),
+                                    .selectionFg = hex("#fbf1c7"),
+                                    .selectionBg = hex("#3c3836"),
+                                    .cursorText = hex("#625e5c"),
+                                    .cursor = hex("#3c3836"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Halo" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Halo",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#8c9eff"),
+                                    .onPrimary = hex("#0f1020"),
+                                    .secondary = hex("#b3bfff"),
+                                    .onSecondary = hex("#0f1020"),
+                                    .tertiary = hex("#7fe0c4"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff7a8a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#22254a"),
+                                    .onSurface = hex("#eef0ff"),
+                                    .surfaceVariant = hex("#2c3066"),
+                                    .onSurfaceVariant = hex("#9aa0c3"),
+                                    .outline = hex("#3a3e6e"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#30346a"),
+                                    .onHover = hex("#eef0ff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c3066"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9aa0c3"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585b84"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#eef0ff"),
+                                        },
+                                    .foreground = hex("#eef0ff"),
+                                    .background = hex("#0f1020"),
+                                    .selectionFg = hex("#eef0ff"),
+                                    .selectionBg = hex("#3b426e"),
+                                    .cursorText = hex("#0f1020"),
+                                    .cursor = hex("#8c9eff"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#8c9eff"),
+                                    .onPrimary = hex("#0f1020"),
+                                    .secondary = hex("#b3bfff"),
+                                    .onSecondary = hex("#0f1020"),
+                                    .tertiary = hex("#7fe0c4"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff7a8a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#22254a"),
+                                    .onSurface = hex("#eef0ff"),
+                                    .surfaceVariant = hex("#2c3066"),
+                                    .onSurfaceVariant = hex("#9aa0c3"),
+                                    .outline = hex("#3a3e6e"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#30346a"),
+                                    .onHover = hex("#eef0ff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c3066"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#9aa0c3"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585b84"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#eef0ff"),
+                                        },
+                                    .foreground = hex("#eef0ff"),
+                                    .background = hex("#0f1020"),
+                                    .selectionFg = hex("#eef0ff"),
+                                    .selectionBg = hex("#3b426e"),
+                                    .cursorText = hex("#0f1020"),
+                                    .cursor = hex("#8c9eff"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Hearth" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Hearth",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#e08a4f"),
+                                    .onPrimary = hex("#1a120d"),
+                                    .secondary = hex("#f0b088"),
+                                    .onSecondary = hex("#1a120d"),
+                                    .tertiary = hex("#9fc98a"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ef6f5e"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#221b17"),
+                                    .onSurface = hex("#f3e9e1"),
+                                    .surfaceVariant = hex("#2e2520"),
+                                    .onSurfaceVariant = hex("#a8988c"),
+                                    .outline = hex("#3a2f28"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#3b2d24"),
+                                    .onHover = hex("#f3e9e1"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2e2520"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a8988c"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#584e48"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f3e9e1"),
+                                        },
+                                    .foreground = hex("#f3e9e1"),
+                                    .background = hex("#17120f"),
+                                    .selectionFg = hex("#f3e9e1"),
+                                    .selectionBg = hex("#5d3c25"),
+                                    .cursorText = hex("#17120f"),
+                                    .cursor = hex("#e08a4f"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#e08a4f"),
+                                    .onPrimary = hex("#1a120d"),
+                                    .secondary = hex("#f0b088"),
+                                    .onSecondary = hex("#1a120d"),
+                                    .tertiary = hex("#9fc98a"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ef6f5e"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#221b17"),
+                                    .onSurface = hex("#f3e9e1"),
+                                    .surfaceVariant = hex("#2e2520"),
+                                    .onSurfaceVariant = hex("#a8988c"),
+                                    .outline = hex("#3a2f28"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#3b2d24"),
+                                    .onHover = hex("#f3e9e1"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2e2520"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a8988c"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#584e48"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f3e9e1"),
+                                        },
+                                    .foreground = hex("#f3e9e1"),
+                                    .background = hex("#17120f"),
+                                    .selectionFg = hex("#f3e9e1"),
+                                    .selectionBg = hex("#5d3c25"),
+                                    .cursorText = hex("#17120f"),
+                                    .cursor = hex("#e08a4f"),
+                                },
+                        },
+                },
+                {
+                    .name = "Kanagawa",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#76946a"),
+                                    .onPrimary = hex("#1f1f28"),
+                                    .secondary = hex("#c0a36e"),
+                                    .onSecondary = hex("#1f1f28"),
+                                    .tertiary = hex("#7e9cd8"),
+                                    .onTertiary = hex("#1f1f28"),
+                                    .error = hex("#c34043"),
+                                    .onError = hex("#1f1f28"),
+                                    .surface = hex("#1f1f28"),
+                                    .onSurface = hex("#c8c093"),
+                                    .surfaceVariant = hex("#2a2a37"),
+                                    .onSurfaceVariant = hex("#717c7c"),
+                                    .outline = hex("#363646"),
+                                    .shadow = hex("#1f1f28"),
+                                    .hover = hex("#7e9cd8"),
+                                    .onHover = hex("#1f1f28"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#090618"),
+                                            .red = hex("#c34043"),
+                                            .green = hex("#76946a"),
+                                            .yellow = hex("#c0a36e"),
+                                            .blue = hex("#7e9cd8"),
+                                            .magenta = hex("#957fb8"),
+                                            .cyan = hex("#6a9589"),
+                                            .white = hex("#c8c093"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#727169"),
+                                            .red = hex("#e82424"),
+                                            .green = hex("#98bb6c"),
+                                            .yellow = hex("#e6c384"),
+                                            .blue = hex("#7fb4ca"),
+                                            .magenta = hex("#938aa9"),
+                                            .cyan = hex("#7aa89F"),
+                                            .white = hex("#dcd7ba"),
+                                        },
+                                    .foreground = hex("#dcd7ba"),
+                                    .background = hex("#1f1f28"),
+                                    .selectionFg = hex("#c8c093"),
+                                    .selectionBg = hex("#2d4f67"),
+                                    .cursorText = hex("#1f1f28"),
+                                    .cursor = hex("#c8c093"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#6f894e"),
+                                    .onPrimary = hex("#f2ecbc"),
+                                    .secondary = hex("#77713F"),
+                                    .onSecondary = hex("#f2ecbc"),
+                                    .tertiary = hex("#4d699b"),
+                                    .onTertiary = hex("#f2ecbc"),
+                                    .error = hex("#c84053"),
+                                    .onError = hex("#f2ecbc"),
+                                    .surface = hex("#f2ecbc"),
+                                    .onSurface = hex("#545464"),
+                                    .surfaceVariant = hex("#e5ddb0"),
+                                    .onSurfaceVariant = hex("#8a8980"),
+                                    .outline = hex("#cfc49c"),
+                                    .shadow = hex("#f2ecbc"),
+                                    .hover = hex("#4d699b"),
+                                    .onHover = hex("#f2ecbc"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1F1F28"),
+                                            .red = hex("#c84053"),
+                                            .green = hex("#6f894e"),
+                                            .yellow = hex("#77713F"),
+                                            .blue = hex("#4d699b"),
+                                            .magenta = hex("#b35b79"),
+                                            .cyan = hex("#597b75"),
+                                            .white = hex("#545464"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#8a8980"),
+                                            .red = hex("#d7474b"),
+                                            .green = hex("#6e915F"),
+                                            .yellow = hex("#836f4a"),
+                                            .blue = hex("#6693bf"),
+                                            .magenta = hex("#624c83"),
+                                            .cyan = hex("#5e857a"),
+                                            .white = hex("#43436c"),
+                                        },
+                                    .foreground = hex("#545464"),
+                                    .background = hex("#f2ecbc"),
+                                    .selectionFg = hex("#f2ecbc"),
+                                    .selectionBg = hex("#c9cbd1"),
+                                    .cursorText = hex("#f2ecbc"),
+                                    .cursor = hex("#43436c"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Kontor" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Kontor",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#1f1f1f"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#3c3c3c"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#2f7d3a"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#b3261e"),
+                                    .onError = hex("#ffffff"),
+                                    .surface = hex("#ffffff"),
+                                    .onSurface = hex("#1f1f1f"),
+                                    .surfaceVariant = hex("#f4f4f2"),
+                                    .onSurfaceVariant = hex("#646464"),
+                                    .outline = hex("#cfcfcb"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#ebebe8"),
+                                    .onHover = hex("#1f1f1f"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1f1f1f"),
+                                            .red = hex("#b3261e"),
+                                            .green = hex("#2f7d3a"),
+                                            .yellow = hex("#9a6b00"),
+                                            .blue = hex("#2c5fcf"),
+                                            .magenta = hex("#8a45b8"),
+                                            .cyan = hex("#137a78"),
+                                            .white = hex("#646464"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#929292"),
+                                            .red = hex("#d33a3a"),
+                                            .green = hex("#3c9a4a"),
+                                            .yellow = hex("#b88400"),
+                                            .blue = hex("#3f74e6"),
+                                            .magenta = hex("#a35ed1"),
+                                            .cyan = hex("#1f9a97"),
+                                            .white = hex("#1f1f1f"),
+                                        },
+                                    .foreground = hex("#1f1f1f"),
+                                    .background = hex("#ffffff"),
+                                    .selectionFg = hex("#1f1f1f"),
+                                    .selectionBg = hex("#b1b1b1"),
+                                    .cursorText = hex("#ffffff"),
+                                    .cursor = hex("#1f1f1f"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#1f1f1f"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#3c3c3c"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#2f7d3a"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#b3261e"),
+                                    .onError = hex("#ffffff"),
+                                    .surface = hex("#ffffff"),
+                                    .onSurface = hex("#1f1f1f"),
+                                    .surfaceVariant = hex("#f4f4f2"),
+                                    .onSurfaceVariant = hex("#646464"),
+                                    .outline = hex("#cfcfcb"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#ebebe8"),
+                                    .onHover = hex("#1f1f1f"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1f1f1f"),
+                                            .red = hex("#b3261e"),
+                                            .green = hex("#2f7d3a"),
+                                            .yellow = hex("#9a6b00"),
+                                            .blue = hex("#2c5fcf"),
+                                            .magenta = hex("#8a45b8"),
+                                            .cyan = hex("#137a78"),
+                                            .white = hex("#646464"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#929292"),
+                                            .red = hex("#d33a3a"),
+                                            .green = hex("#3c9a4a"),
+                                            .yellow = hex("#b88400"),
+                                            .blue = hex("#3f74e6"),
+                                            .magenta = hex("#a35ed1"),
+                                            .cyan = hex("#1f9a97"),
+                                            .white = hex("#1f1f1f"),
+                                        },
+                                    .foreground = hex("#1f1f1f"),
+                                    .background = hex("#ffffff"),
+                                    .selectionFg = hex("#1f1f1f"),
+                                    .selectionBg = hex("#b1b1b1"),
+                                    .cursorText = hex("#ffffff"),
+                                    .cursor = hex("#1f1f1f"),
+                                },
+                        },
+                },
+                {
+                    // Slate, the L-Shell design language: graphite neutrals, one amber signal accent, colour only for
+                    // status. Fixed on purpose: the wallpaper never recolours the shell.
+                    .name = "L-Shell",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#f2b04b"),
+                                    .onPrimary = hex("#1c1405"),
+                                    .secondary = hex("#e6c58f"),
+                                    .onSecondary = hex("#1c1405"),
+                                    .tertiary = hex("#7fd1ae"),
+                                    .onTertiary = hex("#0c1a14"),
+                                    .error = hex("#ff6b6b"),
+                                    .onError = hex("#1f0707"),
+                                    .surface = hex("#141518"),
+                                    .onSurface = hex("#ecedef"),
+                                    .surfaceVariant = hex("#1f2125"),
+                                    .onSurfaceVariant = hex("#9a9da4"),
+                                    .outline = hex("#2f3137"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2c31"),
+                                    .onHover = hex("#ffffff"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1c1d21"),
+                                            .red = hex("#ff6b6b"),
+                                            .green = hex("#8fd694"),
+                                            .yellow = hex("#f2b04b"),
+                                            .blue = hex("#7aa7ff"),
+                                            .magenta = hex("#c99cff"),
+                                            .cyan = hex("#6fd3d1"),
+                                            .white = hex("#d5d7db"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4a4d55"),
+                                            .red = hex("#ff8f8f"),
+                                            .green = hex("#aee5b1"),
+                                            .yellow = hex("#f7c977"),
+                                            .blue = hex("#9dbeff"),
+                                            .magenta = hex("#dbbcff"),
+                                            .cyan = hex("#97e2e0"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#ecedef"),
+                                    .background = hex("#141518"),
+                                    .selectionFg = hex("#ffffff"),
+                                    .selectionBg = hex("#4a3c22"),
+                                    .cursorText = hex("#141518"),
+                                    .cursor = hex("#f2b04b"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#b86e00"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#8a6420"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#23845e"),
+                                    .onTertiary = hex("#ffffff"),
+                                    .error = hex("#d33a3a"),
+                                    .onError = hex("#ffffff"),
+                                    .surface = hex("#f3f3f1"),
+                                    .onSurface = hex("#1a1b1e"),
+                                    .surfaceVariant = hex("#ffffff"),
+                                    .onSurfaceVariant = hex("#5d6067"),
+                                    .outline = hex("#d8d9dc"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#e4e5e7"),
+                                    .onHover = hex("#1a1b1e"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1a1b1e"),
+                                            .red = hex("#c62f2f"),
+                                            .green = hex("#2f7d3a"),
+                                            .yellow = hex("#9a5b00"),
+                                            .blue = hex("#2c5fcf"),
+                                            .magenta = hex("#8a45b8"),
+                                            .cyan = hex("#137a78"),
+                                            .white = hex("#5d6067"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#8b8e95"),
+                                            .red = hex("#e04848"),
+                                            .green = hex("#3c9a4a"),
+                                            .yellow = hex("#b86e00"),
+                                            .blue = hex("#3f74e6"),
+                                            .magenta = hex("#a35ed1"),
+                                            .cyan = hex("#1f9a97"),
+                                            .white = hex("#1a1b1e"),
+                                        },
+                                    .foreground = hex("#1a1b1e"),
+                                    .background = hex("#fbfbfa"),
+                                    .selectionFg = hex("#1a1b1e"),
+                                    .selectionBg = hex("#f2d9b0"),
+                                    .cursorText = hex("#ffffff"),
+                                    .cursor = hex("#1a1b1e"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Ma" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Ma",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#c8361e"),
+                                    .onPrimary = hex("#f6efe3"),
+                                    .secondary = hex("#e0644e"),
+                                    .onSecondary = hex("#f6efe3"),
+                                    .tertiary = hex("#8fae7a"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#e35d4a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1c1a18"),
+                                    .onSurface = hex("#ece6da"),
+                                    .surfaceVariant = hex("#26231f"),
+                                    .onSurfaceVariant = hex("#8e877b"),
+                                    .outline = hex("#2e2b27"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2723"),
+                                    .onHover = hex("#ece6da"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#26231f"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8e877b"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4d4b47"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#ece6da"),
+                                        },
+                                    .foreground = hex("#ece6da"),
+                                    .background = hex("#121110"),
+                                    .selectionFg = hex("#ece6da"),
+                                    .selectionBg = hex("#521e15"),
+                                    .cursorText = hex("#121110"),
+                                    .cursor = hex("#c8361e"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#c8361e"),
+                                    .onPrimary = hex("#f6efe3"),
+                                    .secondary = hex("#e0644e"),
+                                    .onSecondary = hex("#f6efe3"),
+                                    .tertiary = hex("#8fae7a"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#e35d4a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1c1a18"),
+                                    .onSurface = hex("#ece6da"),
+                                    .surfaceVariant = hex("#26231f"),
+                                    .onSurfaceVariant = hex("#8e877b"),
+                                    .outline = hex("#2e2b27"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2723"),
+                                    .onHover = hex("#ece6da"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#26231f"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8e877b"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4d4b47"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#ece6da"),
+                                        },
+                                    .foreground = hex("#ece6da"),
+                                    .background = hex("#121110"),
+                                    .selectionFg = hex("#ece6da"),
+                                    .selectionBg = hex("#521e15"),
+                                    .cursorText = hex("#121110"),
+                                    .cursor = hex("#c8361e"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Meridian" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Meridian",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#3ddc97"),
+                                    .onPrimary = hex("#062b1b"),
+                                    .secondary = hex("#7ae8b8"),
+                                    .onSecondary = hex("#062b1b"),
+                                    .tertiary = hex("#6ea8fe"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff6b6b"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#161b22"),
+                                    .onSurface = hex("#e6eaf0"),
+                                    .surfaceVariant = hex("#1f2630"),
+                                    .onSurfaceVariant = hex("#8b95a5"),
+                                    .outline = hex("#2a313c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#222934"),
+                                    .onHover = hex("#e6eaf0"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1f2630"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8b95a5"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4a5059"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#e6eaf0"),
+                                        },
+                                    .foreground = hex("#e6eaf0"),
+                                    .background = hex("#0b0e13"),
+                                    .selectionFg = hex("#e6eaf0"),
+                                    .selectionBg = hex("#1c5641"),
+                                    .cursorText = hex("#0b0e13"),
+                                    .cursor = hex("#3ddc97"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#3ddc97"),
+                                    .onPrimary = hex("#062b1b"),
+                                    .secondary = hex("#7ae8b8"),
+                                    .onSecondary = hex("#062b1b"),
+                                    .tertiary = hex("#6ea8fe"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff6b6b"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#161b22"),
+                                    .onSurface = hex("#e6eaf0"),
+                                    .surfaceVariant = hex("#1f2630"),
+                                    .onSurfaceVariant = hex("#8b95a5"),
+                                    .outline = hex("#2a313c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#222934"),
+                                    .onHover = hex("#e6eaf0"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#1f2630"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8b95a5"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4a5059"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#e6eaf0"),
+                                        },
+                                    .foreground = hex("#e6eaf0"),
+                                    .background = hex("#0b0e13"),
+                                    .selectionFg = hex("#e6eaf0"),
+                                    .selectionBg = hex("#1c5641"),
+                                    .cursorText = hex("#0b0e13"),
+                                    .cursor = hex("#3ddc97"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Monolith" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Monolith",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#c8ff2e"),
+                                    .onPrimary = hex("#000000"),
+                                    .secondary = hex("#e2ff8a"),
+                                    .onSecondary = hex("#000000"),
+                                    .tertiary = hex("#5ee6c4"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff4d4d"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#0a0a0a"),
+                                    .onSurface = hex("#f5f5f5"),
+                                    .surfaceVariant = hex("#141414"),
+                                    .onSurfaceVariant = hex("#7a7a7a"),
+                                    .outline = hex("#262626"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#1a1a1a"),
+                                    .onHover = hex("#f5f5f5"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#141414"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#7a7a7a"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#474747"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f5f5f5"),
+                                        },
+                                    .foreground = hex("#f5f5f5"),
+                                    .background = hex("#000000"),
+                                    .selectionFg = hex("#f5f5f5"),
+                                    .selectionBg = hex("#465910"),
+                                    .cursorText = hex("#000000"),
+                                    .cursor = hex("#c8ff2e"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#c8ff2e"),
+                                    .onPrimary = hex("#000000"),
+                                    .secondary = hex("#e2ff8a"),
+                                    .onSecondary = hex("#000000"),
+                                    .tertiary = hex("#5ee6c4"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff4d4d"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#0a0a0a"),
+                                    .onSurface = hex("#f5f5f5"),
+                                    .surfaceVariant = hex("#141414"),
+                                    .onSurfaceVariant = hex("#7a7a7a"),
+                                    .outline = hex("#262626"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#1a1a1a"),
+                                    .onHover = hex("#f5f5f5"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#141414"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#7a7a7a"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#474747"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f5f5f5"),
+                                        },
+                                    .foreground = hex("#f5f5f5"),
+                                    .background = hex("#000000"),
+                                    .selectionFg = hex("#f5f5f5"),
+                                    .selectionBg = hex("#465910"),
+                                    .cursorText = hex("#000000"),
+                                    .cursor = hex("#c8ff2e"),
+                                },
+                        },
+                },
+                {
+                    .name = "Noctalia",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#fff59b"),
+                                    .onPrimary = hex("#0e0e43"),
+                                    .secondary = hex("#a9aefe"),
+                                    .onSecondary = hex("#0e0e43"),
+                                    .tertiary = hex("#9BFECE"),
+                                    .onTertiary = hex("#0e0e43"),
+                                    .error = hex("#FD4663"),
+                                    .onError = hex("#0e0e43"),
+                                    .surface = hex("#070722"),
+                                    .onSurface = hex("#f3edf7"),
+                                    .surfaceVariant = hex("#11112d"),
+                                    .onSurfaceVariant = hex("#7c80b4"),
+                                    .outline = hex("#21215F"),
+                                    .shadow = hex("#070722"),
+                                    .hover = hex("#9BFECE"),
+                                    .onHover = hex("#0e0e43"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#11112d"),
+                                            .red = hex("#FD4663"),
+                                            .green = hex("#9BFECE"),
+                                            .yellow = hex("#fff59b"),
+                                            .blue = hex("#a9aefe"),
+                                            .magenta = hex("#FD4663"),
+                                            .cyan = hex("#9BFECE"),
+                                            .white = hex("#f3edf7"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#21215F"),
+                                            .red = hex("#FD4663"),
+                                            .green = hex("#9BFECE"),
+                                            .yellow = hex("#fff59b"),
+                                            .blue = hex("#a9aefe"),
+                                            .magenta = hex("#FD4663"),
+                                            .cyan = hex("#9BFECE"),
+                                            .white = hex("#ffffff"),
+                                        },
+                                    .foreground = hex("#f3edf7"),
+                                    .background = hex("#070722"),
+                                    .selectionFg = hex("#070722"),
+                                    .selectionBg = hex("#f3edf7"),
+                                    .cursorText = hex("#070722"),
+                                    .cursor = hex("#fff59b"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#5d65f5"),
+                                    .onPrimary = hex("#dadcff"),
+                                    .secondary = hex("#8E93D8"),
+                                    .onSecondary = hex("#dadcff"),
+                                    .tertiary = hex("#0e0e43"),
+                                    .onTertiary = hex("#fef29a"),
+                                    .error = hex("#FD4663"),
+                                    .onError = hex("#0e0e43"),
+                                    .surface = hex("#e6e8fa"),
+                                    .onSurface = hex("#0e0e43"),
+                                    .surfaceVariant = hex("#eff0ff"),
+                                    .onSurfaceVariant = hex("#4b55c8"),
+                                    .outline = hex("#8288fc"),
+                                    .shadow = hex("#f3edf7"),
+                                    .hover = hex("#0e0e43"),
+                                    .onHover = hex("#fef29a"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#eff0ff"),
+                                            .red = hex("#FD4663"),
+                                            .green = hex("#0e0e43"),
+                                            .yellow = hex("#5d65f5"),
+                                            .blue = hex("#8E93D8"),
+                                            .magenta = hex("#FD4663"),
+                                            .cyan = hex("#0e0e43"),
+                                            .white = hex("#4b55c8"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#8288fc"),
+                                            .red = hex("#FD4663"),
+                                            .green = hex("#0e0e43"),
+                                            .yellow = hex("#5d65f5"),
+                                            .blue = hex("#8E93D8"),
+                                            .magenta = hex("#FD4663"),
+                                            .cyan = hex("#0e0e43"),
+                                            .white = hex("#0e0e43"),
+                                        },
+                                    .foreground = hex("#4b55c8"),
+                                    .background = hex("#e6e8fa"),
+                                    .selectionFg = hex("#e6e8fa"),
+                                    .selectionBg = hex("#4b55c8"),
+                                    .cursorText = hex("#e6e8fa"),
+                                    .cursor = hex("#5d65f5"),
+                                },
+                        },
+                },
+                {
+                    .name = "Nord",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#8fbcbb"),
+                                    .onPrimary = hex("#2e3440"),
+                                    .secondary = hex("#88c0d0"),
+                                    .onSecondary = hex("#2e3440"),
+                                    .tertiary = hex("#5e81ac"),
+                                    .onTertiary = hex("#2e3440"),
+                                    .error = hex("#bf616a"),
+                                    .onError = hex("#2e3440"),
+                                    .surface = hex("#2e3440"),
+                                    .onSurface = hex("#eceff4"),
+                                    .surfaceVariant = hex("#3b4252"),
+                                    .onSurfaceVariant = hex("#d8dee9"),
+                                    .outline = hex("#505a70"),
+                                    .shadow = hex("#2e3440"),
+                                    .hover = hex("#5e81ac"),
+                                    .onHover = hex("#2e3440"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#3b4252"),
+                                            .red = hex("#bf616a"),
+                                            .green = hex("#a3be8c"),
+                                            .yellow = hex("#ebcb8b"),
+                                            .blue = hex("#81a1c1"),
+                                            .magenta = hex("#b48ead"),
+                                            .cyan = hex("#88c0d0"),
+                                            .white = hex("#e5e9f0"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#596377"),
+                                            .red = hex("#bf616a"),
+                                            .green = hex("#a3be8c"),
+                                            .yellow = hex("#ebcb8b"),
+                                            .blue = hex("#81a1c1"),
+                                            .magenta = hex("#b48ead"),
+                                            .cyan = hex("#8fbcbb"),
+                                            .white = hex("#eceff4"),
+                                        },
+                                    .foreground = hex("#d8dee9"),
+                                    .background = hex("#2e3440"),
+                                    .selectionFg = hex("#4c566a"),
+                                    .selectionBg = hex("#eceff4"),
+                                    .cursorText = hex("#282828"),
+                                    .cursor = hex("#eceff4"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#5e81ac"),
+                                    .onPrimary = hex("#eceff4"),
+                                    .secondary = hex("#64adc2"),
+                                    .onSecondary = hex("#eceff4"),
+                                    .tertiary = hex("#6fa9a8"),
+                                    .onTertiary = hex("#eceff4"),
+                                    .error = hex("#bf616a"),
+                                    .onError = hex("#eceff4"),
+                                    .surface = hex("#eceff4"),
+                                    .onSurface = hex("#2e3440"),
+                                    .surfaceVariant = hex("#e5e9f0"),
+                                    .onSurfaceVariant = hex("#4c566a"),
+                                    .outline = hex("#c5cedd"),
+                                    .shadow = hex("#d8dee9"),
+                                    .hover = hex("#6fa9a8"),
+                                    .onHover = hex("#eceff4"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#3b4252"),
+                                            .red = hex("#bf616a"),
+                                            .green = hex("#96b17F"),
+                                            .yellow = hex("#c5a565"),
+                                            .blue = hex("#81a1c1"),
+                                            .magenta = hex("#b48ead"),
+                                            .cyan = hex("#7bb3c3"),
+                                            .white = hex("#a5abb6"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4c566a"),
+                                            .red = hex("#bf616a"),
+                                            .green = hex("#96b17F"),
+                                            .yellow = hex("#c5a565"),
+                                            .blue = hex("#81a1c1"),
+                                            .magenta = hex("#b48ead"),
+                                            .cyan = hex("#82afae"),
+                                            .white = hex("#eceff4"),
+                                        },
+                                    .foreground = hex("#414858"),
+                                    .background = hex("#eceff4"),
+                                    .selectionFg = hex("#4c556a"),
+                                    .selectionBg = hex("#d8dee9"),
+                                    .cursorText = hex("#3b4252"),
+                                    .cursor = hex("#7bb3c3"),
+                                },
+                        },
+                },
+                {
+                    .name = "Rosé Pine",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#ebbcba"),
+                                    .onPrimary = hex("#191724"),
+                                    .secondary = hex("#9ccfd8"),
+                                    .onSecondary = hex("#191724"),
+                                    .tertiary = hex("#31748F"),
+                                    .onTertiary = hex("#e0def4"),
+                                    .error = hex("#eb6f92"),
+                                    .onError = hex("#191724"),
+                                    .surface = hex("#191724"),
+                                    .onSurface = hex("#e0def4"),
+                                    .surfaceVariant = hex("#26233a"),
+                                    .onSurfaceVariant = hex("#908caa"),
+                                    .outline = hex("#403d52"),
+                                    .shadow = hex("#191724"),
+                                    .hover = hex("#524f67"),
+                                    .onHover = hex("#e0def4"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#26233a"),
+                                            .red = hex("#eb6f92"),
+                                            .green = hex("#31748F"),
+                                            .yellow = hex("#f6c177"),
+                                            .blue = hex("#9ccfd8"),
+                                            .magenta = hex("#c4a7e7"),
+                                            .cyan = hex("#ebbcba"),
+                                            .white = hex("#e0def4"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#6e6a86"),
+                                            .red = hex("#eb6f92"),
+                                            .green = hex("#31748F"),
+                                            .yellow = hex("#f6c177"),
+                                            .blue = hex("#9ccfd8"),
+                                            .magenta = hex("#c4a7e7"),
+                                            .cyan = hex("#ebbcba"),
+                                            .white = hex("#e0def4"),
+                                        },
+                                    .foreground = hex("#e0def4"),
+                                    .background = hex("#191724"),
+                                    .selectionFg = hex("#e0def4"),
+                                    .selectionBg = hex("#403d52"),
+                                    .cursorText = hex("#191724"),
+                                    .cursor = hex("#e0def4"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#d7827e"),
+                                    .onPrimary = hex("#faf4ed"),
+                                    .secondary = hex("#56949F"),
+                                    .onSecondary = hex("#faf4ed"),
+                                    .tertiary = hex("#286983"),
+                                    .onTertiary = hex("#faf4ed"),
+                                    .error = hex("#b4637a"),
+                                    .onError = hex("#faf4ed"),
+                                    .surface = hex("#fffaf3"),
+                                    .onSurface = hex("#575279"),
+                                    .surfaceVariant = hex("#f2e9e1"),
+                                    .onSurfaceVariant = hex("#797593"),
+                                    .outline = hex("#dfdad9"),
+                                    .shadow = hex("#faf4ed"),
+                                    .hover = hex("#cecacd"),
+                                    .onHover = hex("#575279"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#f2e9e1"),
+                                            .red = hex("#b4637a"),
+                                            .green = hex("#286983"),
+                                            .yellow = hex("#ea9d34"),
+                                            .blue = hex("#56949F"),
+                                            .magenta = hex("#907aa9"),
+                                            .cyan = hex("#d7827e"),
+                                            .white = hex("#575279"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#9893a5"),
+                                            .red = hex("#b4637a"),
+                                            .green = hex("#286983"),
+                                            .yellow = hex("#ea9d34"),
+                                            .blue = hex("#56949F"),
+                                            .magenta = hex("#907aa9"),
+                                            .cyan = hex("#d7827e"),
+                                            .white = hex("#575279"),
+                                        },
+                                    .foreground = hex("#575279"),
+                                    .background = hex("#faf4ed"),
+                                    .selectionFg = hex("#575279"),
+                                    .selectionBg = hex("#dfdad9"),
+                                    .cursorText = hex("#faf4ed"),
+                                    .cursor = hex("#575279"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Strata" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Strata",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#38bdf8"),
+                                    .onPrimary = hex("#0b1220"),
+                                    .secondary = hex("#7dd3fc"),
+                                    .onSecondary = hex("#0b1220"),
+                                    .tertiary = hex("#4ade80"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#f87171"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#181b1f"),
+                                    .onSurface = hex("#e8eaed"),
+                                    .surfaceVariant = hex("#23272d"),
+                                    .onSurfaceVariant = hex("#8a9099"),
+                                    .outline = hex("#2b3036"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2f36"),
+                                    .onHover = hex("#e8eaed"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#23272d"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8a9099"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4b4f54"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#e8eaed"),
+                                        },
+                                    .foreground = hex("#e8eaed"),
+                                    .background = hex("#121417"),
+                                    .selectionFg = hex("#e8eaed"),
+                                    .selectionBg = hex("#1f4f66"),
+                                    .cursorText = hex("#121417"),
+                                    .cursor = hex("#38bdf8"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#38bdf8"),
+                                    .onPrimary = hex("#0b1220"),
+                                    .secondary = hex("#7dd3fc"),
+                                    .onSecondary = hex("#0b1220"),
+                                    .tertiary = hex("#4ade80"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#f87171"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#181b1f"),
+                                    .onSurface = hex("#e8eaed"),
+                                    .surfaceVariant = hex("#23272d"),
+                                    .onSurfaceVariant = hex("#8a9099"),
+                                    .outline = hex("#2b3036"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#2a2f36"),
+                                    .onHover = hex("#e8eaed"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#23272d"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#8a9099"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#4b4f54"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#e8eaed"),
+                                        },
+                                    .foreground = hex("#e8eaed"),
+                                    .background = hex("#121417"),
+                                    .selectionFg = hex("#e8eaed"),
+                                    .selectionBg = hex("#1f4f66"),
+                                    .cursorText = hex("#121417"),
+                                    .cursor = hex("#38bdf8"),
+                                },
+                        },
+                },
+                {
+                    // L-Shell design "Tahoe" (config/design_presets.cpp): one fixed palette, the same in both modes.
+                    .name = "Tahoe",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#0a84ff"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#5ac8fa"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#30d158"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff453a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1e2026"),
+                                    .onSurface = hex("#f5f5f7"),
+                                    .surfaceVariant = hex("#2c2c30"),
+                                    .onSurfaceVariant = hex("#a1a1a6"),
+                                    .outline = hex("#3a3a3c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#36363a"),
+                                    .onHover = hex("#f5f5f7"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2c30"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a1a1a6"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585859"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f5f5f7"),
+                                        },
+                                    .foreground = hex("#f5f5f7"),
+                                    .background = hex("#13243d"),
+                                    .selectionFg = hex("#f5f5f7"),
+                                    .selectionBg = hex("#104681"),
+                                    .cursorText = hex("#13243d"),
+                                    .cursor = hex("#0a84ff"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#0a84ff"),
+                                    .onPrimary = hex("#ffffff"),
+                                    .secondary = hex("#5ac8fa"),
+                                    .onSecondary = hex("#ffffff"),
+                                    .tertiary = hex("#30d158"),
+                                    .onTertiary = hex("#0b0b0b"),
+                                    .error = hex("#ff453a"),
+                                    .onError = hex("#1a0606"),
+                                    .surface = hex("#1e2026"),
+                                    .onSurface = hex("#f5f5f7"),
+                                    .surfaceVariant = hex("#2c2c30"),
+                                    .onSurfaceVariant = hex("#a1a1a6"),
+                                    .outline = hex("#3a3a3c"),
+                                    .shadow = hex("#000000"),
+                                    .hover = hex("#36363a"),
+                                    .onHover = hex("#f5f5f7"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#2c2c30"),
+                                            .red = hex("#e5676b"),
+                                            .green = hex("#7cc48a"),
+                                            .yellow = hex("#e5b85c"),
+                                            .blue = hex("#6fa0e8"),
+                                            .magenta = hex("#c08ad8"),
+                                            .cyan = hex("#5fc4c2"),
+                                            .white = hex("#a1a1a6"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#585859"),
+                                            .red = hex("#f08a8d"),
+                                            .green = hex("#9ed8a8"),
+                                            .yellow = hex("#f0cd86"),
+                                            .blue = hex("#94baf0"),
+                                            .magenta = hex("#d4aae6"),
+                                            .cyan = hex("#8ad6d4"),
+                                            .white = hex("#f5f5f7"),
+                                        },
+                                    .foreground = hex("#f5f5f7"),
+                                    .background = hex("#13243d"),
+                                    .selectionFg = hex("#f5f5f7"),
+                                    .selectionBg = hex("#104681"),
+                                    .cursorText = hex("#13243d"),
+                                    .cursor = hex("#0a84ff"),
+                                },
+                        },
+                },
+                {
+                    .name = "Tokyo-Night",
+                    .dark =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#7aa2f7"),
+                                    .onPrimary = hex("#16161e"),
+                                    .secondary = hex("#bb9af7"),
+                                    .onSecondary = hex("#16161e"),
+                                    .tertiary = hex("#9ece6a"),
+                                    .onTertiary = hex("#16161e"),
+                                    .error = hex("#f7768e"),
+                                    .onError = hex("#16161e"),
+                                    .surface = hex("#1a1b26"),
+                                    .onSurface = hex("#c0caf5"),
+                                    .surfaceVariant = hex("#24283b"),
+                                    .onSurfaceVariant = hex("#9aa5ce"),
+                                    .outline = hex("#353D57"),
+                                    .shadow = hex("#15161e"),
+                                    .hover = hex("#9ece6a"),
+                                    .onHover = hex("#16161e"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#15161e"),
+                                            .red = hex("#f7768e"),
+                                            .green = hex("#9ece6a"),
+                                            .yellow = hex("#e0af68"),
+                                            .blue = hex("#7aa2f7"),
+                                            .magenta = hex("#bb9af7"),
+                                            .cyan = hex("#7dcfff"),
+                                            .white = hex("#a9b1d6"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#414868"),
+                                            .red = hex("#f7768e"),
+                                            .green = hex("#9ece6a"),
+                                            .yellow = hex("#e0af68"),
+                                            .blue = hex("#7aa2f7"),
+                                            .magenta = hex("#bb9af7"),
+                                            .cyan = hex("#7dcfff"),
+                                            .white = hex("#c0caf5"),
+                                        },
+                                    .foreground = hex("#c0caf5"),
+                                    .background = hex("#1a1b26"),
+                                    .selectionFg = hex("#c0caf5"),
+                                    .selectionBg = hex("#283457"),
+                                    .cursorText = hex("#1a1b26"),
+                                    .cursor = hex("#c0caf5"),
+                                },
+                        },
+                    .light =
+                        FixedPaletteMode{
+                            .palette =
+                                Palette{
+                                    .primary = hex("#2e7de9"),
+                                    .onPrimary = hex("#e1e2e7"),
+                                    .secondary = hex("#9854f1"),
+                                    .onSecondary = hex("#e1e2e7"),
+                                    .tertiary = hex("#587539"),
+                                    .onTertiary = hex("#e1e2e7"),
+                                    .error = hex("#f52a65"),
+                                    .onError = hex("#e1e2e7"),
+                                    .surface = hex("#e1e2e7"),
+                                    .onSurface = hex("#3760bf"),
+                                    .surfaceVariant = hex("#d0d5e3"),
+                                    .onSurfaceVariant = hex("#6172b0"),
+                                    .outline = hex("#b4b5b9"),
+                                    .shadow = hex("#a8aecb"),
+                                    .hover = hex("#587539"),
+                                    .onHover = hex("#e1e2e7"),
+                                },
+                            .terminal =
+                                TerminalPalette{
+                                    .normal =
+                                        TerminalAnsiColors{
+                                            .black = hex("#e9e9ed"),
+                                            .red = hex("#f52a65"),
+                                            .green = hex("#587539"),
+                                            .yellow = hex("#8c6c3e"),
+                                            .blue = hex("#2e7de9"),
+                                            .magenta = hex("#9854f1"),
+                                            .cyan = hex("#007197"),
+                                            .white = hex("#6172b0"),
+                                        },
+                                    .bright =
+                                        TerminalAnsiColors{
+                                            .black = hex("#a1a6c5"),
+                                            .red = hex("#f52a65"),
+                                            .green = hex("#587539"),
+                                            .yellow = hex("#8c6c3e"),
+                                            .blue = hex("#2e7de9"),
+                                            .magenta = hex("#9854f1"),
+                                            .cyan = hex("#007197"),
+                                            .white = hex("#3760bf"),
+                                        },
+                                    .foreground = hex("#3760bf"),
+                                    .background = hex("#e1e2e7"),
+                                    .selectionFg = hex("#3760bf"),
+                                    .selectionBg = hex("#99a7df"),
+                                    .cursorText = hex("#e1e2e7"),
+                                    .cursor = hex("#3760bf"),
+                                },
+                        },
+                },
+            }
+    };
+
+  } // namespace
+
+  std::span<const BuiltinPalette> builtinPalettes() { return kPalettes; }
+
+  const BuiltinPalette* findBuiltinPalette(std::string_view name) {
+    for (const auto& palette : kPalettes) {
+      if (palette.name == name) {
+        return &palette;
+      }
+    }
+    return nullptr;
+  }
+
+  GeneratedPalette expandBuiltinPalette(const BuiltinPalette& palette) {
+    auto generated = expandFixedPalettes(palette.dark.palette, palette.light.palette);
+    applyTerminalPalette(generated.dark, palette.dark.terminal);
+    applyTerminalPalette(generated.light, palette.light.terminal);
+    return generated;
+  }
+
+} // namespace noctalia::theme

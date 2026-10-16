@@ -266,7 +266,9 @@ bool Dock::initialize(CompositorPlatform& platform, ConfigService* config, Rende
         const auto& newCfg = m_config->config().dock;
         const auto& newShadow = m_config->config().shell.shadow;
         const auto newBarLayerStack = barLayerStackSignature(*m_config);
-        if (newCfg == m_lastDockConfig && newShadow == m_lastShadow && newBarLayerStack == m_lastBarLayerStack) {
+        const bool newAppIconGlyphs = m_config->config().shell.appIconGlyphs;
+        if (newCfg == m_lastDockConfig && newShadow == m_lastShadow && newBarLayerStack == m_lastBarLayerStack
+            && newAppIconGlyphs == m_lastAppIconGlyphs) {
           return;
         }
         if (newBarLayerStack != m_lastBarLayerStack && newCfg == m_lastDockConfig && newShadow == m_lastShadow) {
@@ -292,6 +294,7 @@ bool Dock::initialize(CompositorPlatform& platform, ConfigService* config, Rende
   m_lastDockConfig = cfg;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastBarLayerStack = barLayerStackSignature(*m_config);
+  m_lastAppIconGlyphs = m_config->config().shell.appIconGlyphs;
 
   if (!dockMayBeEnabled(cfg)) {
     kLog.info("dock disabled in config");
@@ -306,6 +309,7 @@ void Dock::reload() {
   m_lastDockConfig = cfg;
   m_lastShadow = m_config->config().shell.shadow;
   m_lastBarLayerStack = barLayerStackSignature(*m_config);
+  m_lastAppIconGlyphs = m_config->config().shell.appIconGlyphs;
 
   if (!dockMayBeEnabled(cfg)) {
     closeAllInstances();

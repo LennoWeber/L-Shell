@@ -295,6 +295,9 @@ namespace config_export {
           item.insert_or_assign("placement_height", static_cast<double>(widget.placementHeight));
           item.insert_or_assign("box_width", static_cast<double>(widget.boxWidth));
           item.insert_or_assign("box_height", static_cast<double>(widget.boxHeight));
+          if (widget.scale != 1.0F) {
+            item.insert_or_assign("scale", static_cast<double>(widget.scale));
+          }
           item.insert_or_assign("rotation", static_cast<double>(widget.rotationRad));
           if (widget.flipX) {
             item.insert_or_assign("flip_x", true);

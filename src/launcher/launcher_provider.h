@@ -38,6 +38,8 @@ struct LauncherResult {
   // When launching an application via AppProvider, matches DesktopAction::id (primary Exec leaves this empty).
   std::string desktopActionId;
   std::string category;
+  // A short note at the row's end in the launcher sheet (how long ago a file was used).
+  std::string trailing;
   std::string presentation;
   std::optional<std::string> query;
   double score = 0.0;
@@ -79,6 +81,8 @@ public:
     return m_customGlobalSearch.has_value() ? *m_customGlobalSearch : defaultIncludeInGlobalSearch();
   }
   [[nodiscard]] virtual bool defaultIncludeInGlobalSearch() const { return false; }
+  // Opt-in global providers wait for a typed query; return true to also fill the empty launcher (recent files).
+  [[nodiscard]] virtual bool listsWithoutQuery() const { return false; }
   virtual void setCustomIncludeInGlobalSearch(std::optional<bool> value) { m_customGlobalSearch = value; }
 
   [[nodiscard]] virtual std::vector<LauncherCategory> categories() const { return {}; }

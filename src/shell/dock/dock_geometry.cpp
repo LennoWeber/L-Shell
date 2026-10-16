@@ -10,6 +10,7 @@ namespace shell::dock {
   namespace {
 
     constexpr std::int32_t kCellPad = 6;
+    constexpr std::int32_t kSeparatorInset = 4;
     constexpr std::int32_t kAutoHideTriggerPx = 2;
     // A non-integer output scale can round the flush edge a device pixel short of the output and
     // leave a visible gap. One logical pixel of overlap covers it. At integer scales the edge
@@ -160,7 +161,18 @@ namespace shell::dock {
     if (n == 0) {
       return cellSize + cfg.mainAxisPadding * 2;
     }
-    return n * cellSize + std::max(0, n - 1) * cfg.itemSpacing + cfg.mainAxisPadding * 2;
+    // The launcher separator only stands between the launcher and at least one app.
+    const std::int32_t separator = n >= 2 ? dockSeparatorSize(cfg) : 0;
+    const std::int32_t separatorLength = separator > 0 ? separator + cfg.itemSpacing : 0;
+    return n * cellSize + std::max(0, n - 1) * cfg.itemSpacing + separatorLength + cfg.mainAxisPadding * 2;
+  }
+
+  std::int32_t dockSeparatorSize(const DockConfig& cfg) {
+    if (!cfg.launcherSeparator || dockLauncherButtonCount(cfg) == 0) {
+      return 0;
+    }
+    // A 1px line with breathing room on both sides, beyond the cells' own padding.
+    return 1 + 2 * kSeparatorInset;
   }
 
   std::int32_t dockThickness(const DockConfig& cfg) { return cfg.iconSize + kCellPad * 2 + cfg.crossAxisPadding * 2; }

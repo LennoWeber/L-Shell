@@ -132,6 +132,7 @@ namespace {
         && a.placementHeight == b.placementHeight
         && a.boxWidth == b.boxWidth
         && a.boxHeight == b.boxHeight
+        && a.scale == b.scale
         && a.rotationRad == b.rotationRad
         && a.flipX == b.flipX
         && a.flipY == b.flipY
@@ -141,6 +142,7 @@ namespace {
 
   bool desktopWidgetsConfigEqual(const DesktopWidgetsConfig& a, const DesktopWidgetsConfig& b) {
     return a.enabled == b.enabled
+        && a.visibility == b.visibility
         && a.schemaVersion == b.schemaVersion
         && a.grid == b.grid
         && vectorEqual(a.widgets, b.widgets, desktopWidgetEqual);
@@ -475,6 +477,9 @@ namespace {
     widgetTable.insert_or_assign("placement_height", static_cast<double>(widget.placementHeight));
     widgetTable.insert_or_assign("box_width", static_cast<double>(widget.boxWidth));
     widgetTable.insert_or_assign("box_height", static_cast<double>(widget.boxHeight));
+    if (widget.scale != 1.0F) {
+      widgetTable.insert_or_assign("scale", static_cast<double>(widget.scale));
+    }
     widgetTable.insert_or_assign("rotation", static_cast<double>(widget.rotationRad));
     if (widget.flipX) {
       widgetTable.insert_or_assign("flip_x", true);
@@ -1088,12 +1093,23 @@ bool ConfigService::setDesign(std::string_view id) {
     shellTbl->erase("font_family");
     shellTbl->erase("corner_radius_scale");
   }
+  // ...and so would a wallpaper picked earlier: switching shows the design's own backdrop.
+  if (auto* wallpaperTbl = m_overridesTable["wallpaper"].as_table(); wallpaperTbl != nullptr) {
+    wallpaperTbl->erase("default");
+    wallpaperTbl->erase("last");
+    wallpaperTbl->erase("monitors");
+  }
   if (!writeOverridesToFile()) {
     kLog.warn("failed to write {}", m_overridesPath);
     return false;
   }
+  const auto oldDefault = m_defaultWallpaperPath;
+  const auto oldMonitors = m_monitorWallpaperPaths;
   m_ownOverridesWritePending = true;
   loadAll();
+  if ((oldDefault != m_defaultWallpaperPath || oldMonitors != m_monitorWallpaperPaths) && m_wallpaperChangeCallback) {
+    m_wallpaperChangeCallback();
+  }
   fireReloadCallbacks();
   return true;
 }

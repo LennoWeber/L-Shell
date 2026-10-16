@@ -522,7 +522,7 @@ void NotificationCenterPanel::buildCard(const Notification& notification, bool a
       .glyphSize = Style::fontSizeCaption * scale,
       .variant = ButtonVariant::Ghost,
       .padding = 0.0F,
-      .radius = close * 0.5F,
+      .radius = Style::pillRadius(close),
       .width = close,
       .height = close,
       // Hidden by opacity, not visibility: the button stays hit-testable, so moving onto it never flickers.
@@ -622,7 +622,7 @@ void NotificationCenterPanel::rebuildCalendar() {
                 .align = FlexAlign::Center,
                 .justify = FlexJustify::Center,
                 .fill = isToday ? colorSpecFromRole(ColorRole::Primary) : clearColorSpec(),
-                .radius = rowHeight * 0.5F,
+                .radius = Style::pillRadius(rowHeight),
                 .width = rowHeight,
                 .height = rowHeight,
             },

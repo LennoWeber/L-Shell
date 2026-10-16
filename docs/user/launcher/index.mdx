@@ -9,10 +9,13 @@ The Noctalia launcher is a centralized search interface that provides quick acce
 
 ## Styles
 
-`shell.launcher.style` (Settings → Launcher → Style) switches between two looks:
+`shell.launcher.style` (Settings → Launcher → Style) switches between three looks:
 
 - **Command Bar** (`command`, default): a compact, square-cut bar. Results are single lines (icon, title, subtitle) with their kind as a tag on the right (Application, Setting, Window, …); the selected row gets a neutral wash with an accent edge. A footer shows the result count and key hints (`↵` open, `Shift+↵` app actions, `Esc` close), and the panel grows with its results up to nine rows. With the field empty it is just the search bar, with a `/` hint for the provider list.
 - **Spotlight** (`spotlight`): the macOS Tahoe original — a capsule search field that opens into a rounded sheet with a Top Hit and results grouped under provider headers. `compact` rows and the `app_grid` view apply to this style.
+- **Sheet** (`sheet`): the Monolith design's launcher — a full-height column (with `shell.panel.attached_full_length`) beside the bar. An underlined search field sits over results grouped in sections with small capital headers ("APPS", "RECENT"); the selected row is a full accent fill naming the Enter key. With nothing typed it lists the most used apps and, with `recent_files`, the latest files. Lock, sleep and shut-down tiles sit at its foot.
+
+`shell.launcher.recent_files = true` adds recently used files (the desktop's shared `recently-used.xbel`) to the search, each with how long ago it was used; `/recent` searches them alone.
 
 ## How search works
 

@@ -1,6 +1,7 @@
 #include "i18n/i18n.h"
 
 #include <cstddef>
+#include <glib.h>
 
 namespace i18n::detail {
 
@@ -46,3 +47,17 @@ namespace i18n::detail {
   }
 
 } // namespace i18n::detail
+
+namespace i18n {
+
+  std::string upper(std::string_view text) {
+    gchar* raw = g_utf8_strup(text.data(), static_cast<gssize>(text.size()));
+    if (raw == nullptr) {
+      return std::string(text);
+    }
+    std::string out(raw);
+    g_free(raw);
+    return out;
+  }
+
+} // namespace i18n

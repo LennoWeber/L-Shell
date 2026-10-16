@@ -75,6 +75,7 @@ launcher_position        = "spotlight" # auto | center | spotlight | top_left | 
 clipboard_position       = "center"   # auto | center | top_left | … (floating only)
 control_center_position  = "top_right" # floating only
 session_position         = "center"   # floating only
+# scrim                   = false   # veil the desktop (dim + compositor blur) while a modal panel is open
 open_near_click_control_center = false # for attached/floating placement, follow the bar click instead of bar-center
 open_near_click_launcher       = false # for attached/floating placement, follow the bar click instead of bar-center
 open_near_click_clipboard      = false # for attached/floating placement, follow the bar click instead of bar-center
@@ -185,6 +186,7 @@ tint_intensity         = 0.3        # 0.0 = no tint, 1.0 = opaque
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 [notification]
+# show_toasts = true            # false: no corner banners (e.g. the band shows events in its strip)
 enable_daemon      = true
 show_app_name      = true
 show_actions       = true           # show action buttons; when false, clicking a toast triggers its default action
@@ -409,6 +411,7 @@ scale              = 1.0
 font_scale         = 1.0            # text-only scale multiplier across widgets
 shadow             = false
 auto_hide          = false
+# event_morph       = false      # the strip itself shows events: widgets dim, the event shows in place
 # smart_auto_hide    = false       # show when the active workspace is empty; hide when it has windows
 # show_on_workspace_switch = true   # with auto_hide: briefly reveal when the active workspace changes
 reserve_space      = true
@@ -495,6 +498,7 @@ pinned              = []            # e.g. ["firefox", "code", "kitty"]
 
 [desktop_widgets]
 enabled = false
+# visibility = "home"   # "always" (default) | "home": only while the active workspace has no windows
 # When set, widget_order is the active widget list and stacking order.
 # widget_order = ["clock_main"]
 

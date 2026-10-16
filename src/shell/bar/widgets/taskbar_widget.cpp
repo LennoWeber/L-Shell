@@ -16,10 +16,12 @@
 #include "system/desktop_entry.h"
 #include "system/desktop_entry_launch.h"
 #include "system/internal_app_metadata.h"
+#include "ui/app_glyph.h"
 #include "ui/app_icon_colorization.h"
 #include "ui/builders.h"
 #include "ui/controls/context_menu.h"
 #include "ui/controls/context_menu_popup.h"
+#include "ui/controls/glyph.h"
 #include "ui/palette.h"
 #include "ui/style.h"
 #include "util/string_utils.h"
@@ -209,7 +211,8 @@ TaskbarWidget::TaskbarWidget(
     : m_platform(platform), m_configService(config), m_output(output), m_configOptions(std::move(options)),
       m_showAllOutputs(m_configOptions.showAllOutputs), m_focusedOutputOnly(m_configOptions.focusedOutputOnly),
       m_minimal(m_configOptions.minimal), m_showActiveIndicator(m_configOptions.showActiveIndicator),
-      m_activeIndicatorColor(m_configOptions.activeIndicatorColor), m_activeOpacity(m_configOptions.activeOpacity),
+      m_activeIndicator(m_configOptions.activeIndicator), m_activeIndicatorColor(m_configOptions.activeIndicatorColor),
+      m_activeOpacity(m_configOptions.activeOpacity),
       m_inactiveOpacity(m_configOptions.inactiveOpacity), m_pinnedOpacity(m_configOptions.pinnedOpacity),
       m_focusedColor(m_configOptions.focusedColor), m_occupiedColor(m_configOptions.occupiedColor),
       m_emptyColor(m_configOptions.emptyColor), m_urgentColor(m_configOptions.urgentColor),
@@ -219,6 +222,20 @@ TaskbarWidget::TaskbarWidget(
       m_widgetName(std::move(context.widgetName)) {
   syncWorkspaceGroupingCapability();
   buildDesktopIconIndex();
+}
+
+// Pinned tiles know their desktop entry; running apps are matched to one by their app id.
+std::string_view TaskbarWidget::appGlyphFor(const TaskModel& task) {
+  if (!task.desktopEntryId.empty()) {
+    return appGlyphForDesktopId(task.desktopEntryId);
+  }
+  return appGlyph(app_identity::resolveRunningDesktopEntry(task.appId, desktopEntries()));
+}
+
+// Glyph-drawn apps: the focused one in full ink, the others in the widget's icon color.
+ColorSpec TaskbarWidget::appGlyphColor(bool active) const {
+  return active ? colorSpecFromRole(ColorRole::OnSurface)
+                : widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurfaceVariant));
 }
 
 void TaskbarWidget::syncWorkspaceGroupingCapability() {
@@ -331,7 +348,22 @@ void TaskbarWidget::closeTaskModel(const TaskModel& task) {
   }
 }
 
-const std::vector<std::string>& TaskbarWidget::pinnedConfigIds() const noexcept { return m_configOptions.pinned; }
+// A taskbar that stands in for the dock (dock_pins) shares the dock's pinned apps unless it has its own list, so
+// the apps you pin stay pinned whichever design's taskbar or dock shows them.
+bool TaskbarWidget::sharesDockPins() const noexcept {
+  return m_configOptions.dockPins && m_configOptions.pinned.empty();
+}
+
+const std::vector<std::string>& TaskbarWidget::pinnedConfigIds() const noexcept {
+  return sharesDockPins() ? m_configService.config().dock.pinned : m_configOptions.pinned;
+}
+
+std::vector<std::string> TaskbarWidget::pinnedOverridePath() const {
+  if (sharesDockPins()) {
+    return {"dock", "pinned"};
+  }
+  return {"widget", m_widgetName, "pinned"};
+}
 
 bool TaskbarWidget::reorderEnabled() const {
   if (m_groupByWorkspace || m_widgetName.empty()) {
@@ -373,8 +405,8 @@ bool TaskbarWidget::commitDragReorder() {
   // Writing config rebuilds the taskbar, which can destroy the InputArea whose handler we are
   // inside — defer so the write happens after this event finishes dispatching.
   ConfigService* config = &m_configService;
-  DeferredCall::callLater([config, widgetName = m_widgetName, pinned = std::move(pinned)]() mutable {
-    (void)config->setOverride({"widget", widgetName, "pinned"}, std::move(pinned));
+  DeferredCall::callLater([config, path = pinnedOverridePath(), pinned = std::move(pinned)]() mutable {
+    (void)config->setOverride(path, std::move(pinned));
   });
   return true;
 }
@@ -578,8 +610,8 @@ void TaskbarWidget::setEntryPinned(const DesktopEntry& entry, bool pinned) {
   }
 
   ConfigService* config = &m_configService;
-  DeferredCall::callLater([config, widgetName = m_widgetName, pinnedList = std::move(pinnedList)]() mutable {
-    (void)config->setOverride({"widget", widgetName, "pinned"}, std::move(pinnedList));
+  DeferredCall::callLater([config, path = pinnedOverridePath(), pinnedList = std::move(pinnedList)]() mutable {
+    (void)config->setOverride(path, std::move(pinnedList));
   });
 }
 
@@ -1129,7 +1161,17 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
         }
     );
 
-    if (!task.iconPath.empty()) {
+    Glyph* appGlyphPtr = nullptr;
+    if (m_configService.config().shell.appIconGlyphs) {
+      auto glyph = ui::glyph({
+          .out = &appGlyphPtr,
+          .glyph = std::string(appGlyphFor(task)),
+          .glyphSize = iconSize,
+          .color = appGlyphColor(task.active),
+      });
+      glyph->measure(renderer);
+      content->addChild(std::move(glyph));
+    } else if (!task.iconPath.empty()) {
       auto image = ui::image({
           .fit = ImageFit::Contain,
           .width = iconSize,
@@ -1197,7 +1239,30 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
     }
 
     Box* indicatorPtr = nullptr;
-    if (m_showActiveIndicator) {
+    if (m_showActiveIndicator && m_activeIndicator == TaskbarActiveIndicator::Edge) {
+      // Out to the screen edge: the strip is centered across the bar, so the edge lies half the spare cross
+      // extent beyond the tile.
+      const float thickness = std::max(2.0F, std::round(3.0F * m_contentScale));
+      const float length = std::round(iconSize * 0.64F);
+      const float tileCross = m_vertical ? tileWidthWithTitle : tileSize;
+      const float barCrossExtent = m_vertical ? m_containerWidth : m_containerHeight;
+      const float toEdge = std::max(0.0F, std::round((barCrossExtent - tileCross) * 0.5F));
+      const bool nearEdge = m_barPosition == "left" || m_barPosition == "top";
+      const float crossPos = nearEdge ? -toEdge : tileCross + toEdge - thickness;
+      auto indicator = ui::box({
+          .fill = m_activeIndicatorColor,
+          .width = m_vertical ? thickness : length,
+          .height = m_vertical ? length : thickness,
+      });
+      indicatorPtr = indicator.get();
+      indicator->setVisible(task.active);
+      if (m_vertical) {
+        indicator->setPosition(crossPos, std::round((tileSize - length) * 0.5F));
+      } else {
+        indicator->setPosition(std::round((tileWidthWithTitle - length) * 0.5F), crossPos);
+      }
+      area->addChild(std::move(indicator));
+    } else if (m_showActiveIndicator) {
       const float d = std::max(4.0F, std::round(Style::baseGlyphSize * 0.32F * m_contentScale));
       const float groupedCapsuleInset =
           (m_groupByWorkspace && m_workspaceGroupCapsule ? Style::borderWidth : 0.0F) * m_contentScale;
@@ -1242,6 +1307,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
         .area = area.get(),
         .titleLabel = titleLabelPtr,
         .activeIndicator = indicatorPtr,
+        .glyph = appGlyphPtr,
     });
     attachHover(*area, tileWidthWithTitle, tileSize);
     return area;
@@ -2822,6 +2888,9 @@ void TaskbarWidget::updateModels() {
           }
           if (tile.activeIndicator != nullptr) {
             tile.activeIndicator->setVisible(task.active);
+          }
+          if (tile.glyph != nullptr) {
+            tile.glyph->setColor(appGlyphColor(task.active));
           }
         }
       }

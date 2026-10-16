@@ -141,13 +141,21 @@ wallpaper-tinted colours, floating OSD pop-ups.
 
 ## 10. Designs
 
-Slate is the default of a family. `src/config/design_presets.cpp` holds 14 more complete designs (Meridian, Atelier,
-Monolith, Halo, Strata, Hearth, Glacier, Avionik, Folio, Ma, Tahoe, Eleven, Brücke, Kontor). A design is a config
+Slate is the default of a family. `src/config/design_presets.cpp` holds 15 more complete designs (Meridian, Atelier,
+Monolith, Halo, Strata, Hearth, Glacier, Avionik, Folio, Ma, Tahoe, Eleven, Brücke, Kontor, Band). A design is a config
 layer under the user's config: bars and widget instances (named after the design), dock, island, panel positions,
-a fixed palette (`theme.builtin`, same name), a bundled typeface, `corner_radius_scale`, material (`transparency_mode`,
-`glass_opacity`, shadows), motion speed, and `[design.windows]` for the compositor. The rules above hold inside
+a fixed palette (`theme.builtin`, same name), a bundled typeface and optionally a display face for headings
+(`display_font_family`), `corner_radius_scale`, material (`transparency_mode`, `glass_opacity`, shadow strength and
+hue), how panels appear (`shell.panel.reveal`), motion speed, and `[design.windows]` for the compositor. The rules above hold inside
 every design; what changes is the material, the palette, the type and the layout. The design menu (`panel-toggle
 design`, Super+Alt+D) switches them.
+
+Some looks need more than tokens and are shell options a design turns on, usable on their own too: panels as
+full-length sheets along the bar (`shell.panel.attached_full_length`), apps drawn as category symbols
+(`shell.app_icon_glyphs`), the launcher `sheet` style with session tiles at its foot, the session panel's
+`hairline` tiles, `header` toasts, the lock screen's `corner` clock, taskbar `edge` indicators and spacer rules.
+Monolith uses all of them. A corner roundness below 1 also squares off pills and discs (`Style::pillRadius`), so a
+design with roundness 0 has no rounding anywhere.
 
 ## 11. Checklist for new UI
 

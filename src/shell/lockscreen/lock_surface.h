@@ -146,6 +146,7 @@ private:
   [[nodiscard]] std::vector<SessionPanelActionConfig> resolveSessionActions() const;
   [[nodiscard]] lockscreen_login_box::LoginBoxStyle resolveLoginStyle() const;
   [[nodiscard]] bool isLoginBoxEnabled() const;
+  [[nodiscard]] bool cornerClock() const;
   [[nodiscard]] std::string resolveStatusText(const lockscreen_login_box::LoginBoxStyle& style, bool& isError) const;
   [[nodiscard]] bool passwordFieldContainsPoint(float sceneX, float sceneY) const;
   void focusPasswordField();
@@ -154,6 +155,7 @@ private:
   wl_output* m_output = nullptr;
   bool m_receivedConfigure = false;
   ConfigService* m_config = nullptr;
+  bool m_ink = false; // lockscreen.ink: palette ink on paper instead of white on a dim
   // Declared before m_root so it outlives the scene: ~Node cancels its animations through this manager.
   AnimationManager m_animations;
   Node m_root;

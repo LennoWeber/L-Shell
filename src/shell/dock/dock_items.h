@@ -32,6 +32,7 @@ namespace shell::dock {
     Label* badgeLabel = nullptr;
     Image* iconImage = nullptr;
     Glyph* iconGlyph = nullptr;
+    Box* tile = nullptr; // dock.item_style = "tile": the well the icon sits on
     float restMainPos = 0.0F;
     float restCrossPos = 0.0F;
     float hoverMainOffset = 0.0F;

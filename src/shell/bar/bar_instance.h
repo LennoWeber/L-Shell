@@ -18,7 +18,10 @@
 
 class Box;
 class Flex;
+class Glyph;
+class Label;
 class Node;
+class ProgressBar;
 
 struct BarCapsuleRun {
   Node* shell = nullptr;
@@ -106,6 +109,19 @@ struct BarInstance {
   // Maps each widget's root node to its Widget so hover-change events resolve to the owning widget.
   std::unordered_map<const Node*, Widget*> widgetByRoot;
   Widget* hoverHighlightWidget = nullptr;
+
+  // event_morph: the strip's own activity overlay. While an event (volume, brightness, media, a
+  // notification) is showing, the widget sections fade down and this row fades in above them.
+  Node* morphRoot = nullptr;
+  Glyph* morphGlyph = nullptr;
+  Label* morphTitle = nullptr;
+  ProgressBar* morphProgress = nullptr;
+  Label* morphValue = nullptr;
+  // 0 = widgets visible, 1 = the event row visible.
+  float morphProgress01 = 0.0F;
+  // The level as drawn; glides to the event's value instead of snapping.
+  float morphShownLevel = 0.0F;
+  bool morphActive = false;
 
   Signal<>::ScopedConnection paletteConn;
   std::optional<AttachedPanelGeometry> attachedPanelGeometry;

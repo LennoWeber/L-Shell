@@ -25,10 +25,13 @@ class Separator;
 class VirtualGridView;
 class ConfigService;
 class AsyncTextureCache;
+class SessionActionRunner;
+struct SessionPanelActionConfig;
 
 class LauncherPanel : public Panel {
 public:
-  LauncherPanel(ConfigService* config, AsyncTextureCache* asyncTextures);
+  // `sessionActions` runs the sheet's session tiles; without it the sheet has none.
+  LauncherPanel(ConfigService* config, AsyncTextureCache* asyncTextures, SessionActionRunner* sessionActions = nullptr);
   ~LauncherPanel() override;
 
   void addProvider(std::unique_ptr<LauncherProvider> provider);
@@ -104,6 +107,13 @@ private:
   void syncCollapsedState();
   // shell.launcher.style = "command"; fixed from create() until close so the tree and geometry agree.
   [[nodiscard]] bool commandStyle() const;
+  // shell.launcher.style = "sheet", fixed the same way.
+  [[nodiscard]] bool sheetStyle() const;
+  // The sheet's session tiles at its foot: lock, sleep and shut down, as far as they are configured.
+  [[nodiscard]] std::unique_ptr<Flex> buildSessionFoot(float scale);
+  void runSessionAction(const SessionPanelActionConfig& action);
+  // A sheet section's title: "Apps" for applications, the provider's name otherwise.
+  [[nodiscard]] std::string sectionTitle(std::string_view providerId) const;
   [[nodiscard]] std::string defaultPlaceholder() const;
   [[nodiscard]] std::string resultTag(std::string_view providerId) const;
   [[nodiscard]] float commandBodyHeight() const;
@@ -159,6 +169,7 @@ private:
   bool m_categoryFilterVisible = true;
   bool m_collapsed = true;
   bool m_commandStyle = false;
+  bool m_sheetStyle = false;
   float m_commandHeight = 0.0F;
   bool m_launcherShowIcons = true;
   bool m_launcherShowAppOriginIndicator = true;
@@ -169,6 +180,7 @@ private:
   std::uint64_t m_desktopEntriesVersion = 0;
   ConfigService* m_config = nullptr;
   AsyncTextureCache* m_asyncTextures = nullptr;
+  SessionActionRunner* m_sessionActions = nullptr;
   std::unique_ptr<ContextMenuPopup> m_actionsMenu;
   Signal<>::ScopedConnection m_appIconColorizeConn;
   std::function<void()> m_onCopiedActivation;

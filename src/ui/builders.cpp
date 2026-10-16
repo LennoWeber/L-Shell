@@ -438,6 +438,9 @@ namespace ui {
     if (props.baselineMode.has_value()) {
       control->setBaselineMode(*props.baselineMode);
     }
+    if (props.letterSpacing.has_value()) {
+      control->setLetterSpacing(*props.letterSpacing);
+    }
     if (props.autoScroll.has_value()) {
       control->setAutoScroll(*props.autoScroll);
     }

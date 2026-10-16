@@ -43,6 +43,8 @@ namespace shell::dock {
   void shiftAlongEdge(DockEdge edge, float& x, float& y, float amount);
   [[nodiscard]] std::int32_t dockContentSize(const DockConfig& cfg, std::size_t itemCount);
   [[nodiscard]] std::int32_t dockThickness(const DockConfig& cfg);
+  // Main-axis length of the hairline between the launcher and the apps (dock.launcher_separator), 0 = none.
+  [[nodiscard]] std::int32_t dockSeparatorSize(const DockConfig& cfg);
   // Extra cross-axis surface padding so magnified icons (and badges) are not clipped.
   [[nodiscard]] std::int32_t dockHoverZoomCrossPad(const DockConfig& cfg);
   // Extra main-axis end padding for magnified icon/badge overhang past the pill ends.

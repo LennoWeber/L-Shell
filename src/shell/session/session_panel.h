@@ -37,6 +37,7 @@ public:
   [[nodiscard]] bool hasDecoration() const override { return true; }
   [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }
   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override;
+  [[nodiscard]] std::optional<float> contentPadding() const override;
 
 private:
   struct ActionCountdownOverlay {
@@ -59,6 +60,11 @@ private:
   static constexpr float kActionButtonMinHeight = 112.0F;
   static constexpr float kButtonMinWidth = 152.0F;
   static constexpr std::size_t kMaxColumns = 5;
+  // Hairline grid (Monolith): a sheet with a small versal title over the tiles at its foot.
+  static constexpr float kHairlineWidth = 380.0F;
+  static constexpr float kHairlinePadding = 22.0F;
+  static constexpr float kHairlineTitleSize = 11.0F;
+  static constexpr float kHairlineTileHeight = 66.0F;
   // Menu style (the Apple menu): slim rows with an icon, the name and the shortcut on the right.
   static constexpr float kMenuWidth = 236.0F;
   static constexpr float kMenuRowHeight = 30.0F;
@@ -83,6 +89,7 @@ private:
   [[nodiscard]] bool gridEnabled() const;
   [[nodiscard]] bool menuStyle() const;
   [[nodiscard]] bool sheetStyle() const;
+  [[nodiscard]] bool hairlineStyle() const;
   // Sheet style: the quiet actions, then the power ones; m_quietCount marks the split.
   [[nodiscard]] static bool isPowerAction(const SessionPanelActionConfig& action);
   // Arrow-key target between the sheet's two rows (proportional column), or nullopt to stay.

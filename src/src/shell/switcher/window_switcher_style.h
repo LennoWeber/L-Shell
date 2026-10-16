@@ -1,0 +1,67 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
+enum class WindowSwitcherTileDepth : std::uint8_t {
+  Selected,
+  Near,
+  Far,
+  Neutral, // not selected and not dimmed (grid overview)
+};
+
+enum class WindowSwitcherHorizontalPlacement : std::uint8_t {
+  Left,
+  Right,
+};
+
+struct WindowSwitcherStyleContext {
+  float screenWidth = 0.0F;
+  float screenHeight = 0.0F;
+  float scale = 1.0F;
+  std::size_t windowCount = 0;
+  std::size_t selectedIndex = 0;
+  bool showCaption = true;
+  bool showCount = true;
+};
+
+struct WindowSwitcherCardTarget {
+  bool visible = false;
+  bool showCaption = false;
+  bool wideCaption = false;
+  WindowSwitcherHorizontalPlacement iconPlacement = WindowSwitcherHorizontalPlacement::Left;
+  WindowSwitcherHorizontalPlacement closePlacement = WindowSwitcherHorizontalPlacement::Right;
+  WindowSwitcherTileDepth depth = WindowSwitcherTileDepth::Far;
+  float x = 0.0F;
+  float y = 0.0F;
+  float width = 0.0F;
+  float height = 0.0F;
+  float opacity = 0.0F;
+  float direction = 0.0F;
+  std::int32_t zIndex = 0;
+  // Card-local horizontal range the caption may use (icon-only style, where it is wider than the card);
+  // equal values leave it unbounded.
+  float captionMinX = 0.0F;
+  float captionMaxX = 0.0F;
+};
+
+struct WindowSwitcherStyleLayout {
+  std::vector<WindowSwitcherCardTarget> cards;
+  std::size_t visibleCards = 0;
+  float panelWidth = 0.0F;
+  float panelHeight = 0.0F;
+  float stripX = 0.0F;
+  float stripY = 0.0F;
+  float stripWidth = 0.0F;
+  float stripHeight = 0.0F;
+  float countX = 0.0F;
+  float countY = 0.0F;
+  float countWidth = 0.0F;
+  float countHeight = 0.0F;
+  bool boxed = false;
+  bool iconOnly = false;   // app icons without window previews (the macOS Command-Tab look)
+  std::size_t columns = 0; // grid styles only; 0 = single row/carousel navigation
+
+  [[nodiscard]] bool sameGeometryAs(const WindowSwitcherStyleLayout& other) const noexcept;
+};

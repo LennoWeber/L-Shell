@@ -79,6 +79,7 @@ private:
   RenderContext* m_renderContext = nullptr;
   DockConfig m_lastDockConfig{};
   ShellConfig::ShadowConfig m_lastShadow;
+  bool m_lastAppIconGlyphs = false;
   std::vector<std::string> m_lastBarLayerStack;
   IconResolver m_iconResolver;
   struct PendingLaunchFocus {

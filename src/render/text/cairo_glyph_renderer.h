@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/core/texture_handle.h"
+#include "render/text/glyph_registry.h"
 
 #include <cstdint>
 #include <list>
@@ -14,6 +15,7 @@ typedef struct FT_FaceRec_* FT_Face;
 // Cairo forwards
 typedef struct _cairo_font_face cairo_font_face_t;
 typedef struct _cairo_font_options cairo_font_options_t;
+typedef struct _cairo_scaled_font cairo_scaled_font_t;
 
 class RenderBackend;
 class TextureManager;
@@ -22,7 +24,9 @@ struct Mat3;
 
 // Direct FreeType + Cairo renderer for single codepoints in a dedicated font
 // (noctalia-tabler.ttf icon font). No Pango, no shaping, no fallback — the icon font
-// MUST be used, never substituted.
+// MUST be used, never substituted by Fontconfig. The one deliberate exception is a design's
+// Material Symbols style: Tabler codepoints that have a Material equivalent are then drawn
+// from the Material font instead (see setMaterialStyle).
 class CairoGlyphRenderer {
 public:
   struct TextMetrics {
@@ -47,6 +51,11 @@ public:
   // render context to be current.
   void invalidateGlyphTextures();
   void abandonGlyphTextures() noexcept;
+
+  // Draws every Tabler icon that has a Material Symbols equivalent (GlyphRegistry::materialSubstitutes) from the
+  // variable font at fontPath, at the given weight (100-700) and fill. An empty path draws Tabler only again.
+  // Drops the cached glyphs; callers re-layout, since the metrics change.
+  void setMaterialStyle(const std::string& fontPath, int weight, bool fill);
 
   [[nodiscard]] TextMetrics measureGlyph(float contentScale, char32_t codepoint, float fontSize);
 
@@ -84,6 +93,19 @@ private:
 
   using CacheMap = std::unordered_map<CacheKey, CacheEntry, CacheKeyHash>;
 
+  struct ResolvedGlyph {
+    FT_Face face = nullptr;
+    cairo_font_face_t* cairoFace = nullptr;
+    char32_t codepoint = 0;
+    bool material = false;
+    bool fill = false;
+  };
+
+  [[nodiscard]] ResolvedGlyph resolve(char32_t codepoint) const;
+  [[nodiscard]] cairo_scaled_font_t*
+  scaledFontFor(const ResolvedGlyph& glyph, float rasterSize, float fontSize) const;
+  void releaseMaterialFace();
+
   CacheEntry* lookupOrRasterize(float contentScale, char32_t codepoint, float fontSize);
   void touch(CacheMap::iterator it);
   void evict(CacheMap::iterator it);
@@ -93,6 +115,11 @@ private:
   FT_Face m_face = nullptr;
   cairo_font_face_t* m_cairoFace = nullptr;
   cairo_font_options_t* m_fontOptions = nullptr;
+  FT_Face m_materialFace = nullptr;
+  cairo_font_face_t* m_materialCairoFace = nullptr;
+  std::string m_materialPath;
+  int m_materialWeight = 400;
+  bool m_materialFill = false;
   RenderBackend* m_backend = nullptr;
   TextureManager* m_textureManager = nullptr;
 

@@ -166,6 +166,26 @@ void Label::setUseMarkup(bool markup) {
   m_measureCached = false;
 }
 
+void Label::setLetterSpacing(float em) {
+  TextSpacing spacing = m_textNode->spacing();
+  if (spacing.letter == em) {
+    return;
+  }
+  spacing.letter = em;
+  m_textNode->setSpacing(spacing);
+  m_measureCached = false;
+}
+
+void Label::setLineHeight(float factor) {
+  TextSpacing spacing = m_textNode->spacing();
+  if (spacing.line == factor) {
+    return;
+  }
+  spacing.line = factor;
+  m_textNode->setSpacing(spacing);
+  m_measureCached = false;
+}
+
 void Label::setBaselineMode(LabelBaselineMode mode) {
   if (m_baselineMode == mode) {
     return;
@@ -545,7 +565,7 @@ LayoutSize Label::measureWithConstraints(Renderer& renderer, const LayoutConstra
 
   auto metrics = renderer.measureText(
       m_plainText, m_textNode->fontSize(), fontWeight, measureMaxWidth, effectiveMaxLines, align,
-      m_textNode->fontFamily(), m_textNode->ellipsize(), m_textNode->useMarkup()
+      m_textNode->fontFamily(), m_textNode->ellipsize(), m_textNode->useMarkup(), m_textNode->spacing()
   );
   // Line breaking is decided once, on the measure pass. A divergent line count
   // on arrange means the wrap budget drifted between phases — the baseline mode

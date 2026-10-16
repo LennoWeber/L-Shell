@@ -8,6 +8,7 @@
 #include "shell/panel/panel_manager.h"
 #include "shell/session/session_action_meta.h"
 #include "shell/session/session_action_runner.h"
+#include "shell/session/session_tiles.h"
 #include "ui/builders.h"
 #include "ui/controls/box.h"
 #include "ui/controls/button.h"
@@ -113,6 +114,12 @@ bool SessionPanel::isPowerAction(const SessionPanelActionConfig& action) {
 
 bool SessionPanel::sheetStyle() const { return !menuStyle() && !gridEnabled(); }
 
+bool SessionPanel::hairlineStyle() const { return gridEnabled() && m_config->config().shell.session.hairline; }
+
+std::optional<float> SessionPanel::contentPadding() const {
+  return hairlineStyle() ? std::optional<float>(kHairlinePadding) : std::nullopt;
+}
+
 std::optional<std::size_t> SessionPanel::sheetVerticalTarget(std::size_t from, bool down) const {
   const std::size_t quiet = m_quietCount;
   const std::size_t power = m_visibleEntries.size() - quiet;
@@ -137,6 +144,9 @@ PanelPlacement SessionPanel::panelPlacement() const noexcept {
 }
 
 float SessionPanel::preferredWidth() const {
+  if (hairlineStyle()) {
+    return scaled(kHairlineWidth);
+  }
   if (menuStyle()) {
     return scaled(kMenuWidth + Style::panelPadding * 2.0F);
   }
@@ -156,6 +166,13 @@ float SessionPanel::preferredWidth() const {
 }
 
 float SessionPanel::preferredHeight() const {
+  if (hairlineStyle()) {
+    // Title line, a padding's gap, then the tile rows and their rules.
+    const auto rows = static_cast<float>(visibleRowCount());
+    const float title = kHairlineTitleSize * 1.4F;
+    const float tiles = kHairlineTileHeight * rows + rows + 1.0F;
+    return std::ceil(scaled(kHairlinePadding * 3.0F + title + tiles));
+  }
   if (menuStyle()) {
     const auto rows = static_cast<float>(std::max<std::size_t>(1, entryCountForLayout()));
     return std::ceil(scaled(kMenuRowHeight * rows + kMenuRowGap * (rows - 1.0F) + Style::panelPadding * 2.0F));
@@ -238,7 +255,19 @@ void SessionPanel::create() {
   std::unique_ptr<Node> rootLayout;
   GridView* quietGrid = nullptr;
   GridView* powerGrid = nullptr;
-  if (sheet) {
+  std::vector<std::unique_ptr<Button>> hairlineTiles;
+  if (hairlineStyle()) {
+    // The title on top, the tiles at the foot: in a full-length sheet they line up with the launcher's.
+    rootLayout = ui::column(
+        {.align = FlexAlign::Stretch, .justify = FlexJustify::SpaceBetween},
+        ui::label({
+            .text = i18n::upper(i18n::tr("session.title")),
+            .fontSize = kHairlineTitleSize * scale,
+            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+            .letterSpacing = 0.12F,
+        })
+    );
+  } else if (sheet) {
     auto column = ui::column({.align = FlexAlign::Stretch, .gap = Style::spaceSm * scale});
     if (m_quietCount > 0) {
       quietGrid = static_cast<GridView*>(
@@ -277,6 +306,15 @@ void SessionPanel::create() {
     } else {
       m_entryShortcutBadges.emplace_back();
     }
+    if (hairlineStyle()) {
+      auto tile = session_tiles::makeTile(cfg, scale, [this, i]() { armEntry(i); });
+      ActionCountdownOverlay overlay{};
+      attachCountdownOverlay(*tile, overlay, scale, true);
+      m_visibleButtons.push_back(tile.get());
+      m_countdownOverlays.push_back(overlay);
+      hairlineTiles.push_back(std::move(tile));
+      continue;
+    }
     if (Button* b = createActionButton(cfg, i, scale); b != nullptr) {
       ActionCountdownOverlay overlay{};
       attachCountdownOverlay(*b, overlay, scale, sheet && isPowerAction(cfg));
@@ -285,6 +323,9 @@ void SessionPanel::create() {
       GridView* target = (sheet && i >= m_quietCount) ? powerGrid : quietGrid;
       target->addChild(std::unique_ptr<Button>(b));
     }
+  }
+  if (hairlineStyle()) {
+    rootLayout->addChild(session_tiles::makeGrid(std::move(hairlineTiles), columns, scale));
   }
 
   setRoot(std::move(rootLayout));
@@ -600,6 +641,9 @@ void SessionPanel::restoreEntryBadges() {
       syncMenuShortcut(i);
     }
     return;
+  }
+  if (hairlineStyle()) {
+    return; // the tiles keep their number keys without drawing them
   }
   for (std::size_t i = 0; i < m_visibleButtons.size(); ++i) {
     Button* button = m_visibleButtons[i];

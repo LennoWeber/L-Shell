@@ -13,6 +13,7 @@
 #include "shell/tooltip/tooltip_manager.h"
 #include "system/icon_resolver.h"
 #include "system/internal_app_metadata.h"
+#include "ui/app_glyph.h"
 #include "ui/app_icon_colorization.h"
 #include "ui/builders.h"
 #include "ui/palette.h"
@@ -46,6 +47,14 @@ namespace {
   constexpr float kSignalActiveRatio = 0.34F;
   constexpr float kCellPad = 6.0F;
   constexpr float kLauncherGlyphSizeRatio = 0.8F;
+  // Tile style (dock.item_style = "tile"): the app sits on a rounded well the size of the icon slot, drawn at this
+  // share of the tile; a running app gets a dot beside its tile on the side away from the screen edge.
+  constexpr float kTileGlyphRatio = 0.5F;
+  constexpr float kTileImageRatio = 0.62F;
+  constexpr float kTileDotSize = 5.0F;
+  constexpr float kTileDotGap = 4.0F;
+  constexpr float kTileRunningDotAlpha = 0.5F;
+  constexpr float kSeparatorLengthRatio = 0.7F;
   constexpr float kHoverZoomLerp = 0.28F;
   constexpr float kHoverZoomReferenceFrameMs = 1000.0F / 60.0F;
   // Pointer hit padding (in item pitches) — keep generous so edge icons still magnify.
@@ -80,9 +89,42 @@ namespace {
     return std::max(1, static_cast<int>(std::round(static_cast<float>(cfg.iconSize) * peakScale)));
   }
 
+  [[nodiscard]] bool tileStyle(const DockConfig& cfg) { return cfg.itemStyle == DockItemStyle::Tile; }
+
   [[nodiscard]] float launcherIconBaseY(const DockConfig& cfg, float iconSize) {
-    return cfg.launcherCustomImage.empty() ? kCellPad + (iconSize - iconSize * kLauncherGlyphSizeRatio) * 0.5F
-                                           : kCellPad;
+    return cfg.launcherCustomImage.empty() && !tileStyle(cfg)
+        ? kCellPad + (iconSize - iconSize * kLauncherGlyphSizeRatio) * 0.5F
+        : kCellPad;
+  }
+
+  [[nodiscard]] float tileGlyphInset(float tileSize) {
+    return std::round((tileSize - std::round(tileSize * kTileGlyphRatio)) * 0.5F);
+  }
+
+  // The node that scales, fades and moves for an item: its tile, or the icon itself.
+  [[nodiscard]] Node* itemVisual(const shell::dock::DockItemView& item) {
+    if (item.tile != nullptr) {
+      return item.tile;
+    }
+    return item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+  }
+
+  [[nodiscard]] std::unique_ptr<Box> makeTile(float size, ColorSpec fill) {
+    return ui::box({
+        .fill = fill,
+        .radius = Style::scaledRadiusLg(),
+        .width = size,
+        .height = size,
+        .configure = [](Box& box) { box.setPosition(kCellPad, kCellPad); },
+    });
+  }
+
+  // A tile darkens a step under the pointer; the launcher's accent tile keeps its fill.
+  void bindTileHover(InputArea& area, Box* tile) {
+    area.setOnEnter([tile](const InputArea::PointerData& /*data*/) {
+      tile->setFill(colorSpecFromRole(ColorRole::Hover));
+    });
+    area.setOnLeave([tile]() { tile->setFill(colorSpecFromRole(ColorRole::SurfaceVariant)); });
   }
 
   void applyHoverIconVisual(Node* iconNode, DockEdge edge, float baseX, float baseY, float iconSize, float scale) {
@@ -411,6 +453,31 @@ namespace shell::dock {
 
   void handleItemClick(DockInstance& instance, const DockItemAction& action, DockItemClickContext& context);
 
+  // The hairline between the launcher and the apps, centered in its own slot of the row.
+  std::unique_ptr<Box> makeLauncherSeparator(const DockConfig& cfg, bool vertical) {
+    const auto iSize = static_cast<float>(cfg.iconSize);
+    const float cell = iSize + 2.0F * kCellPad;
+    const auto slot = static_cast<float>(dockSeparatorSize(cfg));
+    const float length = std::round(iSize * kSeparatorLengthRatio);
+    auto holder = ui::box({
+        .fill = clearColorSpec(),
+        .width = vertical ? cell : slot,
+        .height = vertical ? slot : cell,
+    });
+    holder->setHitTestVisible(false);
+    holder->addChild(ui::box({
+        .fill = colorSpecFromRole(ColorRole::Outline),
+        .width = vertical ? length : Style::borderWidth,
+        .height = vertical ? Style::borderWidth : length,
+        .configure = [vertical, cell, slot, length](Box& line) {
+          const float across = std::round((cell - length) * 0.5F);
+          const float along = std::floor((slot - Style::borderWidth) * 0.5F);
+          line.setPosition(vertical ? across : along, vertical ? along : across);
+        },
+    }));
+    return holder;
+  }
+
   std::unique_ptr<InputArea> createLauncherButton(
       DockInstance& instance, const DockConfig& cfg, Renderer& renderer,
       const std::shared_ptr<DockItemClickContext>& clickContext
@@ -429,7 +496,39 @@ namespace shell::dock {
       areaNode->setSize(cellCross, cellMain);
     }
 
-    if (!cfg.launcherCustomImage.empty()) {
+    if (tileStyle(cfg)) {
+      // The launcher leads the shelf on an accent tile.
+      auto tile = makeTile(iSize, colorSpecFromRole(ColorRole::Primary));
+      if (!cfg.launcherCustomImage.empty()) {
+        const float imageSize = std::round(iSize * kTileImageRatio);
+        tile->addChild(ui::image({
+            .fit = ImageFit::Contain,
+            .width = imageSize,
+            .height = imageSize,
+            .configure = [&cfg, &renderer, iconDecodeTarget, iSize, imageSize](Image& image) {
+              image.setSourceFile(renderer, cfg.launcherCustomImage, iconDecodeTarget, true);
+              image.setForegroundTint(
+                  cfg.launcherCustomImageColorize ? std::optional<ColorSpec>{colorSpecFromRole(ColorRole::OnPrimary)}
+                                                  : std::nullopt
+              );
+              image.setPosition(std::round((iSize - imageSize) * 0.5F), std::round((iSize - imageSize) * 0.5F));
+            },
+        }));
+      } else {
+        tile->addChild(ui::glyph({
+            .glyphSize = std::round(iSize * kTileGlyphRatio),
+            .color = colorSpecFromRole(ColorRole::OnPrimary),
+            .width = iSize,
+            .configure = [&cfg, iSize](Glyph& glyph) {
+              if (!glyph.setGlyph(dockLauncherIconGlyph(cfg))) {
+                glyph.setGlyph("grid-dots");
+              }
+              glyph.setPosition(0.0F, tileGlyphInset(iSize));
+            },
+        }));
+      }
+      instance.launcherIconNode = areaNode->addChild(std::move(tile));
+    } else if (!cfg.launcherCustomImage.empty()) {
       auto launcherImage = ui::image({
           .fit = ImageFit::Contain,
           .width = iSize,
@@ -539,8 +638,12 @@ namespace shell::dock {
     instance.row = static_cast<Flex*>(rowParent->addChild(std::move(freshRow)));
     const auto& itemModels = snapshot.items;
 
+    const bool separated = dockSeparatorSize(cfg) > 0 && !itemModels.empty();
     if (launcherPosition == DockLauncherPosition::Start) {
       instance.row->addChild(createLauncherButton(instance, cfg, renderer, clickContext));
+      if (separated) {
+        instance.row->addChild(makeLauncherSeparator(cfg, vert));
+      }
     }
 
     // Reserve up-front so emplace_back never reallocates while lambdas hold raw pointers.
@@ -579,21 +682,56 @@ namespace shell::dock {
       if (iconPath.empty()) {
         iconPath = deps.iconResolver.resolve("application-x-executable", iconDecodeTarget);
       }
-      auto iconImg = ui::image({
-          .width = iSize,
-          .height = iSize,
-          .configure = [&renderer, iconPath, iconDecodeTarget,
-                        &shell = deps.model.config.config().shell](Image& image) {
-            image.setAppIconColorization(effectiveShellAppIconColorizationTint(shell));
-            if (!iconPath.empty()) {
-              image.setSourceFile(renderer, iconPath, iconDecodeTarget, true);
-            }
-            image.setPosition(kCellPad, kCellPad);
-          },
-      });
+      const auto& shellConfig = deps.model.config.config().shell;
+      // On a tile the app is drawn smaller, centered on it; otherwise it fills the icon slot.
+      const bool tiled = tileStyle(cfg);
+      const float imageSize = tiled ? std::round(iSize * kTileImageRatio) : iSize;
+      const float imageInset = tiled ? std::round((iSize - imageSize) * 0.5F) : kCellPad;
+      Node* iconParent = areaNode.get();
+      if (tiled) {
+        item.tile = static_cast<Box*>(areaNode->addChild(makeTile(iSize, colorSpecFromRole(ColorRole::SurfaceVariant))));
+        iconParent = item.tile;
+        bindTileHover(*areaNode, item.tile);
+      }
 
-      if (iconImg->hasImage()) {
-        item.iconImage = static_cast<Image*>(areaNode->addChild(std::move(iconImg)));
+      const auto makeIconImage = [&]() {
+        return ui::image({
+            .width = imageSize,
+            .height = imageSize,
+            .configure = [&renderer, iconPath, iconDecodeTarget, imageInset, &shellConfig](Image& image) {
+              image.setAppIconColorization(effectiveShellAppIconColorizationTint(shellConfig));
+              if (!iconPath.empty()) {
+                image.setSourceFile(renderer, iconPath, iconDecodeTarget, true);
+              }
+              image.setPosition(imageInset, imageInset);
+            },
+        });
+      };
+
+      std::unique_ptr<Image> iconImg;
+      if (tiled && shellConfig.appIconGlyphs) {
+        // Apps as monochrome symbols of their kind, printed on the tile.
+        item.iconGlyph = static_cast<Glyph*>(iconParent->addChild(
+            ui::glyph({
+                .glyph = std::string(appGlyph(model.entry)),
+                .glyphSize = std::round(iSize * kTileGlyphRatio),
+                .color = colorSpecFromRole(ColorRole::OnSurface),
+                .width = iSize,
+                .configure = [iSize](Glyph& glyph) { glyph.setPosition(0.0F, tileGlyphInset(iSize)); },
+            })
+        ));
+      } else if (iconImg = makeIconImage(); iconImg->hasImage()) {
+        item.iconImage = static_cast<Image*>(iconParent->addChild(std::move(iconImg)));
+      } else if (tiled) {
+        item.iconGlyph = static_cast<Glyph*>(iconParent->addChild(
+            ui::glyph({
+                .glyph = "app-window",
+                .glyphSize = std::round(iSize * kTileGlyphRatio),
+                .color = colorSpecFromRole(ColorRole::OnSurface),
+                .width = iSize,
+                .configure = [iSize](Glyph& glyph) { glyph.setPosition(0.0F, tileGlyphInset(iSize)); },
+            })
+        ));
       } else {
         item.iconGlyph = static_cast<Glyph*>(areaNode->addChild(
             ui::glyph({
@@ -619,7 +757,10 @@ namespace shell::dock {
                   .width = dot,
                   .height = dot,
                   .visible = false,
-                  .configure = [verticalDots, edge, cellMain, dot](Box& box) {
+                  .configure = [verticalDots, edge, cellMain, dot, tiled](Box& box) {
+                    if (tiled) {
+                      return; // placed with the item's state in updateVisuals
+                    }
                     if (verticalDots) {
                       const float x = edge == DockEdge::Left ? 1.0F : std::round(cellMain - dot - 1.0F);
                       box.setPosition(x, std::round((cellMain - dot) * 0.5F));
@@ -752,8 +893,7 @@ namespace shell::dock {
       item.area = static_cast<InputArea*>(instance.row->addChild(std::move(areaNode)));
       const float iconScale = model.active ? cfg.activeScale : cfg.inactiveScale;
       if (cfg.magnification) {
-        Node* iconNode =
-            item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+        Node* iconNode = itemVisual(item);
         if (iconNode != nullptr) {
           item.visualScale = iconScale;
           item.hoverMainOffset = 0.0F;
@@ -764,6 +904,9 @@ namespace shell::dock {
     }
 
     if (launcherPosition == DockLauncherPosition::End) {
+      if (separated) {
+        instance.row->addChild(makeLauncherSeparator(cfg, vert));
+      }
       instance.row->addChild(createLauncherButton(instance, cfg, renderer, clickContext));
     }
 
@@ -802,8 +945,7 @@ namespace shell::dock {
       const float iconScale = model.active ? cfg.activeScale : cfg.inactiveScale;
       const float iconOpacity = model.active ? cfg.activeOpacity : cfg.inactiveOpacity;
       applyShellAppIconColorization(item.iconImage, shell);
-      Node* iconNode =
-          item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+      Node* iconNode = itemVisual(item);
 
       if (iconNode != nullptr) {
         if (!cfg.magnification) {
@@ -853,7 +995,35 @@ namespace shell::dock {
 
       const std::size_t count = model.instanceCount;
 
-      if (cfg.showDots) {
+      if (cfg.showDots && tileStyle(cfg)) {
+        // A dot beside the tile, on the side away from the screen edge: ink for the focused app, faint for others.
+        const auto iSize = static_cast<float>(cfg.iconSize);
+        const float cellMain = iSize + 2.0F * kCellPad;
+        const float mainPos = std::round((cellMain - kTileDotSize) * 0.5F);
+        float crossPos = kCellPad + iSize + kTileDotGap;
+        if (edge == DockEdge::Right || edge == DockEdge::Bottom) {
+          crossPos = kCellPad - kTileDotGap - kTileDotSize;
+        }
+        const bool vertical = shell::dock::isVerticalEdge(edge);
+        for (std::size_t index = 0; index < item.dotIndicators.size(); ++index) {
+          Box* dot = item.dotIndicators[index];
+          if (dot == nullptr) {
+            continue;
+          }
+          const bool visible = index == 0 && count > 0;
+          dot->setVisible(visible);
+          if (!visible) {
+            continue;
+          }
+          dot->setFill(
+              model.active ? colorSpecFromRole(ColorRole::Primary)
+                           : colorSpecFromRole(ColorRole::OnSurfaceVariant, kTileRunningDotAlpha)
+          );
+          dot->setRadius(kTileDotSize * 0.5F);
+          dot->setSize(kTileDotSize, kTileDotSize);
+          dot->setPosition(vertical ? crossPos : mainPos, vertical ? mainPos : crossPos);
+        }
+      } else if (cfg.showDots) {
         // Slate signal line: a short neutral line under a running app, a longer accent line under the focused one.
         // The window count is the badge's job (show_instance_count), so one line per app is enough.
         const auto iSize = static_cast<float>(cfg.iconSize);
@@ -1042,8 +1212,7 @@ namespace shell::dock {
     for (std::size_t itemIndex = 0; itemIndex < itemCount; ++itemIndex) {
       auto& item = instance.items[itemIndex];
       const auto& model = snapshot.items[itemIndex];
-      Node* iconNode =
-          item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+      Node* iconNode = itemVisual(item);
       slots.push_back(
           HoverSlot{
               .area = item.area,
@@ -1213,8 +1382,7 @@ namespace shell::dock {
       if (i == source) {
         extraOffset = instance.drag.currentMain - instance.drag.startMain;
         item.area->setZIndex(200);
-        Node* iconNode =
-            item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+        Node* iconNode = itemVisual(item);
         if (iconNode != nullptr) {
           iconNode->setOpacity(0.85F);
         }
@@ -1227,15 +1395,13 @@ namespace shell::dock {
         } else if (after) {
           extraOffset = -pitch;
         }
-        Node* iconNode =
-            item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+        Node* iconNode = itemVisual(item);
         if (iconNode != nullptr) {
           iconNode->setOpacity(item.visualOpacity >= 0.0F ? item.visualOpacity : 1.0F);
         }
       } else {
         item.area->setZIndex(0);
-        Node* iconNode =
-            item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+        Node* iconNode = itemVisual(item);
         if (iconNode != nullptr) {
           iconNode->setOpacity(item.visualOpacity >= 0.0F ? item.visualOpacity : 1.0F);
         }
@@ -1266,8 +1432,7 @@ namespace shell::dock {
       } else {
         item.area->setPosition(item.restCrossPos, totalMain);
       }
-      Node* iconNode =
-          item.iconImage != nullptr ? static_cast<Node*>(item.iconImage) : static_cast<Node*>(item.iconGlyph);
+      Node* iconNode = itemVisual(item);
       if (iconNode != nullptr) {
         const float opacity = item.visualOpacity >= 0.0F ? item.visualOpacity : 1.0F;
         iconNode->setOpacity(opacity);

@@ -70,6 +70,11 @@ namespace {
   // it keeps clear of the user block.
   constexpr float kClockReferenceHeight = 900.0F;
   constexpr float kClockMinScale = 0.6F;
+  // Corner clock (Monolith): a huge time resting in the bottom-left corner under a small versal date.
+  constexpr float kCornerClockFontSize = 168.0F;
+  constexpr float kCornerDateFontSize = 13.0F;
+  constexpr float kCornerDateTracking = 0.12F;
+  constexpr float kCornerClockInset = 64.0F;
   constexpr float kNowPlayingArtSize = 28.0F;
   constexpr float kNowPlayingMaxWidth = 360.0F;
   constexpr float kAvatarGlyphSize = login::kAvatarSize * 0.55F;
@@ -97,6 +102,12 @@ namespace {
 
   [[nodiscard]] Color white(float alpha) { return rgba(1.0F, 1.0F, 1.0F, alpha); }
 
+  // Text and glass on the lock screen: white over the dimmed wallpaper, or the palette's ink straight on a paper
+  // wallpaper (lockscreen.ink).
+  [[nodiscard]] ColorSpec tone(bool ink, float alpha) {
+    return ink ? colorSpecFromRole(ColorRole::OnSurface, alpha) : fixedColorSpec(white(alpha));
+  }
+
   // The lock screen must hide the session in every pixel: the blurred wallpaper fades out at the screen edges
   // and a fill color may be translucent, so the base under it is always opaque (the fill over black).
   [[nodiscard]] Color opaqueBackdropColor(const Color& fill) {
@@ -104,8 +115,8 @@ namespace {
   }
 
   // Neutral glass for controls that sit directly on the dimmed wallpaper.
-  [[nodiscard]] Button::ButtonPalette wallpaperGlassPalette() {
-    const auto state = [](float fill, float label) {
+  [[nodiscard]] Button::ButtonPalette wallpaperGlassPalette(bool ink) {
+    const auto state = [ink](float fill, float label) {
       return Button::ButtonStateColors{
           .bg = fixedColorSpec(white(fill)),
           .border = clearColorSpec(),
@@ -224,8 +235,10 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
     m_widgetLayer = m_root.addChild(std::move(widgetLayer));
   }
 
-  // Everything below is white on the dimmed wallpaper; a faint drop shadow keeps it legible on bright ones.
-  const Color textShadow = rgba(0.0F, 0.0F, 0.0F, 0.22F);
+  // Everything below is white on the dimmed wallpaper; a faint drop shadow keeps it legible on bright ones. Ink on
+  // paper needs no shadow.
+  m_ink = m_config != nullptr && m_config->config().lockscreen.ink;
+  const Color textShadow = rgba(0.0F, 0.0F, 0.0F, m_ink ? 0.0F : 0.22F);
 
   m_root.addChild(
       ui::column(
@@ -241,7 +254,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_dateLabel,
                   .fontSize = kDateFontSize,
                   .fontWeight = FontWeight::Medium,
-                  .color = fixedColorSpec(white(0.86F)),
+                  .color = tone(m_ink, 0.86F),
                   .maxLines = 1,
                   .configure = [textShadow](Label& label) { label.setShadow(textShadow, 0.0F, 1.0F); },
               }),
@@ -249,14 +262,14 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_weatherGlyph,
                   .glyph = "weather-cloud",
                   .glyphSize = kWeatherGlyphSize,
-                  .color = fixedColorSpec(white(0.86F)),
+                  .color = tone(m_ink, 0.86F),
                   .visible = false,
               }),
               ui::label({
                   .out = &m_weatherTemp,
                   .fontSize = kDateFontSize,
                   .fontWeight = FontWeight::Medium,
-                  .color = fixedColorSpec(white(0.86F)),
+                  .color = tone(m_ink, 0.86F),
                   .maxLines = 1,
                   .visible = false,
                   .configure = [textShadow](Label& label) { label.setShadow(textShadow, 0.0F, 1.0F); },
@@ -266,7 +279,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               .out = &m_clockLabel,
               .fontSize = kClockFontSize,
               .fontWeight = FontWeight::Bold,
-              .color = fixedColorSpec(white(0.96F)),
+              .color = tone(m_ink, 0.96F),
               .maxLines = 1,
               .textAlign = TextAlign::Center,
               .configure = [textShadow](Label& label) { label.setShadow(textShadow, 0.0F, 2.0F); },
@@ -283,8 +296,8 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               .gap = Style::spaceSm,
               .paddingV = Style::spaceXs + 1.0F,
               .paddingH = Style::spaceSm + 2.0F,
-              .fill = fixedColorSpec(white(0.16F)),
-              .radius = kNowPlayingArtSize,
+              .fill = tone(m_ink, 0.16F),
+              .radius = Style::pillRadius(kNowPlayingArtSize * 2.0F),
               .clipChildren = true,
               .visible = false,
               .configure = [](Flex& flex) { flex.setZIndex(2); },
@@ -292,7 +305,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
           ui::image({
               .out = &m_mediaArt,
               .fit = ImageFit::Cover,
-              .radius = kNowPlayingArtSize * 0.5F,
+              .radius = Style::pillRadius(kNowPlayingArtSize),
               .width = kNowPlayingArtSize,
               .height = kNowPlayingArtSize,
               .visible = false,
@@ -301,7 +314,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               .out = &m_mediaFallbackGlyph,
               .glyph = "music",
               .glyphSize = 16.0F,
-              .color = fixedColorSpec(white(0.9F)),
+              .color = tone(m_ink, 0.9F),
           }),
           ui::column(
               {.align = FlexAlign::Start, .gap = 1.0F, .clipChildren = true},
@@ -309,14 +322,14 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_mediaTitle,
                   .fontSize = Style::fontSizeBody,
                   .fontWeight = FontWeight::SemiBold,
-                  .color = fixedColorSpec(white(0.95F)),
+                  .color = tone(m_ink, 0.95F),
                   .maxLines = 1,
                   .ellipsize = TextEllipsize::End,
               }),
               ui::label({
                   .out = &m_mediaArtist,
                   .fontSize = Style::fontSizeCaption,
-                  .color = fixedColorSpec(white(0.7F)),
+                  .color = tone(m_ink, 0.7F),
                   .maxLines = 1,
                   .ellipsize = TextEllipsize::End,
               })
@@ -337,8 +350,8 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_avatarFrame,
                   .align = FlexAlign::Center,
                   .justify = FlexJustify::Center,
-                  .fill = fixedColorSpec(white(0.22F)),
-                  .radius = login::kAvatarSize * 0.5F,
+                  .fill = tone(m_ink, 0.22F),
+                  .radius = Style::pillRadius(login::kAvatarSize),
                   .clipChildren = true,
                   .width = login::kAvatarSize,
                   .height = login::kAvatarSize,
@@ -346,7 +359,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               ui::image({
                   .out = &m_avatarImage,
                   .fit = ImageFit::Cover,
-                  .radius = login::kAvatarSize * 0.5F,
+                  .radius = Style::pillRadius(login::kAvatarSize),
                   .width = login::kAvatarSize,
                   .height = login::kAvatarSize,
                   .visible = false,
@@ -355,14 +368,14 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_avatarGlyph,
                   .glyph = "user-filled",
                   .glyphSize = kAvatarGlyphSize,
-                  .color = fixedColorSpec(white(0.9F)),
+                  .color = tone(m_ink, 0.9F),
               })
           ),
           ui::label({
               .out = &m_userName,
               .fontSize = login::kNameFontSize,
               .fontWeight = FontWeight::SemiBold,
-              .color = fixedColorSpec(white(0.96F)),
+              .color = tone(m_ink, 0.96F),
               .maxLines = 1,
               .textAlign = TextAlign::Center,
               .ellipsize = TextEllipsize::End,
@@ -373,7 +386,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .out = &m_pill,
                   .align = FlexAlign::Center,
                   .gap = Style::spaceXs + 2.0F,
-                  .radius = login::kPillHeight * 0.5F,
+                  .radius = Style::pillRadius(login::kPillHeight),
                   .minHeight = login::kPillHeight,
                   .maxHeight = login::kPillHeight,
                   .configure =
@@ -423,7 +436,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
                   .maxWidth = login::kSubmitButtonSize,
                   .maxHeight = login::kSubmitButtonSize,
                   .padding = 0.0F,
-                  .radius = login::kSubmitButtonSize * 0.5F,
+                  .radius = Style::pillRadius(login::kSubmitButtonSize),
                   .onClick =
                       [this]() {
                         if (m_onLogin) {
@@ -442,7 +455,7 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               .out = &m_statusChip,
               .align = FlexAlign::Center,
               .justify = FlexJustify::Center,
-              .radius = Style::spaceMd,
+              .radius = Style::scaledRadius(Style::spaceMd),
               .visible = false,
               .configure = [](Flex& flex) { flex.setZIndex(7); },
           },
@@ -472,13 +485,13 @@ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) :
               .glyph = "keyboard",
               .fontSize = Style::fontSizeCaption,
               .glyphSize = kCornerGlyphSize,
-              .customPalette = wallpaperGlassPalette(),
+              .customPalette = wallpaperGlassPalette(m_ink),
               .minHeight = kCornerButtonSize,
               .maxWidth = kLayoutChipMaxWidth,
               .maxHeight = kCornerButtonSize,
               .paddingV = 0.0F,
               .paddingH = Style::spaceSm + 2.0F,
-              .radius = kCornerButtonSize * 0.5F,
+              .radius = Style::pillRadius(kCornerButtonSize),
               .visible = false,
               .onClick =
                   [this]() {
@@ -1203,28 +1216,38 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
   const bool regular = style.layout == lockscreen_login_box::LayoutMode::Regular;
   const float edge = Style::spaceLg;
 
-  // Clock: the date line over the large time, centered at the top (unless a clock widget already shows one).
+  // Clock: the date line over the large time, centered at the top (unless a clock widget already shows one), or
+  // in the corner style resting in the bottom-left corner.
   const bool builtInClock = !outputHasClockWidget(m_config, m_outputKey);
-  m_clockLabel->setFontSize(kClockFontSize * std::clamp(sh / kClockReferenceHeight, kClockMinScale, 1.0F));
+  const bool corner = cornerClock();
+  const float clockScale = std::clamp(sh / kClockReferenceHeight, kClockMinScale, 1.0F);
+  m_clockLabel->setFontSize((corner ? kCornerClockFontSize : kClockFontSize) * clockScale);
+  m_clockLabel->setTextAlign(corner ? TextAlign::Start : TextAlign::Center);
+  m_dateLabel->setFontSize(corner ? kCornerDateFontSize : kDateFontSize);
+  m_dateLabel->setLetterSpacing(corner ? kCornerDateTracking : 0.0F);
+  m_clockColumn->setAlign(corner ? FlexAlign::Start : FlexAlign::Center);
+  m_clockColumn->setGap(corner ? 0.0F : kDateClockGap);
   m_clockColumn->setVisible(builtInClock);
-  const float clockY = std::round(std::max(edge * 2.0F, sh * kClockTopInset));
+  float clockY = std::round(std::max(edge * 2.0F, sh * kClockTopInset));
   LayoutSize clockSize{};
   if (builtInClock) {
     clockSize = m_clockColumn->measure(renderer, LayoutConstraints::available(sw, sh));
-    m_clockColumn->arrange(
-        renderer, LayoutRect{std::round((sw - clockSize.width) * 0.5F), clockY, clockSize.width, clockSize.height}
-    );
+    const float inset = std::round(kCornerClockInset * clockScale);
+    const float clockX = corner ? inset : std::round((sw - clockSize.width) * 0.5F);
+    if (corner) {
+      clockY = std::round(sh - inset - clockSize.height);
+    }
+    m_clockColumn->arrange(renderer, LayoutRect{clockX, clockY, clockSize.width, clockSize.height});
   }
 
-  // Visibility comes from the update pass; layout only places it under the clock.
+  // Visibility comes from the update pass; layout only places it under the clock (at the top beside a corner one).
   if (m_nowPlaying->visible()) {
     m_nowPlaying->setMaxWidth(std::min(kNowPlayingMaxWidth, sw - edge * 2.0F));
     const LayoutSize size = m_nowPlaying->measure(renderer, LayoutConstraints::available(sw - edge * 2.0F, sh));
+    const float nowPlayingY = corner ? std::round(std::max(edge * 2.0F, sh * kClockTopInset))
+                                     : clockY + clockSize.height + Style::spaceMd;
     m_nowPlaying->arrange(
-        renderer,
-        LayoutRect{
-            std::round((sw - size.width) * 0.5F), clockY + clockSize.height + Style::spaceMd, size.width, size.height
-        }
+        renderer, LayoutRect{std::round((sw - size.width) * 0.5F), nowPlayingY, size.width, size.height}
     );
   }
 
@@ -1335,7 +1358,7 @@ void LockSurface::updateCopy() {
     } else {
       m_statusChip->clearFill();
       m_statusChip->setPadding(0.0F);
-      m_statusLabel->setColor(white(0.8F));
+      m_statusLabel->setColor(tone(m_ink, 0.8F));
     }
   }
 
@@ -1351,7 +1374,8 @@ void LockSurface::refreshClock() {
   const std::string format = lockClockFormat(m_config);
   m_clockLabel->setText(formatLocalTime(format.c_str()));
   // Same translated long date as the status overlay ("Sunday, 11 October").
-  m_dateLabel->setText(formatLocalTime(i18n::tr("lockscreen.date-format").c_str()));
+  const std::string date = formatLocalTime(i18n::tr("lockscreen.date-format").c_str());
+  m_dateLabel->setText(cornerClock() ? i18n::upper(date) : date);
 
   // Nothing to tick for while the clock is not on screen (unlocked, blacked out, no login box, a clock widget).
   if (!m_locked || m_blackout || !isLoginBoxEnabled() || outputHasClockWidget(m_config, m_outputKey)) {
@@ -1400,13 +1424,13 @@ void LockSurface::rebuildSessionButtons() {
     auto button = ui::button({
         .glyph = cfg.glyph.has_value() && !cfg.glyph->empty() ? *cfg.glyph : session_action::defaultGlyph(cfg.action),
         .glyphSize = kCornerGlyphSize,
-        .customPalette = wallpaperGlassPalette(),
+        .customPalette = wallpaperGlassPalette(m_ink),
         .minWidth = kCornerButtonSize,
         .minHeight = kCornerButtonSize,
         .maxWidth = kCornerButtonSize,
         .maxHeight = kCornerButtonSize,
         .padding = 0.0F,
-        .radius = kCornerButtonSize * 0.5F,
+        .radius = Style::pillRadius(kCornerButtonSize),
         .onClick =
             [this, cfg]() {
               if (m_sessionActions != nullptr) {
@@ -1540,6 +1564,10 @@ lockscreen_login_box::LoginBoxStyle LockSurface::resolveLoginStyle() const {
     return lockscreen_login_box::resolveStyle(loginBox->settings);
   }
   return lockscreen_login_box::LoginBoxStyle{};
+}
+
+bool LockSurface::cornerClock() const {
+  return m_config != nullptr && m_config->config().lockscreen.clockStyle == LockscreenClockStyle::Corner;
 }
 
 bool LockSurface::isLoginBoxEnabled() const {

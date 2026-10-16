@@ -19,6 +19,7 @@ class ContextMenuPopup;
 class ConfigService;
 class Box;
 class Flex;
+class Glyph;
 class InputArea;
 class Label;
 class TaskbarWidgetTestAccess;
@@ -37,6 +38,11 @@ enum class WorkspaceGroupContent {
   Dots,
 };
 
+enum class TaskbarActiveIndicator {
+  Dot,  // under the focused app
+  Edge, // a short bar on the screen edge beside the focused app, where the bar meets the screen
+};
+
 struct TaskbarWidgetOptions {
   bool groupByWorkspace = false;
   bool showAllOutputs = false;
@@ -51,12 +57,15 @@ struct TaskbarWidgetOptions {
   bool minimal = false;
   bool groupSingleIconPerApp = false;
   bool showActiveIndicator = true;
+  TaskbarActiveIndicator activeIndicator = TaskbarActiveIndicator::Dot;
   ColorSpec activeIndicatorColor = colorSpecFromRole(ColorRole::Primary);
   float activeOpacity = 1.0F;
   float inactiveOpacity = 1.0F;
   float iconScale = 1.0F;
   int itemSpacing = 4;
   std::vector<std::string> pinned;
+  // Without its own `pinned` list, show and edit the dock's pinned apps (a taskbar that is the dock).
+  bool dockPins = false;
   float pinnedOpacity = 0.5F;
   ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);
   ColorSpec occupiedColor = colorSpecFromRole(ColorRole::Secondary);
@@ -152,6 +161,8 @@ private:
     Label* titleLabel = nullptr;
     // Present when m_showActiveIndicator; visibility tracks task.active.
     Box* activeIndicator = nullptr;
+    // The app drawn as a glyph (shell.app_icon_glyphs); its color tracks task.active.
+    Glyph* glyph = nullptr;
   };
 
   // Gesture state for drag-to-reorder of pinned tiles in the flat strip. Holds no obligation to
@@ -217,8 +228,12 @@ private:
   void applyPinnedMerge(std::vector<TaskModel>& tasks);
   void activateOrLaunchPinned(const TaskModel& task);
   void launchDesktopEntry(const TaskModel& task);
+  [[nodiscard]] bool sharesDockPins() const noexcept;
   [[nodiscard]] const std::vector<std::string>& pinnedConfigIds() const noexcept;
+  [[nodiscard]] std::vector<std::string> pinnedOverridePath() const;
   [[nodiscard]] bool reorderEnabled() const;
+  [[nodiscard]] ColorSpec appGlyphColor(bool active) const;
+  [[nodiscard]] static std::string_view appGlyphFor(const TaskModel& task);
   [[nodiscard]] float pointerMainOnStrip(const InputArea& area, float localX, float localY) const;
   [[nodiscard]] std::size_t computeDragTargetIndex() const;
   [[nodiscard]] bool commitDragReorder();
@@ -249,6 +264,7 @@ private:
   bool m_minimal = false;
   bool m_groupSingleIconPerApp = false;
   bool m_showActiveIndicator = true;
+  TaskbarActiveIndicator m_activeIndicator = TaskbarActiveIndicator::Dot;
   ColorSpec m_activeIndicatorColor = colorSpecFromRole(ColorRole::Primary);
   float m_activeOpacity = 1.0F;
   float m_inactiveOpacity = 1.0F;

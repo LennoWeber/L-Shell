@@ -44,6 +44,7 @@
 #include "launcher/math_provider.h"
 #include "launcher/panel_provider.h"
 #include "launcher/plugin_launcher_provider.h"
+#include "launcher/recent_files_provider.h"
 #include "launcher/session_provider.h"
 #include "launcher/settings_provider.h"
 #include "launcher/wallpaper_provider.h"
@@ -108,6 +109,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 namespace {
@@ -120,6 +122,24 @@ namespace {
       return configService.config().shell.niriOverviewTypeToLaunchEnabled;
     }
     return false;
+  }
+
+  void applyIconStyle(RenderContext& renderContext, const ShellConfig& shell) {
+    std::string font;
+    switch (shell.iconStyle) {
+    case IconStyle::Tabler:
+      break;
+    case IconStyle::Outlined:
+      font = paths::assetPath("fonts/material-symbols-outlined.ttf").string();
+      break;
+    case IconStyle::Rounded:
+      font = paths::assetPath("fonts/material-symbols-rounded.ttf").string();
+      break;
+    case IconStyle::Sharp:
+      font = paths::assetPath("fonts/material-symbols-sharp.ttf").string();
+      break;
+    }
+    renderContext.setIconStyle(std::move(font), shell.iconWeight, shell.iconFill);
   }
 } // namespace
 
@@ -149,6 +169,7 @@ void Application::initUiRenderSurfacesAndSettings() {
     m_asyncTextureCache.setMakeCurrentCallback([this]() { m_renderContext.backend().makeCurrentNoSurface(); });
   }
   m_renderContext.setTextFontFamily(m_configService.config().shell.fontFamily);
+  applyIconStyle(m_renderContext, m_configService.config().shell);
   Style::setRtl(i18n::Service::instance().rtl());
   m_renderContext.setTextBaseDirection(i18n::Service::instance().rtl());
   m_wallpaper.initialize(m_wayland, &m_configService, &m_renderContext, &m_sharedTextureCache, &m_themeService);
@@ -450,6 +471,11 @@ void Application::initInputDispatch() {
     if (m_screenshotService.onPointerEvent(event)) {
       return;
     }
+    // The scrim swallows clicks behind a modal panel (and closes it); the panel's own surface
+    // is not one of the scrim's, so panels keep their events.
+    if (m_panelScrim.onPointerEvent(event)) {
+      return;
+    }
     if (m_lockscreenWidgetsController.onPointerEvent(event)) {
       return;
     }
@@ -651,8 +677,10 @@ void Application::initPanelManagerAndPanels() {
   ControlCenterPanel* controlCenterPanelPtr = controlCenterPanel.get();
   m_panelManager.registerPanel("control-center", std::move(controlCenterPanel));
   {
-    auto launcherPanel = std::make_unique<LauncherPanel>(&m_configService, &m_asyncTextureCache);
+    auto launcherPanel =
+        std::make_unique<LauncherPanel>(&m_configService, &m_asyncTextureCache, &m_sessionActionRunner);
     launcherPanel->addProvider(std::make_unique<AppProvider>(&m_configService, &m_compositorPlatform));
+    launcherPanel->addProvider(std::make_unique<RecentFilesProvider>(&m_configService));
     launcherPanel->addProvider(std::make_unique<WallpaperProvider>(&m_configService, &m_wayland, &m_themeService));
     launcherPanel->addProvider(std::make_unique<WindowProvider>(&m_compositorPlatform));
     launcherPanel->addProvider(
@@ -813,6 +841,17 @@ void Application::initNotificationAndOsd() {
 
   TooltipManager::instance().initialize(m_wayland, &m_configService, &m_renderContext);
   m_osdOverlay.initialize(m_wayland, m_compositorPlatform, &m_configService, &m_renderContext);
+  // The modal panels' veil: a blurred dim over the desktop while a launcher, control center,
+  // clipboard or session floats above it; clicking the veil closes the panel.
+  m_panelScrim.initialize(m_wayland, &m_configService, &m_renderContext);
+  m_panelScrim.setCloseCallback([this]() { m_panelManager.closePanel(true); });
+  m_panelManager.setScrimRequestCallback([this](bool show, wl_output* output) {
+    if (show) {
+      m_panelScrim.show(output);
+    } else {
+      m_panelScrim.hide();
+    }
+  });
   m_windowSwitcher.initialize(
       m_wayland, &m_renderContext, m_compositorPlatform, &m_configService, &m_asyncTextureCache
   );
@@ -1091,6 +1130,7 @@ void Application::initWidgetControllersAndCallbacks() {
       .wayland = m_wayland,
       .config = &m_configService,
       .renderContext = &m_renderContext,
+      .platform = &m_compositorPlatform,
       .runtime = desktopWidgetRuntime,
       .textureCache = &m_sharedTextureCache,
   };
@@ -1124,17 +1164,24 @@ void Application::initWidgetControllersAndCallbacks() {
   });
   m_iconThemePollSource.setChangeCallback([this]() { onIconThemeChanged(); });
 
-  std::string lastShellFontFamily = m_configService.config().shell.fontFamily;
+  // The shell typeface and icon set: a design switch changes both, and both change every metric.
+  auto typography = [](const ShellConfig& shell) {
+    return std::tuple{shell.fontFamily, shell.iconStyle, shell.iconWeight, shell.iconFill, shell.displayFontFamily};
+  };
   m_configService.addReloadCallback(
-      [this, lastShellFontFamily]() mutable {
-        const std::string& newShellFontFamily = m_configService.config().shell.fontFamily;
-        if (newShellFontFamily == lastShellFontFamily) {
+      [this, typography, last = typography(m_configService.config().shell)]() mutable {
+        const ShellConfig& shell = m_configService.config().shell;
+        if (typography(shell) == last) {
           return;
         }
 
-        lastShellFontFamily = newShellFontFamily;
-        text::invalidateFontWeightCatalogCache();
-        m_renderContext.setTextFontFamily(newShellFontFamily);
+        const bool fontChanged = std::get<0>(last) != shell.fontFamily;
+        last = typography(shell);
+        if (fontChanged) {
+          text::invalidateFontWeightCatalogCache();
+          m_renderContext.setTextFontFamily(shell.fontFamily);
+        }
+        applyIconStyle(m_renderContext, shell);
         m_bar.reload();
         m_island.requestLayout();
         m_dock.requestLayout();
@@ -1152,7 +1199,7 @@ void Application::initWidgetControllersAndCallbacks() {
         m_fileDialogPopup.requestLayout();
         scheduleGreeterAutoSync();
       },
-      "shell-font-family"
+      "shell-typography"
   );
 
   bool lastRtl = i18n::Service::instance().rtl();
@@ -1256,7 +1303,11 @@ void Application::initWidgetControllersAndCallbacks() {
       .upower = m_upowerService.get(),
       .bar = &m_bar,
   });
-  m_osdOverlay.setRedirect([this](const OsdContent& content) { return m_island.takeOsdContent(content); });
+  // An event (volume, brightness, …) shows in the strip itself when its bar has event_morph, then in
+  // the island (suppress_osd), and only then as a floating OSD popup.
+  m_osdOverlay.setRedirect([this](const OsdContent& content) {
+    return m_bar.takeOsdContent(content) || m_island.takeOsdContent(content);
+  });
   // The design's window look (Hyprland): at startup and whenever the design changes.
   shell::design::applyWindowLook(m_configService.config().design.windows);
   m_configService.addReloadCallback(

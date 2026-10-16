@@ -17,6 +17,7 @@
 #include "shell/bar/bar_reserved_zone.h"
 #include "shell/bar/widget.h"
 #include "shell/bar/widget_gesture_defaults.h"
+#include "i18n/i18n.h"
 #include "shell/bar/widgets/plugin_widget.h"
 #include "shell/bar/widgets/taskbar_widget.h"
 #include "shell/bar/widgets/tray_widget.h"
@@ -26,6 +27,9 @@
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/workspace_occupancy.h"
 #include "ui/builders.h"
+#include "ui/controls/glyph.h"
+#include "ui/controls/label.h"
+#include "ui/controls/progress_bar.h"
 #include "ui/palette.h"
 #include "ui/style.h"
 #include "util/string_utils.h"
@@ -360,6 +364,17 @@ namespace {
         sx, sy, event.axis, event.axisSource, event.axisValue, event.axisDiscrete, event.axisValue120, event.axisLines,
         event.axisGestureSerial
     );
+  }
+
+  // A square bar flush with its screen edge along the whole edge only has one edge facing the screen.
+  bool hasInnerEdgeHairline(const BarConfig& cfg) {
+    return cfg.marginEdge == 0
+        && cfg.marginEnds == 0
+        && cfg.radius == 0
+        && cfg.radiusTopLeft == 0
+        && cfg.radiusTopRight == 0
+        && cfg.radiusBottomLeft == 0
+        && cfg.radiusBottomRight == 0;
   }
 
   std::uint32_t positionToAnchor(const std::string& position) {
@@ -1428,6 +1443,15 @@ bool Bar::initialize(const BarServices& services) {
 
   m_widgetFactory = std::make_unique<WidgetFactory>(services);
 
+  // event_morph: a newly arrived notification shows in the strip like any other event.
+  if (m_notifications != nullptr) {
+    m_notificationEventCallbackId = m_notifications->addEventCallback(
+        [this](const Notification& notification, NotificationEvent event) {
+          onNotificationEvent(notification, event);
+        }
+    );
+  }
+
   // Bars on screen come from the layout mode: the classic [bar.*] list or the mode's synthesized bars, so a
   // mode switch shows up here as a changed bar list.
   m_lastBars = m_config->config().bars;
@@ -1787,6 +1811,233 @@ void Bar::requestLayout() {
       inst->surface->requestLayout();
     }
   }
+}
+
+// ── event_morph: the strip itself behaves like the island ─────────────────────────────────────
+// The widget sections fade down, an event row (glyph, title, level, value) fades in above them,
+// holds for a moment and fades back. Repeated events restart the hold; the row updates in place.
+
+namespace {
+  [[nodiscard]] std::string morphOsdTitle(OsdKind kind) {
+    switch (kind) {
+    case OsdKind::Volume:
+      return i18n::tr("island.volume");
+    case OsdKind::Microphone:
+      return i18n::tr("island.microphone");
+    case OsdKind::Brightness:
+      return i18n::tr("island.brightness");
+    case OsdKind::KeyboardBacklight:
+      return i18n::tr("island.keyboard-backlight");
+    default:
+      return {};
+    }
+  }
+
+  [[nodiscard]] std::string_view morphOsdGlyph(OsdKind kind) {
+    switch (kind) {
+    case OsdKind::Volume:
+      return "volume";
+    case OsdKind::Microphone:
+      return "microphone";
+    case OsdKind::Brightness:
+      return "sun-high";
+    case OsdKind::KeyboardBacklight:
+      return "keyboard";
+    case OsdKind::Media:
+      return "music";
+    default:
+      return "info";
+    }
+  }
+} // namespace
+
+void Bar::buildMorphOverlay(BarInstance& instance) {
+  auto overlay = ui::node({});
+  overlay->setParticipatesInLayout(false);
+  overlay->setHitTestVisible(false);
+  overlay->setOpacity(0.0F);
+  instance.morphRoot = instance.slideRoot->addChild(std::move(overlay));
+
+  instance.morphGlyph = static_cast<Glyph*>(instance.morphRoot->addChild(
+      ui::glyph({
+          .glyph = std::string("volume"),
+          .glyphSize = 15.0F,
+          .color = colorSpecFromRole(ColorRole::Primary),
+      })
+  ));
+  instance.morphTitle = static_cast<Label*>(instance.morphRoot->addChild(
+      ui::label({
+          .fontSize = Style::fontSizeBody,
+          .fontWeight = FontWeight::SemiBold,
+          .color = colorSpecFromRole(ColorRole::OnSurface),
+          .maxLines = 1,
+      })
+  ));
+  instance.morphProgress = static_cast<ProgressBar*>(instance.morphRoot->addChild(
+      ui::progressBar({
+          .fill = colorSpecFromRole(ColorRole::Primary),
+          .track = colorSpecFromRole(ColorRole::OnSurface, 0.14F),
+          .radius = 3.0F,
+      })
+  ));
+  instance.morphValue = static_cast<Label*>(instance.morphRoot->addChild(
+      ui::label({
+          .fontSize = Style::fontSizeBody,
+          .fontWeight = FontWeight::Medium,
+          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+          .maxLines = 1,
+      })
+  ));
+}
+
+void Bar::layoutMorphOverlay(BarInstance& instance, Renderer& renderer, float barAreaW, float barAreaH) {
+  if (instance.morphRoot == nullptr) {
+    return;
+  }
+  instance.morphRoot->setPosition(0.0F, 0.0F);
+  instance.morphRoot->setSize(barAreaW, barAreaH);
+
+  instance.morphGlyph->measure(renderer);
+  instance.morphTitle->measure(renderer);
+  instance.morphValue->measure(renderer);
+
+  constexpr float kPad = 14.0F;
+  constexpr float kGap = 10.0F;
+  constexpr float kLevelHeight = 8.0F;
+
+  float x = kPad;
+  instance.morphGlyph->setPosition(x, std::round((barAreaH - instance.morphGlyph->height()) * 0.5F));
+  x += instance.morphGlyph->width() + kGap;
+  instance.morphTitle->setPosition(x, std::round((barAreaH - instance.morphTitle->height()) * 0.5F));
+  x += instance.morphTitle->width() + kGap;
+
+  const float valueWidth = instance.morphValue->width();
+  const float levelWidth = std::max(0.0F, barAreaW - kPad - x - valueWidth - kGap);
+  instance.morphProgress->setVisible(m_morphShowProgress && levelWidth > 8.0F);
+  if (instance.morphProgress->visible()) {
+    instance.morphProgress->setPosition(x, std::round((barAreaH - kLevelHeight) * 0.5F));
+    instance.morphProgress->setSize(levelWidth, kLevelHeight);
+  }
+  instance.morphValue->setPosition(barAreaW - kPad - valueWidth, std::round((barAreaH - instance.morphValue->height()) * 0.5F));
+}
+
+void Bar::applyMorphContent(BarInstance& instance) {
+  if (instance.morphRoot == nullptr) {
+    return;
+  }
+  instance.morphGlyph->setGlyph(m_morphGlyph);
+  instance.morphTitle->setText(m_morphTitle);
+  instance.morphValue->setText(m_morphValue);
+  if (m_morphShowProgress) {
+    // The level glides to the new value: turning the knob moves the fill, it does not jump.
+    instance.animations.cancelForOwner(instance.morphProgress);
+    instance.animations.animate(
+        instance.morphShownLevel, std::clamp(m_morphLevel, 0.0F, 1.0F), Style::animSlow, Easing::EaseOutCubic,
+        [inst = &instance](float v) {
+          inst->morphShownLevel = v;
+          inst->morphProgress->setProgress(v);
+        },
+        {}, instance.morphProgress
+    );
+  } else {
+    instance.animations.cancelForOwner(instance.morphProgress);
+    instance.morphProgress->setProgress(0.0F);
+  }
+  if (instance.surface != nullptr) {
+    instance.surface->requestLayout();
+    instance.surface->requestRedraw();
+  }
+}
+
+void Bar::animateMorph(BarInstance& instance, bool show) {
+  const float from = instance.morphProgress01;
+  const float to = show ? 1.0F : 0.0F;
+  instance.animations.cancelForOwner(instance.morphRoot);
+  // Staggered, so the cross never shows both rows: the widgets leave fast and ease in on the
+  // way out of view; the event row arrives on the normal curve and leaves accelerating.
+  instance.animations.animate(
+      from, to, show ? Style::animNormal : Style::animFast,
+      show ? Easing::EaseOutCubic : Easing::EaseInQuad,
+      [inst = &instance](float v) {
+        inst->morphProgress01 = v;
+        if (inst->contentClip != nullptr) {
+          inst->contentClip->setOpacity(1.0F - v);
+        }
+        if (inst->hoverUnderlay != nullptr) {
+          inst->hoverUnderlay->setOpacity(1.0F - v);
+        }
+        if (inst->morphRoot != nullptr) {
+          inst->morphRoot->setOpacity(v);
+        }
+      },
+      [inst = &instance]() {
+        if (inst->surface != nullptr) {
+          inst->surface->requestRedraw();
+        }
+      },
+      instance.morphRoot
+  );
+  instance.morphActive = show;
+  if (instance.surface != nullptr) {
+    instance.surface->requestRedraw();
+  }
+}
+
+void Bar::showMorphRow() {
+  m_morphActive = true;
+  for (auto& instance : m_instances) {
+    if (instance == nullptr || instance->morphRoot == nullptr) {
+      continue;
+    }
+    applyMorphContent(*instance);
+    animateMorph(*instance, true);
+  }
+  // Short on purpose: the strip is a glance, not a stay — it returns as soon as the change settles.
+  constexpr std::chrono::milliseconds kMorphHoldMs{1100};
+  m_morphResetTimer.start(kMorphHoldMs, [this]() { hideMorphRow(); });
+}
+
+void Bar::hideMorphRow() {
+  m_morphActive = false;
+  for (auto& instance : m_instances) {
+    if (instance == nullptr || instance->morphRoot == nullptr) {
+      continue;
+    }
+    animateMorph(*instance, false);
+  }
+}
+
+bool Bar::takeOsdContent(const OsdContent& content) {
+  const bool anyMorphBar = std::ranges::any_of(m_instances, [](const auto& instance) {
+    return instance != nullptr && instance->barConfig.eventMorph && instance->morphRoot != nullptr;
+  });
+  if (!anyMorphBar) {
+    return false;
+  }
+  m_morphGlyph = content.icon.empty() ? std::string(morphOsdGlyph(content.kind)) : content.icon;
+  m_morphTitle = morphOsdTitle(content.kind);
+  m_morphValue = content.value;
+  m_morphLevel = content.progress;
+  m_morphShowProgress = content.showProgress;
+  showMorphRow();
+  return true;
+}
+
+void Bar::onNotificationEvent(const Notification& notification, NotificationEvent event) {
+  if (event != NotificationEvent::Added) {
+    return;
+  }
+  const bool anyMorphBar = std::ranges::any_of(m_instances, [](const auto& instance) {
+    return instance != nullptr && instance->barConfig.eventMorph && instance->morphRoot != nullptr;
+  });
+  if (!anyMorphBar) {
+    return;
+  }
+  m_morphGlyph = "bell";
+  m_morphTitle = notification.summary;
+  m_morphValue = notification.appName;
+  m_morphShowProgress = false;
+  showMorphRow();
 }
 
 void Bar::setAutoHideSuppressionCallback(std::function<bool(const BarInstance&)> callback) {
@@ -3017,6 +3268,10 @@ void Bar::rebuildInstanceContents(BarInstance& instance, const BarConfig& newCon
 
   populateWidgets(instance);
   attachWidgetsToSections(instance);
+  if (instance.barConfig.eventMorph && instance.morphRoot == nullptr) {
+    buildMorphOverlay(instance);
+  }
+  applyMorphContent(instance);
 
   applyBackgroundPalette(instance);
   syncBarSurfaceChrome(instance);
@@ -3051,7 +3306,7 @@ void Bar::applyBackgroundPalette(BarInstance& instance) {
     return;
   }
   auto style = instance.bg->style();
-  style.fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity);
+  style.fill = resolveColorSpec(scaleAlpha(instance.barConfig.background, instance.barConfig.backgroundOpacity));
   style.border = resolveColorSpec(instance.barConfig.border);
   style.borderWidth = instance.barConfig.borderWidth;
   instance.bg->setStyle(style);
@@ -3062,9 +3317,18 @@ void Bar::applySlateChrome(BarInstance& instance, const Radii& radius) {
   if (instance.hairline == nullptr) {
     return;
   }
-  instance.hairline->setFill(clearColor());
-  instance.hairline->setRadii(radius);
-  shell::material::applyHairline(*instance.hairline, isResolvedLightTheme(), instance.barConfig.scale);
+  if (hasInnerEdgeHairline(instance.barConfig)) {
+    // A line along the inner edge only: the others lie on the screen edge.
+    instance.hairline->clearBorder();
+    instance.hairline->setRadius(0.0F);
+    instance.hairline->setFill(shell::material::hairlineColor(isResolvedLightTheme()));
+  } else {
+    instance.hairline->setFill(clearColor());
+    instance.hairline->setRadii(radius);
+    shell::material::applyHairline(*instance.hairline, isResolvedLightTheme(), instance.barConfig.scale);
+  }
+  // A see-through strip (Halo's capsules float on nothing) has no edge to outline.
+  instance.hairline->setVisible(instance.barConfig.backgroundOpacity > 0.0F);
 }
 
 void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
@@ -3326,6 +3590,11 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
 
     attachWidgetsToSections(instance);
 
+    // The strip's own activity overlay, above every section (event_morph).
+    if (instance.barConfig.eventMorph) {
+      buildMorphOverlay(instance);
+    }
+
     // Wire up InputDispatcher for this instance
     instance.inputDispatcher.setSceneRoot(instance.sceneRoot.get());
     instance.inputDispatcher.setCursorShapeCallback([this](std::uint32_t serial, std::uint32_t shape) {
@@ -3372,7 +3641,7 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
   // draws only outside the rect, so any size mismatch is visible at corners.
   if (instance.bg != nullptr) {
     const RoundedRectStyle bgStyle{
-        .fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity),
+        .fill = resolveColorSpec(scaleAlpha(instance.barConfig.background, instance.barConfig.backgroundOpacity)),
         .border = resolveColorSpec(instance.barConfig.border),
         .fillMode = FillMode::Solid,
         .corners = concave.corners,
@@ -3389,7 +3658,15 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
         barAreaW + concave.logicalInset.left + concave.logicalInset.right,
         barAreaH + concave.logicalInset.top + concave.logicalInset.bottom
     );
-    if (instance.hairline != nullptr) {
+    if (instance.hairline != nullptr && hasInnerEdgeHairline(instance.barConfig)) {
+      const float line = Style::borderWidth * instance.barConfig.scale;
+      const std::string& edge = instance.barConfig.position;
+      const float x = edge == "left" ? barAreaX + barAreaW - line : barAreaX;
+      const float y = edge == "top" ? barAreaY + barAreaH - line : barAreaY;
+      const bool vertical = edge == "left" || edge == "right";
+      instance.hairline->setPosition(x, y);
+      instance.hairline->setSize(vertical ? line : barAreaW, vertical ? barAreaH : line);
+    } else if (instance.hairline != nullptr) {
       instance.hairline->setPosition(barAreaX, barAreaY);
       instance.hairline->setSize(barAreaW, barAreaH);
     }
@@ -3410,6 +3687,9 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
   applyBarShadowStyle(instance, shadowConfig, w, h);
 
   layoutBarSections(instance, renderer, barAreaW, barAreaH, padding, isVertical);
+  if (instance.morphRoot != nullptr) {
+    layoutMorphOverlay(instance, renderer, barAreaW, barAreaH);
+  }
 
   float contentLeft = barAreaX;
   float contentTop = barAreaY;
@@ -3470,6 +3750,9 @@ void Bar::updateWidgets(BarInstance& instance) {
   updateSection(instance.centerWidgets);
   updateSection(instance.endWidgets);
   layoutBarSections(instance, renderer, barAreaW, barAreaH, padding, isVertical);
+  if (instance.morphRoot != nullptr) {
+    layoutMorphOverlay(instance, renderer, barAreaW, barAreaH);
+  }
 }
 
 void Bar::prepareFrame(BarInstance& instance, bool needsUpdate, bool needsLayout) {
@@ -3512,6 +3795,9 @@ void Bar::prepareFrame(BarInstance& instance, bool needsUpdate, bool needsLayout
       widget->layout(renderer, barAreaW, barAreaH);
     }
     layoutBarSections(instance, renderer, barAreaW, barAreaH, padding, isVertical);
+  if (instance.morphRoot != nullptr) {
+    layoutMorphOverlay(instance, renderer, barAreaW, barAreaH);
+  }
   }
 }
 

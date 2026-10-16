@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 
+class CompositorPlatform;
 class DesktopWidgetsEditor;
 class DesktopWidgetsHost;
 class LockscreenWidgetsController;
@@ -67,6 +68,10 @@ public:
   void toggleRuntimeVisibility();
   [[nodiscard]] bool isEffectivelyVisible() const noexcept;
 
+  /// For visibility = "home": re-checks whether the focused output's active workspace is empty and
+  /// shows or hides the widgets accordingly. Called on every workspace and toplevel change.
+  void onHomeRelevantChange();
+
   [[nodiscard]] bool isEditing() const noexcept;
   [[nodiscard]] std::optional<LayerPopupParentContext> popupParentContextForSurface(wl_surface* surface) const;
   [[nodiscard]] std::optional<LayerPopupParentContext> fallbackPopupParentContext() const;
@@ -78,6 +83,8 @@ private:
   void saveSnapshotToConfig();
   void applyVisibility();
   void handleConfigReload();
+  [[nodiscard]] bool homeGated() const noexcept;
+  void updateHomeVisibility();
   void normalizeSnapshot();
   void syncWallpaperMasks();
   void pruneWallpaperMasks();
@@ -85,6 +92,7 @@ private:
 
   WaylandConnection* m_wayland = nullptr;
   ConfigService* m_config = nullptr;
+  CompositorPlatform* m_platform = nullptr;
   LockscreenWidgetsController* m_lockscreenWidgets = nullptr;
   RenderContext* m_renderContext = nullptr;
 
@@ -96,6 +104,9 @@ private:
   RuntimeVisibility m_runtimeVisibility = RuntimeVisibility::FollowConfig;
   // Last-seen saved desktop_widgets.enabled; an explicit transition clears the runtime override.
   bool m_lastEnabled = false;
+  // visibility = "home": the focused output's active workspace is currently empty (no platform = always
+  // true, so tests and the greeter keep showing the widgets).
+  bool m_homeVisible = true;
   std::function<void()> m_onEnterEdit;
   std::function<void()> m_onExitEdit;
   std::unique_ptr<DesktopWidgetsHost> m_host;

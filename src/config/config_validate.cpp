@@ -536,12 +536,17 @@ namespace noctalia::config {
         return;
       }
       static const std::unordered_set<std::string> kTopLevel = {
-          "enabled", "schema_version", "grid", "widget", "widget_order"
+          "enabled", "schema_version", "grid", "widget", "widget_order", "visibility"
       };
       for (const auto& [key, node] : *dw) {
         (void)node;
         if (!kTopLevel.contains(std::string(key.str()))) {
           diag.warn("desktop_widgets." + std::string(key.str()), "unknown setting");
+        }
+      }
+      if (const auto visibility = (*dw)["visibility"].value<std::string>(); visibility.has_value()) {
+        if (*visibility != "always" && *visibility != "home") {
+          diag.warn("desktop_widgets.visibility", "expected always or home");
         }
       }
       if (const auto* grid = (*dw)["grid"].as_table()) {
@@ -563,7 +568,7 @@ namespace noctalia::config {
       }
       static const std::unordered_set<std::string> kWidgetKeys = {
           "id",        "type",       "output",   "cx",     "cy",     "placement_width", "placement_height",
-          "box_width", "box_height", "rotation", "flip_x", "flip_y", "enabled",         "settings",
+          "box_width", "box_height", "scale",    "rotation", "flip_x", "flip_y", "enabled",         "settings",
       };
       for (const auto& [id, node] : *widgets) {
         const auto* tbl = node.as_table();
@@ -646,7 +651,7 @@ namespace noctalia::config {
       }
       static const std::unordered_set<std::string> kWidgetKeys = {
           "id",        "type",       "output",   "cx",     "cy",     "placement_width", "placement_height",
-          "box_width", "box_height", "rotation", "flip_x", "flip_y", "enabled",         "settings",
+          "box_width", "box_height", "scale",    "rotation", "flip_x", "flip_y", "enabled",         "settings",
       };
       for (const auto& [id, node] : *widgets) {
         const auto* tbl = node.as_table();

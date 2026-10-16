@@ -116,6 +116,7 @@ void RenderContext::initialize(GlSharedContext& shared) {
   m_glyphRenderer.initialize(
       paths::assetPath("fonts/noctalia-tabler.ttf").string(), m_backend.get(), &m_backend->textureManager()
   );
+  m_glyphRenderer.setMaterialStyle(m_iconFontPath, m_iconWeight, m_iconFill);
   m_textRenderer.setFontFamily(m_textFontFamily);
   m_textRenderer.setBaseDirection(m_textBaseDirRtl);
   ++m_textMetricsGeneration;
@@ -166,6 +167,21 @@ void RenderContext::setTextFontFamily(std::string family) {
   makeCurrentNoSurface();
   m_textFontFamily = std::move(family);
   m_textRenderer.setFontFamily(m_textFontFamily);
+  ++m_textMetricsGeneration;
+}
+
+void RenderContext::setIconStyle(std::string materialFontPath, int weight, bool fill) {
+  if (materialFontPath == m_iconFontPath && weight == m_iconWeight && fill == m_iconFill) {
+    return;
+  }
+  m_iconFontPath = std::move(materialFontPath);
+  m_iconWeight = weight;
+  m_iconFill = fill;
+  if (m_backend == nullptr) {
+    return;
+  }
+  makeCurrentNoSurface();
+  m_glyphRenderer.setMaterialStyle(m_iconFontPath, m_iconWeight, m_iconFill);
   ++m_textMetricsGeneration;
 }
 
@@ -241,10 +257,10 @@ void RenderContext::renderScene(RenderTarget& target, Node* sceneRoot, const Wal
 
 TextMetrics RenderContext::measureTextScaled(
     float scale, std::string_view text, float fontSize, FontWeight fontWeight, float maxWidth, int maxLines,
-    TextAlign align, std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup
+    TextAlign align, std::string_view fontFamily, TextEllipsize ellipsize, bool useMarkup, TextSpacing spacing
 ) {
   auto m = m_textRenderer.measure(
-      scale, text, fontSize, fontWeight, maxWidth, maxLines, align, fontFamily, ellipsize, useMarkup
+      scale, text, fontSize, fontWeight, maxWidth, maxLines, align, fontFamily, ellipsize, useMarkup, spacing
   );
   return TextMetrics{
       .width = m.width,
@@ -383,14 +399,15 @@ void RenderContext::renderNode(
         m_textRenderer.draw(
             renderScale, sw, sh, 0.0F, 0.0F, text->text(), text->fontSize(), shadowColor, shadowTransform,
             text->fontWeight(), text->maxWidth(), text->maxLines(), text->textAlign(), font, text->ellipsize(),
-            text->useMarkup()
+            text->useMarkup(), text->spacing()
         );
       }
       auto color = text->color();
       color.a *= effectiveOpacity;
       m_textRenderer.draw(
           renderScale, sw, sh, 0.0F, 0.0F, text->text(), text->fontSize(), color, worldTransform, text->fontWeight(),
-          text->maxWidth(), text->maxLines(), text->textAlign(), font, text->ellipsize(), text->useMarkup()
+          text->maxWidth(), text->maxLines(), text->textAlign(), font, text->ellipsize(), text->useMarkup(),
+          text->spacing()
       );
     }
     break;

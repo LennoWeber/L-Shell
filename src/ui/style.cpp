@@ -1,9 +1,11 @@
 #include "ui/style.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace {
 
+  std::string g_displayFontFamily;
   float g_cornerRadiusScale = 1.0F;
   bool g_buttonBordersEnabled = true;
   bool g_inputBordersEnabled = true;
@@ -16,6 +18,10 @@ namespace {
 } // namespace
 
 namespace Style {
+
+  const std::string& displayFontFamily() noexcept { return g_displayFontFamily; }
+
+  void setDisplayFontFamily(std::string family) { g_displayFontFamily = std::move(family); }
 
   float cornerRadiusScale() noexcept { return g_cornerRadiusScale; }
 
@@ -74,5 +80,7 @@ namespace Style {
   float scaledRadiusLg(float localScale) noexcept { return scaledRadius(radiusLg, localScale); }
 
   float scaledRadiusXl(float localScale) noexcept { return scaledRadius(radiusXl, localScale); }
+
+  float pillRadius(float extent) noexcept { return extent * 0.5F * std::min(g_cornerRadiusScale, 1.0F); }
 
 } // namespace Style

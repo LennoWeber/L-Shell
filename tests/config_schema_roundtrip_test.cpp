@@ -524,6 +524,9 @@ location = "https://example.invalid/bad"
     c.shell.buttonBorders = false;
     c.shell.showCloseButtons = false;
     c.shell.fontFamily = "Inter";
+    c.shell.iconStyle = IconStyle::Rounded;
+    c.shell.iconWeight = 300;
+    c.shell.iconFill = true;
     c.shell.lang = "en_US";
     c.shell.timeFormat = "{:%H:%M:%S}";
     c.shell.passwordMaskStyle = PasswordMaskStyle::RandomIcons;
@@ -1145,6 +1148,7 @@ int main() {
 
 [default]
 auto_hide = true
+background = "surface"
 background_opacity = 0.85000002384185791
 border = "#123456"
 border_width = 2.0
@@ -1164,6 +1168,7 @@ concave_edge_corners = true
 contact_shadow = true
 enabled = false
 end = [ "battery" ]
+event_morph = false
 font_family = "Inter"
 font_scale = 1.5
 font_weight = 600
@@ -1206,6 +1211,7 @@ widget_spacing = 8
 
     [default.monitor.DP-1]
     auto_hide = false
+    background = "surface"
     background_opacity = 0.69999998807907104
     border = "#A1A2A3"
     border_width = 3.0
@@ -1225,6 +1231,7 @@ widget_spacing = 8
     contact_shadow = false
     enabled = true
     end = [ "volume" ]
+    event_morph = false
     font_family = "Fira Sans"
     font_scale = 1.5
     font_weight = 600

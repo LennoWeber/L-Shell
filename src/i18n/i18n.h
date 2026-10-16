@@ -72,6 +72,9 @@ namespace i18n {
     }
   }
 
+  // Text in capitals for labels set in versals ("Dienstag" -> "DIENSTAG"), Unicode-aware unlike std::toupper.
+  [[nodiscard]] std::string upper(std::string_view text);
+
   template <typename... Args> std::string trp(std::string_view key, long count, Args&&... args) {
     if (count == 1) {
       return tr(key, "count", count, std::forward<Args>(args)...);
